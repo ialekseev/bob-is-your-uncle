@@ -1,0 +1,11 @@
+/RUNNING_PID
+/logs/
+/project/*-shim.sbt
+/project/project/
+**/target/
+
+#IDEA
+/.idea/
+
+#OSX specific
+.DS_Store
