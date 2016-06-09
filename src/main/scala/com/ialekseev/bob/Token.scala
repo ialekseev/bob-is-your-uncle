@@ -2,36 +2,39 @@ package com.ialekseev.bob
 
 trait Token {
   val offset: Int
-}
-
-trait KeywordToken extends Token {
   val length: Int
 }
 
+trait CharToken extends Token {
+  val length = 1
+}
+
 object Token {
-  case class Identifier(name: String, offset: Int) extends Token
-  case class Variable(name: String, offset: Int) extends Token
-  case class StringLiteral(text: String, offset: Int) extends Token
+  case class Identifier(name: String, offset: Int, length: Int) extends Token
+  case class Variable(name: String, offset: Int, length: Int) extends Token
+  case class StringLiteral(text: String, offset: Int, length: Int) extends Token
 
   object Keyword {
+    abstract class KeywordToken(val length: Int) extends Token
+
     object `namespace` extends { val keyword = "namespace" }
-    case class `namespace`(offset: Int, length: Int) extends KeywordToken
+    case class `namespace`(offset: Int) extends KeywordToken(`namespace`.keyword.length)
 
     object `description` { val keyword = "description" }
-    case class `description`(offset: Int, length: Int) extends KeywordToken
+    case class `description`(offset: Int) extends KeywordToken(`description`.keyword.length)
 
     object `get` { val keyword = "get"}
-    case class `get`(offset: Int, length: Int) extends KeywordToken
+    case class `get`(offset: Int) extends KeywordToken(`get`.keyword.length)
 
     object `queryString` { val keyword = "queryString" }
-    case class `queryString`(offset: Int, length: Int) extends KeywordToken
+    case class `queryString`(offset: Int) extends KeywordToken(`queryString`.keyword.length)
 
     object `@webhook` { val keyword = "@webhook" }
-    case class `@webhook`(offset: Int, length: Int) extends KeywordToken
+    case class `@webhook`(offset: Int) extends KeywordToken(`@webhook`.keyword.length)
   }
 
   object Delimiter {
-    trait DelimiterToken extends Token
+    trait DelimiterToken extends CharToken
 
     object `.` { val char = '.' }
     case class `.`(offset: Int) extends DelimiterToken
@@ -46,10 +49,10 @@ object Token {
   }
 
   object WS { val chars = Seq(' ')}
-  case class WS(offset: Int) extends Token
+  case class WS(offset: Int) extends CharToken
 
   object NL { val chars = Seq('\n')}
-  case class NL(offset: Int) extends Token
+  case class NL(offset: Int) extends CharToken
 
-  case class INDENT(offset: Int) extends Token
+  case class INDENT(offset: Int) extends CharToken
 }

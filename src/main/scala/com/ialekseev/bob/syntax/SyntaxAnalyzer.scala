@@ -1,4 +1,4 @@
-package com.ialekseev.bob
+package com.ialekseev.bob.syntax
 
 /*
   namespace com.ialekseev.core#create
