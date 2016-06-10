@@ -11,7 +11,11 @@ trait CharToken extends Token {
 
 object Token {
   case class Identifier(name: String, offset: Int, length: Int) extends Token
+
+  object Variable {val char = '$'}
   case class Variable(name: String, offset: Int, length: Int) extends Token
+
+  object StringLiteral { val char = '"' }
   case class StringLiteral(text: String, offset: Int, length: Int) extends Token
 
   object Keyword {
@@ -49,7 +53,6 @@ object Token {
   }
 
   object WS { val chars = Seq(' ')}
-  case class WS(offset: Int) extends CharToken
 
   object NL { val chars = Seq('\n')}
   case class NL(offset: Int) extends CharToken

@@ -24,15 +24,7 @@ private[lexical] class LexicalAnalysisState(input: String) {
 
   private def isWithinInput(pos: Int) = pos >= 0 && pos < input.length
 
-  def takeStringTillSeparator: String = {
-    var pos = _currentPos
-    while (isNonSeparator(input(pos))) {
-      pos = pos + 1
-    }
-    input.substring(_currentPos, pos)
-  }
-
-  def find(hasAnother: => Boolean, mover: Int => Int, what: Char => Boolean): Option[(Char, Int)] = {
+  def look(hasAnother: => Boolean, mover: Int => Int, what: Char => Boolean): Option[(Char, Int)] = {
     if (hasAnother) {
       var pos = mover(_currentPos)
       while (isWithinInput(pos)) {
@@ -45,9 +37,18 @@ private[lexical] class LexicalAnalysisState(input: String) {
     None
   }
 
-  def findNext(what: Char => Boolean) = find(hasNext, _ + 1, what)
-  def findPrev(what: Char => Boolean) = find(hasPrev, _ - 1, what)
+  def lookAhead(what: Char => Boolean): Option[(Char, Int)]  = look(hasNext, _ + 1, what)
+  def lookBack(what: Char => Boolean): Option[(Char, Int)]  = look(hasPrev, _ - 1, what)
+
+  def takeAhead(till: Seq[(Char => Boolean)], last: (Int => Int)): Option[String] = {
+    lookAhead(char => till.exists(_(char))).map(sep => input.substring(_currentPos, sep._2))
+  }
+
+  def takeAheadExcludingLast(till: (Char => Boolean)*): Option[String] = takeAhead(till, identity)
+  def takeAheadIncludingLast(till: (Char => Boolean)*): Option[String] = takeAhead(till, _ + 1)
 
   def currentIsId = isId(currentChar)
   def currentIsVariableStart = isVariableStart(currentChar)
+  def currentIsStringLiteralStart = isStringLiteralChar(currentChar)
+  def currentIsNL = isNL(currentChar)
 }
