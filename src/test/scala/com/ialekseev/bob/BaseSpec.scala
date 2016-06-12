@@ -1,4 +1,5 @@
 package com.ialekseev.bob
 
-trait BaseSpec {
-}
+import org.scalatest.{Matchers, WordSpecLike}
+
+trait BaseSpec extends WordSpecLike with Matchers
