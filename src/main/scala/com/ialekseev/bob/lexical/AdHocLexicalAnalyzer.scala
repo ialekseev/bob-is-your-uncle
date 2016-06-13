@@ -69,7 +69,7 @@ class AdHocLexicalAnalyzer extends LexicalAnalyzer {
   def tokenize(input: String): Either[List[LexicalAnalysisError], List[Token]] = {
     val state = new AdHocLexicalAnalysisState(input)
 
-    while (state.hasNext) {
+    while (state.hasCurrent) {
       state match {
         case Keyword(tokenized) => addTokenAndMove(state, tokenized)
         case Variable(tokenized) => addTokenAndMove(state, tokenized)

@@ -1,13 +1,13 @@
 package com.ialekseev.bob.lexical
 
-import com.ialekseev.bob.BaseSpec
+import com.ialekseev.bob.{BaseSpec, Token}
 
 class LexicalAnalyzerSpec extends BaseSpec {
   val lexer = new AdHocLexicalAnalyzer()
 
     "Doing lexical analysis" when {
 
-      "source string is empty" should {
+      "the source string is empty" should {
         "succeed with NO tokens" in {
           //act
           val result = lexer.tokenize("")
@@ -17,7 +17,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
         }
       }
 
-      "source string contains just whitespaces and newlines" should {
+      "the source string contains just whitespaces and newlines" should {
         "succeed with NO tokens" in {
           //act
           val result = lexer.tokenize("    \n     \n     ")
@@ -27,13 +27,13 @@ class LexicalAnalyzerSpec extends BaseSpec {
         }
       }
 
-      "source string contains unknown word" should {
-        "fail with one error" in {
+      "the source string contains just one word" should {
+        "succeed with Identifier token" in {
           //act
           val result = lexer.tokenize("bad")
 
           //assert
-          result.left.get should be(LexicalAnalysisError(0, 2))
+          result.right.get should be(List(Token.Identifier("bad", 0, 3)))
         }
       }
     }
