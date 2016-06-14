@@ -1,77 +1,116 @@
 package com.ialekseev.bob.lexical
 
+import com.ialekseev.bob._
 import com.ialekseev.bob.Token
 import scala.annotation.tailrec
-import scala.collection.mutable.ArrayBuffer
+import scalaz._
+import Scalaz._
 
-private[lexical] class AdHocLexicalAnalysisState(input: String) {
-  private[this] var _currentPos = 0
-  private[this] val _tokens = ArrayBuffer.empty[Token]
-  private[this] val _errorOffsets = ArrayBuffer.empty[Int]
+private[lexical] object AdHocLexicalAnalysisState {
+  type LexerState[T] = State[LexerStateInternal, T]
 
-  def currentPos: Int = _currentPos
-  def currentChar: Char = input(_currentPos)
+  case class LexerStateInternal private (input: String, position: Int, tokens: List[Token], errorOffsets: List[Int])
 
-  def extractResultingTokens: List[Token] = _tokens.toList
-  def extractErrors: List[LexicalAnalysisError] = {
-    @tailrec def aggregateSpans(remaining: List[(Int, Int)], res: List[LexicalAnalysisError]): List[LexicalAnalysisError] = {
-      val spanned = remaining.span(el => el._2 - el._1 == 1)
-      val (lexicalError, rest) = spanned._1 match {
-        case Nil => (LexicalAnalysisError(remaining.head._1, remaining.head._1), spanned._2.tail)
-        case span => (LexicalAnalysisError(span.head._1, span.last._2), spanned._2)
-      }
-      rest match {
-        case Nil => List(lexicalError)
-        case _ => aggregateSpans(rest, lexicalError :: res)
-      }
-    }
+  def apply(inputRaw: String): LexerState[Unit] = {
+    require(inputRaw.nonEmpty)
 
-    _errorOffsets.toList match {
-      case Nil => Nil
-      case list => aggregateSpans(list.zip(list.tail), Nil)
-    }
+    val input = if (!isEOT(inputRaw.last)) inputRaw + EOT else inputRaw
+    put(LexerStateInternal(input, 0, Nil, Nil))
   }
 
-  def hasCurrent: Boolean = currentPos < input.length
-  def hasNext: Boolean = (currentPos + 1) < input.length
-  def hasPrev: Boolean = (currentPos - 1) >= 0
-  def moveNext: Unit = _currentPos = _currentPos + 1
-  def move(shift: Int): Unit = _currentPos = _currentPos + shift
-  def jump(pos: Int): Unit = _currentPos = pos
-  def addToken(token: Token): Unit = _tokens += token
-  def addErrorOffset(errorOffset: Int): Unit = {
-    require(errorOffset >= 0)
-    _errorOffsets += errorOffset
-  }
+  trait AdHocLexicalAnalysis {
+    def extractResultingTokens: LexerState[List[Token]] = get.map(_.tokens)
 
-  private def isWithinInput(pos: Int) = pos >= 0 && pos < input.length
-
-  def look(hasAnother: => Boolean, mover: Int => Int, what: Char => Boolean): Option[(Char, Int)] = {
-    if (hasAnother) {
-      var pos = mover(_currentPos)
-      while (isWithinInput(pos)) {
-        if (what(input(pos))) {
-          return Some(input(pos), pos)
+    def extractErrors: LexerState[List[LexicalAnalysisError]] = {
+      @tailrec def aggregateSpans(remaining: List[(Int, Int)], res: List[LexicalAnalysisError]): List[LexicalAnalysisError] = {
+        val spanned = remaining.span(el => el._2 - el._1 == 1)
+        val (lexicalError, rest) = spanned._1 match {
+          case Nil => (LexicalAnalysisError(remaining.head._1, remaining.head._1), spanned._2.tail)
+          case span => (LexicalAnalysisError(span.head._1, span.last._2), spanned._2)
         }
-        pos = mover(pos)
+        rest match {
+          case Nil => List(lexicalError)
+          case _ => aggregateSpans(rest, lexicalError :: res)
+        }
       }
+      get.map(s => {
+        s.errorOffsets match {
+          case Nil => Nil
+          case list => aggregateSpans(list.zip(list.tail), Nil)
+        }
+      })
     }
-    None
+
+
+    def getChar(position: Int): LexerState[Char] = get.map(_.input(position))
+
+    def moveNext: LexerState[Unit] = modify(s => s.copy(position = s.position + 1))
+    def move(shift: Int): LexerState[Unit] = modify(s => s.copy(position = s.position + shift))
+    def jump(newPosition: Int): LexerState[Unit] = modify(s => s.copy(position = newPosition))
+
+    def addToken(token: Token): LexerState[Unit] = modify(s => s.copy(tokens = token :: s.tokens))
+
+
+    def addErrorOffset(errorOffset: Int): LexerState[Unit] = {
+      require(errorOffset >= 0)
+      modify(s => s.copy(errorOffsets = errorOffset :: s.errorOffsets))
+    }
+
+    def look(position: Int, hasAnother: (Int, String) => Boolean, mover: Int => Int, what: Char => Boolean): LexerState[Option[(Char, Int)]] = {
+      import scala.util.control.Breaks._
+      get.map(s => {
+        def isWithinInput(pos: Int) = pos >= 0 && pos < s.input.length
+
+        var res: Option[(Char, Int)] = None
+        if (hasAnother(s.position, s.input)) {
+          var pos = mover(position)
+          breakable {
+            while (isWithinInput(pos)) {
+              if (what(s.input(pos))) {
+                res = Some(s.input(pos), pos)
+                break
+              }
+            }
+            pos = mover(pos)
+          }
+        }
+        res
+      })
+    }
+
+    def hasNext(position: Int, input: String): Boolean = (position < input.length - 1) && !isEOT(input(position + 1))
+    def hasPrev(position: Int, input: String): Boolean = position -1 >= 0
+
+    def hasCurrent: LexerState[Boolean] = currentIsEOT.map(!_)
+    def hasNext: LexerState[Boolean] = get.map(s => (s.position < s.input.length - 1) && !isEOT(s.input(s.position + 1)))
+    def hasPrev: LexerState[Boolean] = get.map(s => (s.position - 1) >= 0)
+
+    def lookAhead(what: Char => Boolean): LexerState[Option[(Char, Int)]] = {
+      get.flatMap(s => look(s.position, hasNext, _ + 1, what))
+    }
+
+    def lookBack(what: Char => Boolean): LexerState[Option[(Char, Int)]] = {
+      get.flatMap(s => look(s.position, hasPrev, _ - 1, what))
+    }
+
+    def takeAhead(till: Seq[(Char => Boolean)], last: (Int => Int)): LexerState[Option[String]]  = {
+      get.flatMap(s => {
+        lookAhead(char => till.exists(_(char))).map(ahead => {
+          ahead.map(sep => s.input.substring(s.position, sep._2))
+        })
+      })
+    }
+
+    def takeAheadExcludingLast(till: (Char => Boolean)*): LexerState[Option[String]] = takeAhead(till, identity)
+    def takeAheadIncludingLast(till: (Char => Boolean)*): LexerState[Option[String]] = takeAhead(till, _ + 1)
+
+    def currentIsFirstChar: LexerState[Boolean] = get.map(s => s.position == 0)
+    def currentIsId: LexerState[Boolean]  = get.flatMap(s => getChar(s.position).map(isId(_)))
+    def currentIsVariableStart: LexerState[Boolean]  = get.flatMap(s => getChar(s.position).map(isVariableStart(_)))
+    def currentIsStringLiteralStart: LexerState[Boolean]  = get.flatMap(s => getChar(s.position).map(isStringLiteralChar(_)))
+    def currentIsNL: LexerState[Boolean]  = get.flatMap(s => getChar(s.position).map(isNL(_)))
+    def currentIsWS: LexerState[Boolean]  = get.flatMap(s => getChar(s.position).map(isWS(_)))
+    def currentIsEOT: LexerState[Boolean]  = get.flatMap(s => getChar(s.position).map(isEOT(_)))
   }
-
-  def lookAhead(what: Char => Boolean): Option[(Char, Int)]  = look(hasNext, _ + 1, what)
-  def lookBack(what: Char => Boolean): Option[(Char, Int)]  = look(hasPrev, _ - 1, what)
-
-  def takeAhead(till: Seq[(Char => Boolean)], last: (Int => Int)): Option[String] = {
-    lookAhead(char => till.exists(_(char))).map(sep => input.substring(_currentPos, sep._2))
-  }
-
-  def takeAheadExcludingLast(till: (Char => Boolean)*): Option[String] = takeAhead(till, identity)
-  def takeAheadIncludingLast(till: (Char => Boolean)*): Option[String] = takeAhead(till, _ + 1)
-
-  def currentIsId: Boolean = isId(currentChar)
-  def currentIsVariableStart: Boolean = isVariableStart(currentChar)
-  def currentIsStringLiteralStart: Boolean = isStringLiteralChar(currentChar)
-  def currentIsNL: Boolean = isNL(currentChar)
-  def currentIsWS: Boolean = isWS(currentChar)
 }
+

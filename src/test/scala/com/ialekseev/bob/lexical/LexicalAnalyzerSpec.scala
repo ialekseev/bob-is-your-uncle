@@ -27,13 +27,46 @@ class LexicalAnalyzerSpec extends BaseSpec {
         }
       }
 
-      "the source string contains just one word" should {
-        "succeed with Identifier token" in {
+      "the source string contains just one word that matter" should {
+        "succeed with 'Identifier' token" in {
           //act
-          val result = lexer.tokenize("bad")
+          val result = lexer.tokenize(" good ")
 
           //assert
-          result.right.get should be(List(Token.Identifier("bad", 0, 3)))
+          result.right.get should be(List(Token.Identifier("good", 1, 4)))
+        }
+      }
+
+      "the source string contains short 'namespace' line" should {
+        "succeed with tokens" in {
+          //act
+          val result = lexer.tokenize("namespace com#create")
+
+          //assert
+          result.right.get should be(List(
+            Token.Keyword.`namespace`(0),
+            Token.Identifier("com", 10, 3),
+            Token.Delimiter.`#`(13),
+            Token.Identifier("create", 14, 6)
+          ))
+        }
+      }
+
+      "the source string contains long 'namespace' line" should {
+        "succeed with tokens" in {
+          //act
+          val result = lexer.tokenize("  namespace com.ialekseev#create")
+
+          //assert
+          result.right.get should be(List(
+            Token.INDENT(0, 2),
+            Token.Keyword.`namespace`(2),
+            Token.Identifier("com", 12, 3),
+            Token.Delimiter.`.`(15),
+            Token.Identifier("ialekseev", 16, 9),
+            Token.Delimiter.`#`(25),
+            Token.Identifier("create", 26, 6)
+          ))
         }
       }
     }

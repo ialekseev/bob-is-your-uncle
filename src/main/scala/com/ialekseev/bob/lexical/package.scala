@@ -51,9 +51,10 @@ package object lexical {
     }
   }
 
-  def isNL(char: Char): Boolean = Token.INDENT.NL.chars.contains(char)
-  def isWS(char: Char): Boolean = Token.INDENT.WS.chars.contains(char)
+  def isNL(char: Char): Boolean = Token.NL.chars.contains(char)
+  def isWS(char: Char): Boolean = Token.WS.chars.contains(char)
+  def isEOT(char: Char) = char == EOT
 
-  val separatorChars = Token.Delimiter.chars ++: Token.INDENT.WS.chars ++: Token.INDENT.NL.chars
+  val separatorChars = EOT +: Token.Delimiter.chars ++: Token.WS.chars ++: Token.NL.chars
   def isSeparator(char: Char): Boolean = separatorChars.contains(char)
 }

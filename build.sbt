@@ -19,6 +19,7 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
+  "org.scalaz" %% "scalaz-core" % "7.2.2",
   "org.scalatest" %%  "scalatest"   % "2.2.1" % "test",
   "org.mockito" % "mockito-core" % "1.10.19" % "test"
 )

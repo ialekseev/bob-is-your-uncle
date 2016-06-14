@@ -1,9 +1,12 @@
 package com.ialekseev.bob.lexical
 
 import com.ialekseev.bob.Token
+import scalaz._
+import Scalaz._
+import AdHocLexicalAnalysisState._
 
 //Simple Ad hoc lexical analyzer without Regular Expressions and Finite Automata
-class AdHocLexicalAnalyzer extends LexicalAnalyzer {
+class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalysis {
 
   case class Tokenized(token: Token, movePosition: Int)
 
@@ -46,9 +49,11 @@ class AdHocLexicalAnalyzer extends LexicalAnalyzer {
   private object INDENT {
     def unapply(state: AdHocLexicalAnalysisState): Option[Tokenized] = {
       if (state.currentIsNL){
-        state.lookAhead(char => !isWS(char)).filter(c => !isNL(c._1)).map(nonWs => {
-          val level = nonWs._2 - state.currentPos - 1
-          Tokenized(Token.INDENT(state.currentPos, level), nonWs._2 - state.currentPos)
+        state.lookAhead(char => !isWS(char)).filter(c => !isNL(c._1)).flatMap(nonWs => {
+          state.lookBack(isNL(_)).map(nl => {
+            val level = nonWs._2 - nl._2 - 1
+            Tokenized(Token.INDENT(state.currentPos, level), nonWs._2 - state.currentPos)
+          })
         })
       } else None
     }
@@ -67,28 +72,29 @@ class AdHocLexicalAnalyzer extends LexicalAnalyzer {
   }
 
   def tokenize(input: String): Either[List[LexicalAnalysisError], List[Token]] = {
-    val state = new AdHocLexicalAnalysisState(input)
+    if (input.nonEmpty) {
+      val state = AdHocLexicalAnalysisState(input)
 
-    while (state.hasCurrent) {
-      state match {
-        case Keyword(tokenized) => addTokenAndMove(state, tokenized)
-        case Variable(tokenized) => addTokenAndMove(state, tokenized)
-        case Delimiter(tokenized) => addTokenAndMove(state, tokenized)
-        case StringLiteral(tokenized) => addTokenAndMove(state, tokenized)
-        case Identifier(tokenized) => addTokenAndMove(state, tokenized)
-        case INDENT(tokenized) => addTokenAndMove(state, tokenized)
-        case _ if isWS(state.currentChar) || isNL(state.currentChar) => state.moveNext
-        case s => {
-          state.addErrorOffset(state.currentPos)
-          state.moveNext
+      while (state.hasCurrent) {
+        state match {
+          case Keyword(tokenized) => addTokenAndMove(state, tokenized)
+          case Variable(tokenized) => addTokenAndMove(state, tokenized)
+          case Delimiter(tokenized) => addTokenAndMove(state, tokenized)
+          case StringLiteral(tokenized) => addTokenAndMove(state, tokenized)
+          case Identifier(tokenized) => addTokenAndMove(state, tokenized)
+          case INDENT(tokenized) => addTokenAndMove(state, tokenized)
+          case _ if isWS(state.currentChar) || isNL(state.currentChar) => state.moveNext
+          case s => {
+            state.addErrorOffset(state.currentPos)
+            state.moveNext
+          }
         }
       }
-    }
 
-    val errors = state.extractErrors
-    if (errors.isEmpty)
-      Right(state.extractResultingTokens)
-    else
-      Left(errors)
+      val errors = state.extractErrors
+      if (errors.isEmpty) Right(state.extractResultingTokens)
+      else Left(errors)
+
+    } else Right(Nil)
   }
 }
