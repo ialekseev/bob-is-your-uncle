@@ -1,22 +1,30 @@
 package com.ialekseev.bob.lexical
 
 import com.ialekseev.bob.Token
+import scala.annotation.tailrec
 import scalaz._
 import Scalaz._
-import AdHocLexicalAnalysisState._
+import com.ialekseev.bob.lexical.AdHocLexicalAnalysisState._
 
 //Simple Ad hoc lexical analyzer without Regular Expressions and Finite Automata
 class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalysis {
 
   case class Tokenized(token: Token, movePosition: Int)
 
-  private object Identifier {
-    def unapply(state: AdHocLexicalAnalysisState): Option[Tokenized] = {
-      state.takeAheadExcludingLast(isSeparator(_), isStringLiteralChar(_)).flatMap(t => token(state, identifier(t)))
-    }
+
+  def checkIdentifier: LexerState[Option[Tokenized]] = {
+    currentIsId.flatMap(isId => {
+      if (isId) {
+        for {
+          ahead <- takeAheadExcludingLast(isSeparator(_), isStringLiteralChar(_))
+          token <- token(ahead.flatMap(a => identifier(a)))
+        } yield token
+      }
+      else get.map(_=> None)
+    })
   }
 
-  private object Variable {
+  /*private object Variable {
     def unapply(state: AdHocLexicalAnalysisState): Option[Tokenized] = {
       if (state.currentIsVariableStart)
         state.takeAheadExcludingLast(isSeparator(_), isStringLiteralChar(_)).flatMap(t => token(state, variable(t)))
@@ -57,22 +65,67 @@ class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalysis {
         })
       } else None
     }
-  }
+  }*/
 
-  private def token[T <: Token](state: AdHocLexicalAnalysisState, tokenWithoutPos: Option[Int => T]): Option[Tokenized] = {
-    tokenWithoutPos.map(t => {
-      val token = t(state.currentPos)
-      Tokenized(token, token.length)
+  /*private def token[T <: Token](tokenWithoutPos: Option[Int => T]): LexerState[Option[Tokenized]] = {
+    get.map(s => {
+      tokenWithoutPos.map(t => {
+        val token = t(s.position)
+        Tokenized(token, token.length)
+      })
+    })
+  }*/
+
+  /*private def addTokenAndMove(state: AdHocLexicalAnalysisState, tokenized: Tokenized) = {
+    state.addToken(tokenized.token)
+    state.move(tokenized.movePosition)
+  }*/
+
+  private def token[T <: Token](tokenWithoutPos: Option[Int => T]): LexerState[Option[Tokenized]] = {
+    get.map(s => {
+      tokenWithoutPos.map(t => {
+        val token = t(s.position)
+        Tokenized(token, token.length)
+      })
     })
   }
 
-  private def addTokenAndMove(state: AdHocLexicalAnalysisState, tokenized: Tokenized) = {
-    state.addToken(tokenized.token)
-    state.move(tokenized.movePosition)
-  }
-
   def tokenize(input: String): Either[List[LexicalAnalysisError], List[Token]] = {
-    if (input.nonEmpty) {
+
+    def loop(state: LexerState[Unit]): LexerState[Unit] = {
+      /*def check(c: LexerState[Option[Tokenized]]) = c.flatMap {
+          case Some(tokenized) => loop(move(tokenized.movePosition))
+          case None => state
+      }*/
+
+        state.flatMap(_ => {
+            hasCurrent.flatMap(has => {
+              if (has) {
+                checkIdentifier.flatMap {
+                  case Some(tokenized) => loop(addToken(tokenized.token).flatMap(_ => move(tokenized.movePosition)))
+                  case None => currentIsWS.flatMap(isWS => currentIsNL.map(isNL => (isWS || isNL))).flatMap {
+                    case true =>  loop(moveNext)
+                    case false =>  get[LexerStateInternal].flatMap(s => addErrorOffset(s.position))
+                  }
+                }
+              }
+              else state
+            })
+        })
+    }
+
+    val tokenizer =  for {
+      result <- loop(AdHocLexicalAnalysisState())
+      errors <- extractErrors
+      tokens <- extractResultingTokens
+    } yield if (errors.isEmpty) Right(tokens) else Left(errors)
+
+    tokenizer.run(LexerStateInternal(input, 0, Nil, Nil))._2
+
+
+    //val state = loop(AdHocLexicalAnalysisState(input))
+
+    /*if (input.nonEmpty) {
       val state = AdHocLexicalAnalysisState(input)
 
       while (state.hasCurrent) {
@@ -95,6 +148,6 @@ class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalysis {
       if (errors.isEmpty) Right(state.extractResultingTokens)
       else Left(errors)
 
-    } else Right(Nil)
+    } else Right(Nil)*/
   }
 }

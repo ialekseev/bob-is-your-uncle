@@ -11,11 +11,12 @@ private[lexical] object AdHocLexicalAnalysisState {
 
   case class LexerStateInternal private (input: String, position: Int, tokens: List[Token], errorOffsets: List[Int])
 
-  def apply(inputRaw: String): LexerState[Unit] = {
-    require(inputRaw.nonEmpty)
-
-    val input = if (!isEOT(inputRaw.last)) inputRaw + EOT else inputRaw
-    put(LexerStateInternal(input, 0, Nil, Nil))
+  def apply(): LexerState[Unit] = {
+    modify(s => {
+      if (!isEOT(s.input.last))
+        s.copy(input = s.input + EOT)
+      else s
+    })
   }
 
   trait AdHocLexicalAnalysis {
@@ -70,8 +71,8 @@ private[lexical] object AdHocLexicalAnalysisState {
                 res = Some(s.input(pos), pos)
                 break
               }
+              pos = mover(pos)
             }
-            pos = mover(pos)
           }
         }
         res
@@ -110,7 +111,9 @@ private[lexical] object AdHocLexicalAnalysisState {
     def currentIsStringLiteralStart: LexerState[Boolean]  = get.flatMap(s => getChar(s.position).map(isStringLiteralChar(_)))
     def currentIsNL: LexerState[Boolean]  = get.flatMap(s => getChar(s.position).map(isNL(_)))
     def currentIsWS: LexerState[Boolean]  = get.flatMap(s => getChar(s.position).map(isWS(_)))
-    def currentIsEOT: LexerState[Boolean]  = get.flatMap(s => getChar(s.position).map(isEOT(_)))
+    def currentIsEOT: LexerState[Boolean]  = get.flatMap(s =>
+      getChar(s.position).map(isEOT(_)
+      ))
   }
 }
 
