@@ -53,7 +53,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
       }
 
       "the source string contains long 'namespace' line" should {
-        "succeed with tokens" in {
+        "succeed with tokens" ignore {
           //act
           val result = lexer.tokenize("  namespace com.ialekseev#create")
 

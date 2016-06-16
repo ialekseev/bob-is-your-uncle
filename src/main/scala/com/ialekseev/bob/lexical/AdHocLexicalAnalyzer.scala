@@ -11,8 +11,7 @@ class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalysis {
 
   case class Tokenized(token: Token, movePosition: Int)
 
-
-  def checkIdentifier: LexerState[Option[Tokenized]] = {
+  def identifierStep: LexerState[Option[Tokenized]] = {
     currentIsId.flatMap(isId => {
       if (isId) {
         for {
@@ -23,6 +22,69 @@ class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalysis {
       else get.map(_=> None)
     })
   }
+
+  def variableStep: LexerState[Option[Tokenized]] = {
+    currentIsVariableStart.flatMap(isVariableStart => {
+      if (isVariableStart) {
+        for {
+          ahead <- takeAheadExcludingLast(isSeparator(_), isStringLiteralChar(_))
+          token <- token(ahead.flatMap(a => variable(a)))
+        } yield token
+      }
+      else get.map(_=> None)
+    })
+  }
+
+  def stringLiteralStep: LexerState[Option[Tokenized]] = {
+    currentIsStringLiteralStart.flatMap(isStringLiteralStart => {
+      for {
+        ahead <- takeAheadIncludingLast(isStringLiteralChar(_), isNL(_))
+        token <- token(ahead.flatMap(a => stringLiteral(a)))
+      } yield token
+    })
+  }
+
+  def keywordStep: LexerState[Option[Tokenized]] = {
+    currentIsId.flatMap(isId => {
+      if (isId) {
+        for {
+          ahead <- takeAheadExcludingLast(isSeparator(_), isStringLiteralChar(_))
+          token <- token(ahead.flatMap(a => keyword(a)))
+        } yield token
+      }
+      else get.map(_=> None)
+    })
+  }
+
+  def delimiterStep: LexerState[Option[Tokenized]] = {
+    currentChar.flatMap(c => token(delimiter(c)))
+  }
+
+  //todo
+  /*def IndentStep: LexerState[Option[Tokenized]] = {
+    currentIsNL.flatMap(isNL => {
+      for {
+        nonWs <- lookAhead(char => !isWS(char)).filter(c => !isNL(c._1))
+        nl <- lookBack(isNL(_))
+      } yield {
+        val level = nonWs._2 - nl._2 - 1
+        Tokenized(Token.INDENT(state.currentPos, level), nonWs._2 - state.currentPos)
+      }
+    })
+  }*/
+
+  /*private object INDENT {
+    def unapply(state: AdHocLexicalAnalysisState): Option[Tokenized] = {
+      if (state.currentIsNL){
+        state.lookAhead(char => !isWS(char)).filter(c => !isNL(c._1)).flatMap(nonWs => {
+          state.lookBack(isNL(_)).map(nl => {
+            val level = nonWs._2 - nl._2 - 1
+            Tokenized(Token.INDENT(state.currentPos, level), nonWs._2 - state.currentPos)
+          })
+        })
+      } else None
+    }
+  }*/
 
   /*private object Variable {
     def unapply(state: AdHocLexicalAnalysisState): Option[Tokenized] = {
@@ -90,64 +152,49 @@ class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalysis {
     })
   }
 
-  def tokenize(input: String): Either[List[LexicalAnalysisError], List[Token]] = {
-
-    def loop(state: LexerState[Unit]): LexerState[Unit] = {
-      /*def check(c: LexerState[Option[Tokenized]]) = c.flatMap {
-          case Some(tokenized) => loop(move(tokenized.movePosition))
-          case None => state
-      }*/
-
-        state.flatMap(_ => {
-            hasCurrent.flatMap(has => {
-              if (has) {
-                checkIdentifier.flatMap {
-                  case Some(tokenized) => loop(addToken(tokenized.token).flatMap(_ => move(tokenized.movePosition)))
-                  case None => currentIsWS.flatMap(isWS => currentIsNL.map(isNL => (isWS || isNL))).flatMap {
-                    case true =>  loop(moveNext)
-                    case false =>  get[LexerStateInternal].flatMap(s => addErrorOffset(s.position))
-                  }
-                }
-              }
-              else state
-            })
-        })
+  def addTokenAndMove(step: LexerState[Option[Tokenized]]): LexerState[Option[Unit]] = {
+    val addAndMove: LexerState[Option[Tokenized]] = step.flatMap {
+      case t@Some(tokenized) => addToken(tokenized.token).flatMap(_ => move(tokenized.movePosition).map(_ => t))
+      case None => step
     }
+    addAndMove.map(v => (if (v.isDefined) None else Some((): Unit)))
+  }
 
-    val tokenizer =  for {
-      result <- loop(AdHocLexicalAnalysisState())
-      errors <- extractErrors
-      tokens <- extractResultingTokens
-    } yield if (errors.isEmpty) Right(tokens) else Left(errors)
+  def ignoreWhiteSpaceStep: LexerState[Option[Unit]] = {
+    currentIsWS.flatMap(isWS => currentIsNL.map(isNL => (isWS || isNL))).flatMap {
+      case true => moveNext.map(_ => None)
+      case false => get.map(_ => Some((): Unit))
+    }
+  }
 
-    tokenizer.run(LexerStateInternal(input, 0, Nil, Nil))._2
+  def errorStep: LexerState[Option[Unit]] = {
+    get[LexerStateInternal].flatMap(s => addErrorOffset(s.position)).map(_ => Some((): Unit))
+  }
 
-
-    //val state = loop(AdHocLexicalAnalysisState(input))
-
-    /*if (input.nonEmpty) {
-      val state = AdHocLexicalAnalysisState(input)
-
-      while (state.hasCurrent) {
-        state match {
-          case Keyword(tokenized) => addTokenAndMove(state, tokenized)
-          case Variable(tokenized) => addTokenAndMove(state, tokenized)
-          case Delimiter(tokenized) => addTokenAndMove(state, tokenized)
-          case StringLiteral(tokenized) => addTokenAndMove(state, tokenized)
-          case Identifier(tokenized) => addTokenAndMove(state, tokenized)
-          case INDENT(tokenized) => addTokenAndMove(state, tokenized)
-          case _ if isWS(state.currentChar) || isNL(state.currentChar) => state.moveNext
-          case s => {
-            state.addErrorOffset(state.currentPos)
-            state.moveNext
-          }
-        }
+  //todo: use trampoline
+  def tokenize(input: String): Either[List[LexicalAnalysisError], List[Token]] = {
+    if (input.nonEmpty) {
+      def go(state: LexerState[Unit]) = {
+        state.flatMap(_ => {
+          (for {
+            _ <- OptionT.optionT(addTokenAndMove(keywordStep))
+            _ <- OptionT.optionT(addTokenAndMove(variableStep))
+            _ <- OptionT.optionT(addTokenAndMove(delimiterStep))
+            _ <- OptionT.optionT(addTokenAndMove(stringLiteralStep))
+            _ <- OptionT.optionT(addTokenAndMove(identifierStep))
+            _ <- OptionT.optionT(ignoreWhiteSpaceStep)
+            _ <- OptionT.optionT(errorStep)
+          } yield ()).getOrElse((): Unit)
+        })
       }
 
-      val errors = state.extractErrors
-      if (errors.isEmpty) Right(state.extractResultingTokens)
-      else Left(errors)
+      val tokenizer =  for {
+        result <- go(AdHocLexicalAnalysisState()).whileM_(hasCurrent)
+        errors <- extractErrors
+        tokens <- extractResultingTokens
+      } yield if (errors.isEmpty) Right(tokens) else Left(errors)
 
-    } else Right(Nil)*/
+      tokenizer.run(LexerStateInternal(input, 0, Nil, Nil))._2
+    } else Right(Nil)
   }
 }

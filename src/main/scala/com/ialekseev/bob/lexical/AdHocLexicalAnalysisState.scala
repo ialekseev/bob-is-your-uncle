@@ -42,8 +42,7 @@ private[lexical] object AdHocLexicalAnalysisState {
       })
     }
 
-
-    def getChar(position: Int): LexerState[Char] = get.map(_.input(position))
+    def currentChar: LexerState[Char] = get.map(s => s.input(s.position))
 
     def moveNext: LexerState[Unit] = modify(s => s.copy(position = s.position + 1))
     def move(shift: Int): LexerState[Unit] = modify(s => s.copy(position = s.position + shift))
@@ -106,14 +105,12 @@ private[lexical] object AdHocLexicalAnalysisState {
     def takeAheadIncludingLast(till: (Char => Boolean)*): LexerState[Option[String]] = takeAhead(till, _ + 1)
 
     def currentIsFirstChar: LexerState[Boolean] = get.map(s => s.position == 0)
-    def currentIsId: LexerState[Boolean]  = get.flatMap(s => getChar(s.position).map(isId(_)))
-    def currentIsVariableStart: LexerState[Boolean]  = get.flatMap(s => getChar(s.position).map(isVariableStart(_)))
-    def currentIsStringLiteralStart: LexerState[Boolean]  = get.flatMap(s => getChar(s.position).map(isStringLiteralChar(_)))
-    def currentIsNL: LexerState[Boolean]  = get.flatMap(s => getChar(s.position).map(isNL(_)))
-    def currentIsWS: LexerState[Boolean]  = get.flatMap(s => getChar(s.position).map(isWS(_)))
-    def currentIsEOT: LexerState[Boolean]  = get.flatMap(s =>
-      getChar(s.position).map(isEOT(_)
-      ))
+    def currentIsId: LexerState[Boolean]  = currentChar.map(isId(_))
+    def currentIsVariableStart: LexerState[Boolean]  = currentChar.map(isVariableStart(_))
+    def currentIsStringLiteralStart: LexerState[Boolean]  = currentChar.map(isStringLiteralChar(_))
+    def currentIsNL: LexerState[Boolean]  = currentChar.map(isNL(_))
+    def currentIsWS: LexerState[Boolean]  = currentChar.map(isWS(_))
+    def currentIsEOT: LexerState[Boolean]  = currentChar.map(isEOT(_))
   }
 }
 
