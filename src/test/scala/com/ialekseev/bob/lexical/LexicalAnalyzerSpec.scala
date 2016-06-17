@@ -69,5 +69,15 @@ class LexicalAnalyzerSpec extends BaseSpec {
           ))
         }
       }
+
+      "the source is HUGE" should {
+        "not fail with Stack Overflow" in {
+          //act
+          val result = lexer.tokenize("namespace " * 1000)
+
+          //assert
+          result.right.get should not be(empty)
+        }
+      }
     }
 }

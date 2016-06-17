@@ -7,7 +7,7 @@ import scalaz._
 import Scalaz._
 
 private[lexical] object AdHocLexicalAnalysisState {
-  type LexerState[T] = State[LexerStateInternal, T]
+  type LexerState[S] =  State[LexerStateInternal, S]
 
   case class LexerStateInternal private (input: String, position: Int, tokens: List[Token], errorOffsets: List[Int])
 
@@ -20,7 +20,7 @@ private[lexical] object AdHocLexicalAnalysisState {
   }
 
   trait AdHocLexicalAnalysis {
-    def extractResultingTokens: LexerState[List[Token]] = get.map(_.tokens)
+    def extractResultingTokens: LexerState[List[Token]] = get.map(_.tokens.reverse)
 
     def extractErrors: LexerState[List[LexicalAnalysisError]] = {
       @tailrec def aggregateSpans(remaining: List[(Int, Int)], res: List[LexicalAnalysisError]): List[LexicalAnalysisError] = {
@@ -61,13 +61,13 @@ private[lexical] object AdHocLexicalAnalysisState {
       get.map(s => {
         def isWithinInput(pos: Int) = pos >= 0 && pos < s.input.length
 
-        var res: Option[(Char, Int)] = None
+        var res: Option[(Char, Int)] = none
         if (hasAnother(s.position, s.input)) {
           var pos = mover(position)
           breakable {
             while (isWithinInput(pos)) {
               if (what(s.input(pos))) {
-                res = Some(s.input(pos), pos)
+                res = some(s.input(pos), pos)
                 break
               }
               pos = mover(pos)
