@@ -53,6 +53,6 @@ object Token {
   }
 
   object WS { val chars = Seq(' ')}
-  object NL { val chars = Seq('\n', EOT)}
+  object NL { val chars = Seq('\n', SOT, EOT)}
   case class INDENT(offset: Int, level: Int) extends CharToken
 }

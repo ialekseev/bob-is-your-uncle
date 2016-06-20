@@ -1,19 +1,19 @@
 package com.ialekseev.bob
 
-import com.ialekseev.bob.Token.Delimiter.DelimiterToken
-import com.ialekseev.bob.Token.Keyword.KeywordToken
 import com.ialekseev.bob.Token.{StringLiteral, Identifier, Variable}
 
 package object lexical {
+  type FreeToken = (Int => Token)
+
   def isLetter(char: Char): Boolean = char.isLetter && char <= 'z'
   def isDigit(char: Char): Boolean = char.isDigit
 
   def isId(char: Char): Boolean = isDigit(char) || isLetter(char)
   def isIdentifier(str: String): Boolean = str.forall(isId(_))
-  def identifier(str: String): Option[(Int => Identifier)] = if (isIdentifier(str)) Some(Identifier(str, _, str.length)) else None
+  def identifier(str: String): Option[FreeToken] = if (isIdentifier(str)) Some(Identifier(str, _, str.length)) else None
 
   def isVariableStart(char: Char): Boolean = char == Token.Variable.char
-  def variable(str: String): Option[(Int => Variable)] = {
+  def variable(str: String): Option[FreeToken] = {
     if (str.length > 1) {
       val head = str(0)
       val tail = str.substring(1)
@@ -22,7 +22,7 @@ package object lexical {
   }
 
   def isStringLiteralChar(char: Char) = char == Token.StringLiteral.char
-  def stringLiteral(str: String): Option[(Int => StringLiteral)] = {
+  def stringLiteral(str: String): Option[FreeToken] = {
     if (str.length > 1) {
       val head = str(0)
       val content = str.substring(1, str.length - 1)
@@ -31,7 +31,7 @@ package object lexical {
     } else None
   }
 
-  def keyword(str: String): Option[(Int => KeywordToken)] = {
+  def keyword(str: String): Option[FreeToken] = {
     str match {
       case l@Token.Keyword.`namespace`.keyword => Some(Token.Keyword.`namespace`(_))
       case l@Token.Keyword.`description`.keyword => Some(Token.Keyword.`description`(_))
@@ -42,7 +42,7 @@ package object lexical {
     }
   }
 
-  def delimiter(char: Char): Option[(Int => DelimiterToken)] = {
+  def delimiter(char: Char): Option[FreeToken] = {
     char match {
       case Token.Delimiter.`.`.char => Some(Token.Delimiter.`.`(_))
       case Token.Delimiter.`#`.char => Some(Token.Delimiter.`#`(_))
@@ -53,6 +53,7 @@ package object lexical {
 
   def isNL(char: Char): Boolean = Token.NL.chars.contains(char)
   def isWS(char: Char): Boolean = Token.WS.chars.contains(char)
+  def isSOT(char: Char) = char == SOT
   def isEOT(char: Char) = char == EOT
 
   val separatorChars = EOT +: Token.Delimiter.chars ++: Token.WS.chars ++: Token.NL.chars

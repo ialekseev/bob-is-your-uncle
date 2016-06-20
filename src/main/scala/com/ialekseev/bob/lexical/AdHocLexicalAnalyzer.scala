@@ -1,19 +1,22 @@
 package com.ialekseev.bob.lexical
 
-import com.ialekseev.bob.Token
+import com.ialekseev.bob._
 import scala.annotation.tailrec
-import scalaz._
-import Scalaz._
 import scalaz.Free.Trampoline
-import com.ialekseev.bob.lexical.AdHocLexicalAnalysisState._
+import scalaz._
+import scalaz.Scalaz._
+import scalaz.Free._
 
 //Simple Ad hoc lexical analyzer without Regular Expressions and Finite Automata
-class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalysis {
+final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalysis {
 
-  private case class Tokenized(token: Token, movePosition: Int)
+  protected case class Tokenized(token: Token, movePosition: Int) {
+    require(movePosition > 0)
+  }
 
   private def identifierStep: LexerState[Option[Tokenized]] = {
     currentIsId.flatMap(isId => {
+      val test = isId
       if (isId) {
         for {
           ahead <- takeAheadExcludingLast(isSeparator(_), isStringLiteralChar(_))
@@ -79,9 +82,9 @@ class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalysis {
     })
   }
 
-  private def token[T <: Token](tokenWithoutPos: Option[Int => T]): LexerState[Option[Tokenized]] = {
+  private def token[T <: Token](freeToken: Option[FreeToken]): LexerState[Option[Tokenized]] = {
     get.map(s => {
-      tokenWithoutPos.map(t => {
+      freeToken.map(t => {
         val token = t(s.position)
         Tokenized(token, token.length)
       })
@@ -96,7 +99,7 @@ class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalysis {
     addAndMove.map(v => (if (v.isDefined) None else Some((): Unit)))
   }
 
-  private def ignoreWhiteSpaceStep: LexerState[Option[Unit]] = {
+  private def ignoreWhiteSpaceAndMove(): LexerState[Option[Unit]] = {
     val isWSorNL = for {
       isWS <- currentIsWS
       isNL <- currentIsNL
@@ -109,8 +112,12 @@ class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalysis {
     })
   }
 
-  private def errorStep: LexerState[Option[Unit]] = {
-    get[LexerStateInternal].flatMap(s => addErrorOffset(s.position)).map(_ => some((): Unit))
+  private def addErrorOffsetAndMove(): LexerState[Option[Unit]] = {
+    for {
+      state <- get[LexerStateInternal]
+      modify <- addErrorOffset(state.position)
+      move <- moveNext
+    } yield some((): Unit)
   }
 
   def tokenize(input: String): Either[List[LexicalAnalysisError], List[Token]] = {
@@ -126,14 +133,14 @@ class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalysis {
             _ <- OptionT.optionT(addTokenAndMove(stringLiteralStep))
             _ <- OptionT.optionT(addTokenAndMove(identifierStep))
             _ <- OptionT.optionT(addTokenAndMove(indentStep))
-            _ <- OptionT.optionT(ignoreWhiteSpaceStep)
-            _ <- OptionT.optionT(errorStep)
+            _ <- OptionT.optionT(ignoreWhiteSpaceAndMove)
+            _ <- OptionT.optionT(addErrorOffsetAndMove)
           } yield ()).run.map(_ => (): Unit).lift[Trampoline]
         })
       }
 
       val tokenizer =  for {
-        result <- go(AdHocLexicalAnalysisState().lift[Trampoline]).whileM_(hasCurrent.lift[Trampoline])
+        result <- go(get[LexerStateInternal].map(_ => ()).lift[Trampoline]).whileM_(hasCurrent.lift[Trampoline])
         errors <- extractErrors.lift[Trampoline]
         tokens <- extractResultingTokens.lift[Trampoline]
       } yield if (errors.isEmpty) Right(tokens) else Left(errors)
