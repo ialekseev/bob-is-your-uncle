@@ -7,7 +7,7 @@ import com.ialekseev.bob.Token
       lower ::=  'a' |...| 'z'
       letter ::= upper | lower
       digit ::=  '0' |...| '9'
-      id ::= letter | digit
+      id ::= letter | digit | @
       WS ::= ' '
       NL ::= '\n'
 
@@ -20,7 +20,8 @@ import com.ialekseev.bob.Token
 */
 
 trait LexicalAnalyzer {
-  def tokenize(input: String): Either[List[LexicalAnalysisError], List[Token]]
+  def tokenize(input: String): Either[List[LexerError], List[LexerToken]]
 }
 
-case class LexicalAnalysisError(startOffset: Int, endOffset: Int)
+case class LexerToken(token: Token, offset: Int)
+case class LexerError(startOffset: Int, endOffset: Int)

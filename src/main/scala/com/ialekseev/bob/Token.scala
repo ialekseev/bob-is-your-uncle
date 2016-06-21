@@ -1,58 +1,44 @@
 package com.ialekseev.bob
 
 trait Token {
-  val offset: Int
   val length: Int
 }
 
 trait CharToken extends Token {
+  val char: Char
   val length = 1
 }
 
+trait WordToken extends  Token {
+  val word: String
+  lazy val length = word.length
+}
+
 object Token {
-  case class Identifier(name: String, offset: Int, length: Int) extends Token
+  case class Identifier(word: String) extends WordToken
 
   object Variable {val char = '$'}
-  case class Variable(name: String, offset: Int, length: Int) extends Token
+  case class Variable(name: String) extends Token { val length = name.length + 1 }
 
   object StringLiteral { val char = '"' }
-  case class StringLiteral(text: String, offset: Int, length: Int) extends Token
+  case class StringLiteral(text: String) extends Token { val length = text.length + 2 }
 
   object Keyword {
-    abstract class KeywordToken(val length: Int) extends Token
-
-    object `namespace` extends { val keyword = "namespace" }
-    case class `namespace`(offset: Int) extends KeywordToken(`namespace`.keyword.length)
-
-    object `description` { val keyword = "description" }
-    case class `description`(offset: Int) extends KeywordToken(`description`.keyword.length)
-
-    object `get` { val keyword = "get"}
-    case class `get`(offset: Int) extends KeywordToken(`get`.keyword.length)
-
-    object `queryString` { val keyword = "queryString" }
-    case class `queryString`(offset: Int) extends KeywordToken(`queryString`.keyword.length)
-
-    object `@webhook` { val keyword = "@webhook" }
-    case class `@webhook`(offset: Int) extends KeywordToken(`@webhook`.keyword.length)
+    case object `namespace` extends WordToken{ val word = "namespace"}
+    case object `description` extends WordToken { val word = "description" }
+    case object `get` extends WordToken { val word = "get"}
+    case object `queryString` extends WordToken { val word = "queryString" }
+    case object `@webhook` extends WordToken { val word = "@webhook" }
   }
 
   object Delimiter {
-    trait DelimiterToken extends CharToken
-
-    object `.` { val char = '.' }
-    case class `.`(offset: Int) extends DelimiterToken
-
-    object `#` { val char = '#' }
-    case class `#`(offset: Int) extends DelimiterToken
-
-    object `:` { val char = ':' }
-    case class `:`(offset: Int) extends DelimiterToken
-
+    case object `.` extends CharToken { val char = '.' }
+    case object `#` extends CharToken { val char = '#' }
+    case object `:` extends CharToken { val char = ':' }
     val chars = Seq(`.`.char, `#`.char, `:`.char)
   }
 
-  object WS { val chars = Seq(' ')}
-  object NL { val chars = Seq('\n', SOT, EOT)}
-  case class INDENT(offset: Int, level: Int) extends CharToken
+  object WS { val chars = Seq(' ', '\t')}
+  object NL { val chars = Seq('\n','\r', SOT, EOT)}
+  case class INDENT(length: Int) extends Token
 }

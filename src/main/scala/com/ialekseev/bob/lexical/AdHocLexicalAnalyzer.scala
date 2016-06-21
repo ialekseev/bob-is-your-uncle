@@ -10,7 +10,7 @@ import scalaz.Free._
 //Simple Ad hoc lexical analyzer without Regular Expressions and Finite Automata
 final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalysis {
 
-  protected case class Tokenized(token: Token, movePosition: Int) {
+  protected case class Tokenized(token: Token, offset: Int, movePosition: Int) {
     require(movePosition > 0)
   }
 
@@ -69,12 +69,11 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalys
       if (currentIsNL) {
         get.flatMap(state => {
           (for {
-            nonWs: (Char, Int) <- OptionT.optionT(lookAhead(char => !isWS(char)))
-            nonNl <- OptionT.optionT((if (!isNL(nonWs._1)) some(nonWs) else none).point[LexerState])
-            nl <- OptionT.optionT(lookBack(isNL(_)))
+            ahead: (Char, Int) <- OptionT.optionT(lookAhead(char => !isWS(char) && !isNL(char)))
+            nl <- OptionT.optionT(lookBack(isNL(_), ahead._2))
           } yield {
-            val level = nonWs._2 - nl._2 - 1
-            Tokenized(Token.INDENT(state.position, level), nonWs._2 - state.position)
+            val indentLevel = ahead._2 - nl._2 - 1
+            Tokenized(Token.INDENT(indentLevel), nl._2 + 1, ahead._2 - state.position)
           }).run
         })
       }
@@ -82,18 +81,13 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalys
     })
   }
 
-  private def token[T <: Token](freeToken: Option[FreeToken]): LexerState[Option[Tokenized]] = {
-    get.map(s => {
-      freeToken.map(t => {
-        val token = t(s.position)
-        Tokenized(token, token.length)
-      })
-    })
+  private def token(token: Option[Token]): LexerState[Option[Tokenized]] = {
+    get.map(s => token.map(t => Tokenized(t, s.position, t.length)))
   }
 
   private def addTokenAndMove(step: LexerState[Option[Tokenized]]): LexerState[Option[Unit]] = {
     val addAndMove: LexerState[Option[Tokenized]] = step.flatMap {
-      case t@Some(tokenized) => addToken(tokenized.token).flatMap(_ => move(tokenized.movePosition).map(_ => t))
+      case t@Some(tokenized) => addToken(tokenized.token, tokenized.offset).flatMap(_ => move(tokenized.movePosition).map(_ => t))
       case None => step
     }
     addAndMove.map(v => (if (v.isDefined) None else Some((): Unit)))
@@ -120,7 +114,7 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalys
     } yield some((): Unit)
   }
 
-  def tokenize(input: String): Either[List[LexicalAnalysisError], List[Token]] = {
+  def tokenize(input: String): Either[List[LexerError], List[LexerToken]] = {
     if (input.nonEmpty) {
       type LexerStateT[S] = StateT[Trampoline, LexerStateInternal, S]
 
@@ -139,6 +133,7 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalys
         })
       }
 
+      //todo: do not extract tokens if there are errors
       val tokenizer =  for {
         result <- go(get[LexerStateInternal].map(_ => ()).lift[Trampoline]).whileM_(hasCurrent.lift[Trampoline])
         errors <- extractErrors.lift[Trampoline]
