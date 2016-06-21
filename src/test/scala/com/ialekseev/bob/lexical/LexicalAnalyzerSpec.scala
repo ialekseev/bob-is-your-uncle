@@ -13,7 +13,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
           val result = lexer.tokenize("")
 
           //assert
-          result.right.get should be(empty)
+          result.toEither.right.get should be(empty)
         }
       }
 
@@ -23,7 +23,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
           val result = lexer.tokenize("    \n     \n     ")
 
           //assert
-          result.right.get should be(empty)
+          result.toEither.right.get should be(empty)
         }
       }
 
@@ -33,7 +33,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
           val result = lexer.tokenize(" good ")
 
           //assert
-          result.right.get should be(List(
+          result.toEither.right.get should be(List(
             LexerToken(Token.INDENT(1), 0),
             LexerToken(Token.Identifier("good"), 1)
           ))
@@ -46,7 +46,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
           val result = lexer.tokenize("\n \n  namespace com#create\r")
 
           //assert
-          result.right.get should be(List(
+          result.toEither.right.get should be(List(
             LexerToken(Token.INDENT(2), 3),
             LexerToken(Token.Keyword.`namespace`, 5),
             LexerToken(Token.Identifier("com"), 15),
@@ -62,7 +62,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
           val result = lexer.tokenize("  namespace com.ialekseev#create")
 
           //assert
-          result.right.get should be(List(
+          result.toEither.right.get should be(List(
             LexerToken(Token.INDENT(2), 0),
             LexerToken(Token.Keyword.`namespace`, 2),
             LexerToken(Token.Identifier("com"), 12),
@@ -82,7 +82,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
             """  description : "super"""")
 
           //assert
-          result.right.get should be(List(
+          result.toEither.right.get should be(List(
             LexerToken(Token.INDENT(0), 0),
             LexerToken(Token.Keyword.`namespace`, 0),
             LexerToken(Token.Identifier("com"), 10),
@@ -105,7 +105,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
             "\t" + """ $createMeUri: "http://example.com/1"""")
 
           //assert
-          result.right.get should be(List(
+          result.toEither.right.get should be(List(
             LexerToken(Token.INDENT(1), 0),
             LexerToken(Token.Keyword.`description`, 1),
             LexerToken(Token.Delimiter.`:`, 12),
@@ -131,7 +131,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
               """ queryString: "url/do"""")
 
           //assert
-          result.right.get should be(List(
+          result.toEither.right.get should be(List(
             LexerToken(Token.INDENT(0), 0),
             LexerToken(Token.Keyword.`@webhook`, 0),
             LexerToken(Token.INDENT(1), 15),
@@ -152,7 +152,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
           val result = lexer.tokenize("namespace " * 1000)
 
           //assert
-          result.right.get should not be(empty)
+          result.toEither.right.get should not be(empty)
         }
       }
     }

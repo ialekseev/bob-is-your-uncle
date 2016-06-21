@@ -1,6 +1,7 @@
 package com.ialekseev.bob.lexical
 
 import com.ialekseev.bob.Token
+import scalaz._
 
 /*[Lexical Syntax in EBNF form]
       upper ::=  'A' |...| 'Z'
@@ -20,7 +21,7 @@ import com.ialekseev.bob.Token
 */
 
 trait LexicalAnalyzer {
-  def tokenize(input: String): Either[List[LexerError], List[LexerToken]]
+  def tokenize(input: String): \/[List[LexerError], List[LexerToken]]
 }
 
 case class LexerToken(token: Token, offset: Int)

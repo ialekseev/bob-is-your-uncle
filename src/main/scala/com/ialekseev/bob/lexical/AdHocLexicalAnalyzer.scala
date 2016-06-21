@@ -15,12 +15,11 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalys
   }
 
   private def identifierStep: LexerState[Option[Tokenized]] = {
-    currentIsId.flatMap(isId => {
-      val test = isId
+    currentIsId >>= (isId => {
       if (isId) {
         for {
           ahead <- takeAheadExcludingLast(isSeparator(_), isStringLiteralChar(_))
-          token <- token(ahead.flatMap(a => identifier(a)))
+          token <- token(ahead >>= (identifier(_)))
         } yield token
       }
       else none[Tokenized].point[LexerState]
@@ -28,11 +27,11 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalys
   }
 
   private def variableStep: LexerState[Option[Tokenized]] = {
-    currentIsVariableStart.flatMap(isVariableStart => {
+    currentIsVariableStart >>= (isVariableStart => {
       if (isVariableStart) {
         for {
           ahead <- takeAheadExcludingLast(isSeparator(_), isStringLiteralChar(_))
-          token <- token(ahead.flatMap(a => variable(a)))
+          token <- token(ahead >>= (variable(_)))
         } yield token
       }
       else none[Tokenized].point[LexerState]
@@ -40,20 +39,20 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalys
   }
 
   private def stringLiteralStep: LexerState[Option[Tokenized]] = {
-    currentIsStringLiteralStart.flatMap(isStringLiteralStart => {
+    currentIsStringLiteralStart >>= (isStringLiteralStart => {
       for {
         ahead <- takeAheadIncludingLast(isStringLiteralChar(_), isNL(_))
-        token <- token(ahead.flatMap(a => stringLiteral(a)))
+        token <- token(ahead >>= (stringLiteral(_)))
       } yield token
     })
   }
 
   private def keywordStep: LexerState[Option[Tokenized]] = {
-    currentIsId.flatMap(isId => {
+    currentIsId >>= (isId => {
       if (isId) {
         for {
           ahead <- takeAheadExcludingLast(isSeparator(_), isStringLiteralChar(_))
-          token <- token(ahead.flatMap(a => keyword(a)))
+          token <- token(ahead >>= (keyword(_)))
         } yield token
       }
       else none[Tokenized].point[LexerState]
@@ -61,13 +60,13 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalys
   }
 
   private def delimiterStep: LexerState[Option[Tokenized]] = {
-    currentChar.flatMap(c => token(delimiter(c)))
+    currentChar >>= (c => token(delimiter(c)))
   }
 
   private def indentStep: LexerState[Option[Tokenized]] = {
-    currentIsNL.flatMap(currentIsNL => {
+    currentIsNL >>= (currentIsNL => {
       if (currentIsNL) {
-        get.flatMap(state => {
+        get[LexerStateInternal] >>= (state => {
           (for {
             ahead: (Char, Int) <- OptionT.optionT(lookAhead(char => !isWS(char) && !isNL(char)))
             nl <- OptionT.optionT(lookBack(isNL(_), ahead._2))
@@ -86,41 +85,34 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalys
   }
 
   private def addTokenAndMove(step: LexerState[Option[Tokenized]]): LexerState[Option[Unit]] = {
-    val addAndMove: LexerState[Option[Tokenized]] = step.flatMap {
-      case t@Some(tokenized) => addToken(tokenized.token, tokenized.offset).flatMap(_ => move(tokenized.movePosition).map(_ => t))
+    val addAndMove: LexerState[Option[Tokenized]] = step >>= {
+      case t@Some(tokenized) => (addToken(tokenized.token, tokenized.offset) >> move(tokenized.movePosition)) >| t
       case None => step
     }
-    addAndMove.map(v => (if (v.isDefined) None else Some((): Unit)))
+    addAndMove.map(v => (if (v.isDefined) None else someUnit))
   }
 
   private def ignoreWhiteSpaceAndMove(): LexerState[Option[Unit]] = {
-    val isWSorNL = for {
-      isWS <- currentIsWS
-      isNL <- currentIsNL
-      isWSorNL <- (isWS || isNL).point[LexerState]
-    } yield isWSorNL
+    val isWSorNL = (currentIsWS |@| currentIsNL)(_ || _)
 
-    isWSorNL.flatMap(is => {
-      if (is) moveNext.map(_ => none[Unit])
-      else some(():Unit).point[LexerState]
+    isWSorNL >>= (is => {
+      if (is) moveNext >| none[Unit]
+      else someUnit.point[LexerState]
     })
   }
 
   private def addErrorOffsetAndMove(): LexerState[Option[Unit]] = {
-    for {
-      state <- get[LexerStateInternal]
-      modify <- addErrorOffset(state.position)
-      move <- moveNext
-    } yield some((): Unit)
+    val add: LexerState[Unit] = (get[LexerStateInternal]) >>= (s => addErrorOffset(s.position))
+    (add >> moveNext) >| someUnit
   }
 
-  def tokenize(input: String): Either[List[LexerError], List[LexerToken]] = {
+  def tokenize(input: String): \/[List[LexerError], List[LexerToken]] = {
     if (input.nonEmpty) {
       type LexerStateT[S] = StateT[Trampoline, LexerStateInternal, S]
 
       def go(state: LexerStateT[Unit]): LexerStateT[Unit] = {
-        state.flatMap(_ => {
-          (for {
+        state *> {
+          val steps = (for {
             _ <- OptionT.optionT(addTokenAndMove(keywordStep))
             _ <- OptionT.optionT(addTokenAndMove(variableStep))
             _ <- OptionT.optionT(addTokenAndMove(delimiterStep))
@@ -129,18 +121,21 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalys
             _ <- OptionT.optionT(addTokenAndMove(indentStep))
             _ <- OptionT.optionT(ignoreWhiteSpaceAndMove)
             _ <- OptionT.optionT(addErrorOffsetAndMove)
-          } yield ()).run.map(_ => (): Unit).lift[Trampoline]
-        })
+          } yield ()).run
+
+          (steps >| unit).lift[Trampoline]
+        }
       }
 
       //todo: do not extract tokens if there are errors
+      val initial = (get[LexerStateInternal].as((): Unit)).lift[Trampoline]
       val tokenizer =  for {
-        result <- go(get[LexerStateInternal].map(_ => ()).lift[Trampoline]).whileM_(hasCurrent.lift[Trampoline])
+        result <- go(initial).whileM_(hasCurrent.lift[Trampoline])
         errors <- extractErrors.lift[Trampoline]
         tokens <- extractResultingTokens.lift[Trampoline]
-      } yield if (errors.isEmpty) Right(tokens) else Left(errors)
+      } yield if (errors.isEmpty) \/-(tokens) else -\/(errors)
 
       tokenizer.run(LexerStateInternal(input, 0, Nil, Nil)).run._2
-    } else Right(Nil)
+    } else \/-(Nil)
   }
 }

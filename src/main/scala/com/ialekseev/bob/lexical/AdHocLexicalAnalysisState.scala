@@ -25,7 +25,7 @@ private[lexical] trait AdHocLexicalAnalysis {
   protected def look(position: Int, mover: Int => Int, what: Char => Boolean): LexerState[Option[(Char, Int)]] = {
     import scala.util.control.Breaks._
     get.map(s => {
-      def withinBounds(pos: Int) =  pos >=0 && pos < s.input.length
+      def withinBounds(pos: Int) =  pos >= 0 && pos < s.input.length
 
       var res: Option[(Char, Int)] = none
       var pos = mover(position)
