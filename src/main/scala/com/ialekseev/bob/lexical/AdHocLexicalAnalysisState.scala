@@ -8,8 +8,7 @@ import Scalaz._
 private[lexical] trait AdHocLexicalAnalysis {
   type LexerState[S] =  State[LexerStateInternal, S]
 
-
-  protected case class LexerStateInternal(private val raw: String, position: Int, tokens: List[LexerToken], errorOffsets: List[Int]) {
+  protected case class LexerStateInternal(private val raw: String, position: Int, tokens: Seq[LexerToken], errorOffsets: Seq[Int]) {
     require(raw.nonEmpty)
     require(position >= 0)
     val input = SOT + raw + EOT
@@ -19,8 +18,8 @@ private[lexical] trait AdHocLexicalAnalysis {
   protected def move(shift: Int): LexerState[Unit] = modify(s => s.copy(position = s.position + shift))
   protected def jump(newPosition: Int): LexerState[Unit] = modify(s => s.copy(position = newPosition))
 
-  protected def addToken(token: Token, offset: Int): LexerState[Unit] = modify(s => s.copy(tokens = LexerToken(token, offset) :: s.tokens))
-  protected def addErrorOffset(errorOffset: Int): LexerState[Unit] = modify(s => s.copy(errorOffsets = errorOffset :: s.errorOffsets))
+  protected def addToken(token: Token, offset: Int): LexerState[Unit] = modify(s => s.copy(tokens =  s.tokens :+ LexerToken(token, offset)))
+  protected def addErrorOffset(errorOffset: Int): LexerState[Unit] = modify(s => s.copy(errorOffsets = s.errorOffsets :+ errorOffset))
 
   protected def look(position: Int, mover: Int => Int, what: Char => Boolean): LexerState[Option[(Char, Int)]] = {
     import scala.util.control.Breaks._
@@ -69,26 +68,22 @@ private[lexical] trait AdHocLexicalAnalysis {
   protected def currentIsNL: LexerState[Boolean]  = currentChar.map(isNL(_))
   protected def currentIsWS: LexerState[Boolean]  = currentChar.map(isWS(_))
 
-  def extractResultingTokens: LexerState[List[LexerToken]] = get.map(_.tokens.reverse.map(c => c.copy(offset = c.offset - 1)))
-  def extractErrors: LexerState[List[LexerError]] = {
-    @tailrec def aggregateSpans(remaining: List[(Int, Int)], res: List[LexerError]): List[LexerError] = {
-      if (remaining.nonEmpty) {
-        val spanned = remaining.span(el => el._2 - el._1 == 1)
-        val (lexicalError, rest) = spanned._1 match {
-          case Nil => (LexerError(remaining.head._1 - 1, remaining.head._1 - 1), spanned._2.tail)
-          case span => (LexerError(span.head._1 - 1, span.last._2 - 1), spanned._2)
-        }
-        aggregateSpans(rest, lexicalError :: res)
-      } else res
-    }
+  def extractResultingTokens: LexerState[Seq[LexerToken]] = get.map(_.tokens.map(c => c.copy(offset = c.offset - 1)))
 
-    get.map(s => {
-      s.errorOffsets match {
-        case x :: xs if xs.nonEmpty => aggregateSpans(s.errorOffsets.zip(xs), Nil)
-        case x :: xs if xs.isEmpty => List(LexerError(x - 1, x - 1))
-        case _ => Nil
+  def extractErrors: LexerState[Seq[LexerError]] = {
+    @tailrec def aggregateSpans(remaining: Vector[Int], openSpan: Vector[Int], res: Vector[LexerError]): Vector[LexerError] = {
+      if (remaining.nonEmpty) {
+        remaining match {
+          case x +: xs if openSpan.lastOption.isDefined && (x - openSpan.last === 1) => aggregateSpans(xs, openSpan :+ x, res)
+          case x +: xs if openSpan.nonEmpty => aggregateSpans(xs, Vector(x), res :+ LexerError(openSpan.head - 1, openSpan.last - 1))
+          case x +: xs  => aggregateSpans(xs, Vector(x), res)
+        }
+      } else {
+        if (openSpan.nonEmpty) res :+ LexerError(openSpan.head - 1, openSpan.last - 1)
+        else res
       }
-    })
+    }
+    get.map(s => aggregateSpans(s.errorOffsets.toVector, Vector.empty, Vector.empty))
   }
 }
 

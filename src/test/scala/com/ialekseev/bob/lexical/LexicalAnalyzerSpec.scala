@@ -146,6 +146,53 @@ class LexicalAnalyzerSpec extends BaseSpec {
         }
       }
 
+      "the source string has an error in 'namespace' line" should {
+        "succeed with tokens" in {
+          //act
+          val result = lexer.tokenize(
+            """namespace com%%%#create""" + "\n" +
+            """  description : "super"""")
+
+          //assert
+          result.toEither.left.get should be(List(
+            LexerError(10, 15)
+          ))
+        }
+      }
+
+      "the source string has several errors in 'namespace' line" should {
+        "succeed with tokens" in {
+          //act
+          val result = lexer.tokenize(
+            """%name%space % com#create%""" + "\n" +
+              """  description : "super"""")
+
+          //assert
+          result.toEither.left.get should be(List(
+            LexerError(0, 5),
+            LexerError(12, 12),
+            LexerError(18, 24)
+          ))
+        }
+      }
+
+      "the source string has errors in variables" should {
+        "succeed with tokens" in {
+          //act
+          val result = lexer.tokenize(
+            """ ^description: "super"""" + "^\n" +
+              """$hea^der: "hello"""" + "\r\n" +
+              "\t" + """ $createMeUri: "http://example.com/1"""")
+
+          //assert
+          result.toEither.left.get should be(List(
+            LexerError(1, 1),
+            LexerError(22, 22),
+            LexerError(24, 28)
+          ))
+        }
+      }
+
       "the source is HUGE" should {
         "not fail with Stack Overflow" in {
           //act

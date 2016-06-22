@@ -21,7 +21,7 @@ import scalaz._
 */
 
 trait LexicalAnalyzer {
-  def tokenize(input: String): \/[List[LexerError], List[LexerToken]]
+  def tokenize(input: String): \/[Seq[LexerError], Seq[LexerToken]]
 }
 
 case class LexerToken(token: Token, offset: Int)

@@ -106,12 +106,12 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalys
     (add >> moveNext) >| someUnit
   }
 
-  def tokenize(input: String): \/[List[LexerError], List[LexerToken]] = {
+  def tokenize(input: String): \/[Seq[LexerError], Seq[LexerToken]] = {
     if (input.nonEmpty) {
       type LexerStateT[S] = StateT[Trampoline, LexerStateInternal, S]
 
       def go(state: LexerStateT[Unit]): LexerStateT[Unit] = {
-        state *> {
+        state >> {
           val steps = (for {
             _ <- OptionT.optionT(addTokenAndMove(keywordStep))
             _ <- OptionT.optionT(addTokenAndMove(variableStep))
@@ -127,15 +127,22 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalys
         }
       }
 
-      //todo: do not extract tokens if there are errors
-      val initial = (get[LexerStateInternal].as((): Unit)).lift[Trampoline]
-      val tokenizer =  for {
-        result <- go(initial).whileM_(hasCurrent.lift[Trampoline])
-        errors <- extractErrors.lift[Trampoline]
-        tokens <- extractResultingTokens.lift[Trampoline]
-      } yield if (errors.isEmpty) \/-(tokens) else -\/(errors)
+      val goT = {
+        val initialT = (get[LexerStateInternal] >| unit).lift[Trampoline]
+        val goWhileT = hasCurrent.lift[Trampoline]
+        go(initialT).whileM_(goWhileT)
+      }
 
-      tokenizer.run(LexerStateInternal(input, 0, Nil, Nil)).run._2
-    } else \/-(Nil)
+      val extractResultT = {
+        val extractResult: LexerState[\/[Seq[LexerError], Seq[LexerToken]]] = extractErrors >>= (errors => {
+          if (errors.isEmpty) extractResultingTokens.map(_.right)
+          else errors.left.point[LexerState]
+        })
+        extractResult.lift[Trampoline]
+      }
+
+      (goT >> extractResultT).run(LexerStateInternal(input, 0, Nil, Nil)).run._2
+
+    } else Nil.right
   }
 }
