@@ -26,9 +26,10 @@ object Token {
   object Keyword {
     case object `namespace` extends WordToken{ val word = "namespace"}
     case object `description` extends WordToken { val word = "description" }
-    case object `get` extends WordToken { val word = "get"}
-    case object `queryString` extends WordToken { val word = "queryString" }
     case object `@webhook` extends WordToken { val word = "@webhook" }
+    case object `uri` extends WordToken { val word = "uri"}
+    case object `method` extends WordToken { val word = "method"}
+    case object `queryString` extends WordToken { val word = "queryString" }
   }
 
   object Delimiter {

@@ -1,39 +1,40 @@
 package com.ialekseev.bob.syntax
 
-/*
+/*[Example]
   namespace com.ialekseev.core#create
-    description: "creating new"
+    description: "{description}"
 
-    $header: "hello"
-    $createMeUri: "http://example.com/1"
+    $var1: "{var1}"
+    $var2: "{var2}"
 
     @webhook
-      get: "$baseUri/%key"
-      queryString: "{'a': %a, 'b': %b}"
+      method: "{method}"
+      uri: "{binding}"
+      queryString: "{binding}"
 */
 
 /*[Syntax in EBNF form]
 
-    RuleDescription ::= 'description' : stringLiteral
-    Constant ::= variable : stringLiteral
+    NamespacePath ::= identifier {'.' identifier}
+    Namespace ::= 'namespace' WS NamespacePath # identifier
 
-    WebhookGetMethod ::= INDENT INDENT 'get' : stringLiteral NL
-               INDENT INDENT 'queryString' : stringLiteral NL
+    Description ::= 'description' : stringLiteral
 
-    Webhook ::= '@webhook' NL
-             WebhookGetMethod
+    Constants ::= {variable : stringLiteral}
 
-    RuleImpl ::= INDENT RuleDescription NL
-                {INDENT Constant NL}
-                INDENT (Webhook | Poll) NL
-                INDENT Process NL
+    WebhookImpl ::= 'method' : stringLiteral
+                    'uri' : stringLiteral
+                    'queryString' : stringLiteral
 
-    NameSpace ::= 'namespace' WS NameSpacePath # namespaceId
+    Webhook ::= '@webhook'
+                  WebhookImpl
 
-    NameSpacePath ::= identifier {'.' identifier}
+    RuleImpl ::= Description
+                 Constants
+                 Webhook
 
-    TopStat ::= NameSpace NL
-                RuleImpl
+    TopStat ::= Namespace
+                 RuleImpl
 */
 
 

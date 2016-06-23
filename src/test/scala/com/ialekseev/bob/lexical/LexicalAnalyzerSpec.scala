@@ -127,7 +127,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
           //act
           val result = lexer.tokenize(
             """@webhook """ + "\n\n  \n\n" +
-              """ get : "abc"""" + "\n" +
+              """ method : "get"""" + "\n" +
               """ queryString: "url/do"""")
 
           //assert
@@ -135,13 +135,13 @@ class LexicalAnalyzerSpec extends BaseSpec {
             LexerToken(Token.INDENT(0), 0),
             LexerToken(Token.Keyword.`@webhook`, 0),
             LexerToken(Token.INDENT(1), 15),
-            LexerToken(Token.Keyword.`get`, 16),
-            LexerToken(Token.Delimiter.`:`, 20),
-            LexerToken(Token.StringLiteral("abc"), 22),
-            LexerToken(Token.INDENT(1), 28),
-            LexerToken(Token.Keyword.`queryString`, 29),
-            LexerToken(Token.Delimiter.`:`, 40),
-            LexerToken(Token.StringLiteral("url/do"), 42)
+            LexerToken(Token.Keyword.`method`, 16),
+            LexerToken(Token.Delimiter.`:`, 23),
+            LexerToken(Token.StringLiteral("get"), 25),
+            LexerToken(Token.INDENT(1), 31),
+            LexerToken(Token.Keyword.`queryString`, 32),
+            LexerToken(Token.Delimiter.`:`, 43),
+            LexerToken(Token.StringLiteral("url/do"), 45)
           ))
         }
       }

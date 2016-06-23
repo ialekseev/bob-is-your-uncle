@@ -33,9 +33,10 @@ package object lexical {
     str match {
       case l@Token.Keyword.`namespace`.word => Some(Token.Keyword.`namespace`)
       case l@Token.Keyword.`description`.word => Some(Token.Keyword.`description`)
-      case l@Token.Keyword.`get`.word => Some(Token.Keyword.`get`)
-      case l@Token.Keyword.`queryString`.word => Some(Token.Keyword.`queryString`)
       case l@Token.Keyword.`@webhook`.word => Some(Token.Keyword.`@webhook`)
+      case l@Token.Keyword.`method`.word => Some(Token.Keyword.`method`)
+      case l@Token.Keyword.`uri`.word => Some(Token.Keyword.`uri`)
+      case l@Token.Keyword.`queryString`.word => Some(Token.Keyword.`queryString`)
       case _ => None
     }
   }
