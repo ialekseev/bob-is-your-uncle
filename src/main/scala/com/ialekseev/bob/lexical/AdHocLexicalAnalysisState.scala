@@ -6,7 +6,7 @@ import scalaz._
 import Scalaz._
 
 private[lexical] trait AdHocLexicalAnalysis {
-  type LexerState[S] =  State[LexerStateInternal, S]
+  type LexerState[A] =  State[LexerStateInternal, A]
 
   protected case class LexerStateInternal(private val raw: String, position: Int, tokens: Seq[LexerToken], errorOffsets: Seq[Int]) {
     require(raw.nonEmpty)

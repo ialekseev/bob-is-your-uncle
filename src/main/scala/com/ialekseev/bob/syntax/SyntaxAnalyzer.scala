@@ -37,7 +37,4 @@ package com.ialekseev.bob.syntax
                  RuleImpl
 */
 
-
-class SyntaxAnalyzer {
-
-}
+trait SyntaxAnalyzer
