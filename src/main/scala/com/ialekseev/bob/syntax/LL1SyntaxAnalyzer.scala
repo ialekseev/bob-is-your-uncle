@@ -6,24 +6,38 @@ import scalaz._
 import Scalaz._
 
 //Top-Down Predictive Parsing for LL1 grammar (Recursive Descent technique)
-class LL1SyntaxAnalyzer extends SyntaxAnalyzer {
+class LL1SyntaxAnalyzer extends SyntaxAnalyzer with LL1SyntaxAnalysisState {
 
-  type ParserState[A] = State[ParserStateInternal, A]
-
-  protected case class ParserStateInternal(val tokens: Seq[LexerToken], position: Int)
-  protected case class ParserError(offset: Int, message: String)
-
-  protected def lookAhead: ParserState[Option[LexerToken]] = get.map(s => {
-    if (s.position < s.tokens.length - 1) Some(s.tokens(s.position + 1))
-    else None
-  })
-
-  protected def current: ParserState[LexerToken] = get.map(s => s.tokens(s.position))
-
-  def identifier(): ParserState[\/[ParserError, Token]] = current map {
-    case LexerToken(t: Token.Identifier, _) => t.right
-    case LexerToken(_, offset) => ParserError(offset, "Unexpected Identifier").left
+  //identifier
+  private def parseIdentifier: ParserState[Parsed[Tree[Node]]] = current >>= {
+    case Some(t@LexerToken(_: Token.Identifier, _)) => move >| (Terminal(t): Node).leaf.right
+    case Some(LexerToken(_, offset)) => get[ParserStateInternal] >| Seq(ParserError(offset, "Unexpected Identifier")).left
+    case None => get[ParserStateInternal].map(s => Seq(ParserError(s.tokens.last.offset, "Unexpected end")).left)
   }
 
-  //def namespacePath(): ParserState[RuleApplied] =
+  //NamespacePath ::= identifier {'.' identifier}
+  private def parseNamespacePath(): ParserState[Parsed[Tree[Node]]] = {
+
+    def parseDotPath(nodes: Seq[Tree[Node]]): ParserState[Parsed[Seq[Tree[Node]]]] = {
+      current >>= {
+        case Some(dot@LexerToken(_: Token.Delimiter.`.`.type, _)) => move >> parseIdentifier >>= {
+          case \/-(identifier) => parseDotPath(nodes :+ (Terminal(dot): Node).leaf :+ identifier)
+          case -\/(error) => error.left.point[ParserState]
+        }
+        case Some(_) =>  nodes.right.point[ParserState]
+        case None => get[ParserStateInternal].map(s => Seq(ParserError(s.tokens.last.offset, "Unexpected end")).left)
+      }
+    }
+
+    val parsed: ParserState[Parsed[Seq[Tree[Node]]]] = (for {
+      identifier: Seq[Tree[Node]] <- EitherT.eitherT(liftToSeq(parseIdentifier))
+      dotPath: Seq[Tree[Node]] <- EitherT.eitherT(parseDotPath(Seq.empty[Tree[Node]]))
+    } yield identifier |+| dotPath).run
+
+    parsed.map(either => {
+      either.map(nodes => {
+        Tree.Node(NonTerminal("NamespacePath"), nodes.toStream)
+      })
+    })
+  }
 }

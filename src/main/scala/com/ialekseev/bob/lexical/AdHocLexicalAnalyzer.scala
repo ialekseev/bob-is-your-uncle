@@ -8,9 +8,9 @@ import scalaz.Scalaz._
 import scalaz.Free._
 
 //Simple Ad hoc lexical analyzer without Regular Expressions and Finite Automata
-final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalysis {
+final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalysisState {
 
-  protected case class Tokenized(token: Token, offset: Int, movePosition: Int) {
+  private case class Tokenized(token: Token, offset: Int, movePosition: Int) {
     require(movePosition > 0)
   }
 

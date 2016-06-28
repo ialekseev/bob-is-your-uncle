@@ -9,7 +9,7 @@ trait CharToken extends Token {
   val length = 1
 }
 
-trait WordToken extends  Token {
+trait WordToken extends Token {
   val word: String
   lazy val length = word.length
 }
