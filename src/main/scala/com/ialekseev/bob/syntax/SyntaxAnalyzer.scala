@@ -15,19 +15,28 @@ package com.ialekseev.bob.syntax
 
 /*[Syntax in EBNF form]
 
-    NamespacePath ::= identifier {'.' identifier}
-    Namespace ::= 'namespace' WS NamespacePath # identifier
+    NamespacePathPart ::= '.' identifier
+    NamespacePathParts ::= {NamespacePathPart}
+    NamespacePath ::= identifier NamespacePathPart
+    Namespace ::= 'namespace' NamespacePath # identifier
 
     Description ::= 'description' : stringLiteral
 
-    Constants ::= {variable : stringLiteral}
+    Constant ::= variable : stringLiteral
+    Constants ::= {Constant}
 
-    WebhookImpl ::= 'method' : stringLiteral
-                    'uri' : stringLiteral
-                    'queryString' : stringLiteral
+    WebhookUriSetting ::= 'uri' : stringLiteral
+
+    WebhookSpecificSetting ::= 'method' : stringLiteral |
+                               'queryString' : stringLiteral
+
+    WebhookSpecificSettings ::= {WebhookSpecificSetting}
+
+    WebhookSettings ::= WebhookUriSetting
+                        WebhookSpecificSettings
 
     Webhook ::= '@webhook'
-                  WebhookImpl
+                  WebhookSettings
 
     RuleImpl ::= Description
                  Constants
