@@ -1,6 +1,7 @@
 package com.ialekseev.bob.lexical
 
 import com.ialekseev.bob._
+import com.ialekseev.bob.lexical.LexicalAnalyzer._
 import scala.annotation.tailrec
 import scalaz.Free.Trampoline
 import scalaz._

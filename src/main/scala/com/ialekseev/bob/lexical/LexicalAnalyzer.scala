@@ -1,6 +1,7 @@
 package com.ialekseev.bob.lexical
 
 import com.ialekseev.bob.Token
+import com.ialekseev.bob.lexical.LexicalAnalyzer.{LexerToken, LexerError}
 import scalaz._
 
 /*[Lexical Syntax in EBNF form]
@@ -24,5 +25,7 @@ trait LexicalAnalyzer {
   def tokenize(input: String): \/[Seq[LexerError], Seq[LexerToken]]
 }
 
-case class LexerToken(token: Token, offset: Int)
-case class LexerError(startOffset: Int, endOffset: Int)
+object LexicalAnalyzer {
+  case class LexerToken(token: Token, offset: Int)
+  case class LexerError(startOffset: Int, endOffset: Int)
+}

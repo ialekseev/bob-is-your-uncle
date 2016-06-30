@@ -1,5 +1,9 @@
 package com.ialekseev.bob.syntax
 
+import com.ialekseev.bob.lexical.LexicalAnalyzer.LexerToken
+import com.ialekseev.bob.syntax.SyntaxAnalyzer.{ParseError, ParseTree}
+import scalaz._
+
 /*[Example]
   namespace com.ialekseev.core#create
     description: "{description}"
@@ -8,8 +12,8 @@ package com.ialekseev.bob.syntax
     $var2: "{var2}"
 
     @webhook
-      method: "{method}"
       uri: "{binding}"
+      method: "{method}"
       queryString: "{binding}"
 */
 
@@ -17,7 +21,7 @@ package com.ialekseev.bob.syntax
 
     NamespacePathPart ::= '.' identifier
     NamespacePathParts ::= {NamespacePathPart}
-    NamespacePath ::= identifier NamespacePathPart
+    NamespacePath ::= identifier NamespacePathParts
     Namespace ::= 'namespace' NamespacePath # identifier
 
     Description ::= 'description' : stringLiteral
@@ -38,12 +42,25 @@ package com.ialekseev.bob.syntax
     Webhook ::= '@webhook'
                   WebhookSettings
 
-    RuleImpl ::= Description
-                 Constants
-                 Webhook
+    Rule ::= Description
+             Constants
+             Webhook
 
     TopStat ::= Namespace
-                 RuleImpl
+                Rule
 */
 
-trait SyntaxAnalyzer
+
+trait SyntaxAnalyzer {
+  def parse(tokens: Seq[LexerToken]): \/[Seq[ParseError], ParseTree]
+}
+
+object SyntaxAnalyzer {
+  type ParseTree = Tree[ParseTreeNode]
+
+  case class ParseError(offset: Int, message: String)
+
+  sealed trait ParseTreeNode
+  case class Terminal(token: LexerToken) extends ParseTreeNode
+  case class NonTerminal(name: String) extends ParseTreeNode
+}
