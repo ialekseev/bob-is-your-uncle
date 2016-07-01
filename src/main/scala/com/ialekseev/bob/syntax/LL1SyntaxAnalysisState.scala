@@ -13,7 +13,10 @@ private[syntax] trait LL1SyntaxAnalysisState {
   protected type Parsed[A] = ParserState[ParsingResult[A]]
   protected type ParsingResult[A] = \/[Seq[ParseError], A]
 
-  protected case class ParserStateInternal(val tokens: Seq[LexerToken], position: Int, indent: Int)
+  protected type IndentLevel = Int
+  protected type IndentLength = Int
+
+  protected case class ParserStateInternal(val tokens: Seq[LexerToken], position: Int, indentMap: Map[IndentLevel, IndentLength])
 
   protected implicit def seqMonoid[T]: Monoid[Seq[T]] = new Monoid[Seq[T]] {
     override def zero: Seq[T] = Seq.empty[T]
@@ -26,7 +29,6 @@ private[syntax] trait LL1SyntaxAnalysisState {
   })
 
   protected def move: ParserState[Unit] = modify(s => s.copy(position = s.position + 1))
-  protected def setIndent(i: Int): ParserState[Unit] = modify(s => s.copy(indent = i))
 
   protected def parseToken[T <: Token: ClassTag]: Parsed[LexerToken] = current >>= {
     case Some(t@LexerToken(_: T, _)) => move >| t.right
@@ -34,18 +36,23 @@ private[syntax] trait LL1SyntaxAnalysisState {
     case None => get[ParserStateInternal].map(s => Seq(ParseError(s.tokens.last.offset, "Unexpected end")).left)
   }
 
-  protected def parse[T <: Token: ClassTag]: Parsed[ParseTree] = mapTokenToParseTree(parseToken[T])
-
-  protected def parseBlockIndent: Parsed[ParseTree] = {
-   val parsedToken: Parsed[LexerToken] = (for {
-      indent <- EitherT.eitherT(parseToken[Token.INDENT])
-      _ <- EitherT.eitherT(setIndent(indent.token.length) >| indent.right[Seq[ParseError]])
-    } yield indent).run
-
-    mapTokenToParseTree(parsedToken)
+  protected def parseIndentToken(indentLevel: IndentLevel): Parsed[LexerToken] = {
+    get[ParserStateInternal] >>= (state => {
+      (for {
+        indent <- EitherT.eitherT(parseToken[Token.INDENT])
+        result: LexerToken <- EitherT.eitherT(
+          if (state.indentMap.contains(indentLevel) && state.indentMap(indentLevel) === indent.token.length){
+             indent.right[Seq[ParseError]].point[ParserState]
+          } else if (!state.indentMap.contains(indentLevel) && (!state.indentMap.contains(indentLevel - 1) || (state.indentMap(indentLevel - 1) < indent.token.length))) {
+              modify[ParserStateInternal](s => s.copy(indentMap = s.indentMap + (indentLevel -> indent.token.length))) >>
+                indent.right[Seq[ParseError]].point[ParserState]
+          } else Seq(ParseError(indent.offset, "Unexpected indent")).left[LexerToken].point[ParserState]
+        )
+      } yield result).run
+    })
   }
 
-  protected def parseRepeatable(ruleS: => Parsed[ParseTree], nonTerminalName: String): Parsed[Option[ParseTree]] = {
+  protected def repeat(ruleS: => Parsed[ParseTree], nonTerminalName: String): Parsed[Option[ParseTree]] = {
     def parse(nodes: Seq[ParseTree]): Parsed[Seq[ParseTree]] = {
       ruleS >>= {
         case \/-(node) => parse(nodes :+ node)
@@ -70,9 +77,11 @@ private[syntax] trait LL1SyntaxAnalysisState {
     nodesS.map(nodesE => attachToNonTerminal(nodesE, nonTerminalName))
   }
 
-  private def mapTokenToParseTree(tokenS: Parsed[LexerToken]): Parsed[ParseTree] = {
-    tokenS.map(either => {
-      either.map(token => (Terminal(token): ParseTreeNode).leaf)
-    })
+  protected implicit class TokenSWrapper(tokenS: Parsed[LexerToken]) {
+    def toTree: Parsed[ParseTree] = {
+      tokenS.map(either => {
+        either.map(token => (Terminal(token): ParseTreeNode).leaf)
+      })
+    }
   }
 }

@@ -54,8 +54,8 @@ private[lexical] trait AdHocLexicalAnalysisState {
   protected def lookAhead(what: Char => Boolean, position: Int): LexerState[Option[(Char, Int)]] = look(position, _ + 1, what)
   protected def lookBack(what: Char => Boolean, position: Int): LexerState[Option[(Char, Int)]] = look(position, _ - 1, what)
 
-  protected def lookAhead(what: Char => Boolean): LexerState[Option[(Char, Int)]] = get.flatMap(s => lookAhead(what, s.position))
-  protected def lookBack(what: Char => Boolean): LexerState[Option[(Char, Int)]] = get.flatMap(s => lookBack(what, s.position))
+  protected def lookAhead(what: Char => Boolean): LexerState[Option[(Char, Int)]] = get[LexerStateInternal] >>= (s => lookAhead(what, s.position))
+  protected def lookBack(what: Char => Boolean): LexerState[Option[(Char, Int)]] = get[LexerStateInternal] >>= (s => lookBack(what, s.position))
 
   protected def takeAheadExcludingLast(till: (Char => Boolean)*): LexerState[Option[String]] = takeAhead(till, identity)
   protected def takeAheadIncludingLast(till: (Char => Boolean)*): LexerState[Option[String]] = takeAhead(till, _ + 1)

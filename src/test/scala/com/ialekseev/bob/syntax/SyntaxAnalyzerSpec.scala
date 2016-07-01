@@ -12,11 +12,17 @@ class SyntaxAnalyzerSpec extends BaseSpec {
       "succeed" in {
         //arrange
         val tokens = Seq(
-          LexerToken(Token.Keyword.`namespace`, 0),
+          LexerToken(Token.INDENT(0), 0),
           LexerToken(Token.Keyword.`namespace`, 0),
           LexerToken(Token.Identifier("com"), 10),
           LexerToken(Token.Delimiter.`#`, 13),
-          LexerToken(Token.Identifier("create"), 14)
+          LexerToken(Token.Identifier("create"), 14),
+          LexerToken(Token.INDENT(3), 20),
+          LexerToken(Token.Keyword.`description`, 23),
+          LexerToken(Token.Delimiter.`:`, 26),
+          LexerToken(Token.StringLiteral("hello"), 35),
+          LexerToken(Token.INDENT(3), 40),
+          LexerToken(Token.Keyword.`@webhook`, 45),
         )
 
         //act

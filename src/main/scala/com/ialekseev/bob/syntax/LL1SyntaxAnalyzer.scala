@@ -14,8 +14,8 @@ class LL1SyntaxAnalyzer extends SyntaxAnalyzer with LL1SyntaxAnalysisState {
   private def parseNamespacePathPart: Parsed[ParseTree] = {
 
     val parsed: Parsed[Seq[ParseTree]] = (for {
-      dot <- EitherT.eitherT(parse[Token.Delimiter.`.`.type])
-      identifier <- EitherT.eitherT(parse[Token.Identifier])
+      dot <- EitherT.eitherT(parseToken[Token.Delimiter.`.`.type].toTree)
+      identifier <- EitherT.eitherT(parseToken[Token.Identifier].toTree)
     } yield Seq(dot, identifier)).run
 
     attachToNonTerminal(parsed, "NamespacePathPart")
@@ -23,52 +23,55 @@ class LL1SyntaxAnalyzer extends SyntaxAnalyzer with LL1SyntaxAnalysisState {
 
   //NamespacePathParts ::= {NamespacePathPart}
   private def parseNamespacePathParts: Parsed[Option[ParseTree]] = {
-    parseRepeatable(parseNamespacePathPart, "NamespacePathParts")
+    repeat(parseNamespacePathPart, "NamespacePathParts")
   }
 
   //NamespacePath ::= identifier NamespacePathParts
   private def parseNamespacePath: Parsed[ParseTree] = {
 
     val parsed: Parsed[Seq[ParseTree]] = (for {
-      identifier <- EitherT.eitherT(parse[Token.Identifier])
+      identifier <- EitherT.eitherT(parseToken[Token.Identifier].toTree)
       dotPath <- EitherT.eitherT(parseNamespacePathParts)
     } yield identifier +: dotPath.toSeq).run
 
     attachToNonTerminal(parsed, "NamespacePath")
   }
 
-  //Namespace ::= 'namespace' NamespacePath # identifier
+  //Namespace ::= INDENT(0) 'namespace' NamespacePath # identifier
   private def parseNamespace: Parsed[ParseTree] = {
 
     val parsed: Parsed[Seq[ParseTree]] = (for {
-      namespaceKeyword <- EitherT.eitherT(parse[Token.Keyword.`namespace`.type])
+      _ <- EitherT.eitherT(parseIndentToken(0).toTree)
+      namespaceKeyword <- EitherT.eitherT(parseToken[Token.Keyword.`namespace`.type].toTree)
       namespacePath <- EitherT.eitherT(parseNamespacePath)
-      pound <- EitherT.eitherT(parse[Token.Delimiter.`#`.type])
-      identifier <- EitherT.eitherT(parse[Token.Identifier])
+      pound <- EitherT.eitherT(parseToken[Token.Delimiter.`#`.type].toTree)
+      identifier <- EitherT.eitherT(parseToken[Token.Identifier].toTree)
     } yield Seq(namespaceKeyword, namespacePath, pound, identifier)).run
 
     attachToNonTerminal(parsed, "Namespace")
   }
 
-  //Description ::= 'description' : stringLiteral
+  //Description ::= INDENT(1) 'description' : stringLiteral
   private def parseDescription: Parsed[ParseTree] = {
 
     val parsed: Parsed[Seq[ParseTree]] = (for {
-      descriptionKeyword <- EitherT.eitherT(parse[Token.Keyword.`description`.type])
-      colon <- EitherT.eitherT(parse[Token.Delimiter.`:`.type])
-      stringLiteral <- EitherT.eitherT(parse[Token.StringLiteral])
+      _ <- EitherT.eitherT(parseIndentToken(1).toTree)
+      descriptionKeyword <- EitherT.eitherT(parseToken[Token.Keyword.`description`.type].toTree)
+      colon <- EitherT.eitherT(parseToken[Token.Delimiter.`:`.type].toTree)
+      stringLiteral <- EitherT.eitherT(parseToken[Token.StringLiteral].toTree)
     } yield Seq(descriptionKeyword, colon, stringLiteral)).run
 
     attachToNonTerminal(parsed, "Description")
   }
 
-  //Constant ::= variable : stringLiteral
+  //Constant ::= INDENT(1) variable : stringLiteral
   private def parseConstant: Parsed[ParseTree] = {
 
     var parsed: Parsed[Seq[ParseTree]] = (for {
-      variable <- EitherT.eitherT(parse[Token.Variable])
-      colon <- EitherT.eitherT(parse[Token.Delimiter.`:`.type])
-      stringLiteral <- EitherT.eitherT(parse[Token.StringLiteral])
+      _ <- EitherT.eitherT(parseIndentToken(1).toTree)
+      variable <- EitherT.eitherT(parseToken[Token.Variable].toTree)
+      colon <- EitherT.eitherT(parseToken[Token.Delimiter.`:`.type].toTree)
+      stringLiteral <- EitherT.eitherT(parseToken[Token.StringLiteral].toTree)
     } yield Seq(variable, colon, stringLiteral)).run
 
     attachToNonTerminal(parsed, "Constant")
@@ -76,31 +79,33 @@ class LL1SyntaxAnalyzer extends SyntaxAnalyzer with LL1SyntaxAnalysisState {
 
   //Constants ::= {Constant}
   private def parseConstants: Parsed[Option[ParseTree]] = {
-    parseRepeatable(parseConstant, "Constants")
+    repeat(parseConstant, "Constants")
   }
 
-  //WebhookUriSetting ::= 'uri' : stringLiteral
+  //WebhookUriSetting ::= INDENT(2) 'uri' : stringLiteral
   private def parseWebhookUriSetting: Parsed[ParseTree] = {
     val parsed: Parsed[Seq[ParseTree]] = (for {
-      variable <- EitherT.eitherT(parse[Token.Variable])
-      colon <- EitherT.eitherT(parse[Token.Delimiter.`:`.type])
-      stringLiteral <- EitherT.eitherT(parse[Token.StringLiteral])
-    } yield Seq(variable, colon, stringLiteral)).run
+      _ <- EitherT.eitherT(parseIndentToken(2).toTree)
+      keyword <- EitherT.eitherT(parseToken[Token.Keyword.`uri`.type].toTree)
+      colon <- EitherT.eitherT(parseToken[Token.Delimiter.`:`.type].toTree)
+      stringLiteral <- EitherT.eitherT(parseToken[Token.StringLiteral].toTree)
+    } yield Seq(keyword, colon, stringLiteral)).run
 
     attachToNonTerminal(parsed, "WebhookUriSetting")
   }
 
-  /*WebhookSpecificSetting ::= 'method' : stringLiteral |
-                               'queryString' : stringLiteral*/
+  /*WebhookSpecificSetting ::= INDENT(2) 'method' : stringLiteral |
+                               INDENT(2) 'queryString' : stringLiteral*/
   private def parseWebhookSpecificSetting: Parsed[ParseTree] = {
 
-    val keywordT = EitherT.eitherT(parse[Token.Keyword.`method`.type]) orElse
-                 EitherT.eitherT(parse[Token.Keyword.`queryString`.type])
+    val keywordT = EitherT.eitherT(parseToken[Token.Keyword.`method`.type].toTree) orElse
+                 EitherT.eitherT(parseToken[Token.Keyword.`queryString`.type].toTree)
 
     val parsed: Parsed[Seq[ParseTree]] = (for {
+      _ <- EitherT.eitherT(parseIndentToken(2).toTree)
       keyword <- keywordT
-      colon <- EitherT.eitherT(parse[Token.Delimiter.`:`.type])
-      stringLiteral <- EitherT.eitherT(parse[Token.StringLiteral])
+      colon <- EitherT.eitherT(parseToken[Token.Delimiter.`:`.type].toTree)
+      stringLiteral <- EitherT.eitherT(parseToken[Token.StringLiteral].toTree)
     } yield Seq(keyword, colon, stringLiteral)).run
 
     attachToNonTerminal(parsed, "WebhookSpecificSetting")
@@ -108,7 +113,7 @@ class LL1SyntaxAnalyzer extends SyntaxAnalyzer with LL1SyntaxAnalysisState {
 
   //WebhookSpecificSettings ::= {WebhookSpecificSetting}
   private def parseWebhookSpecificSettings: Parsed[Option[ParseTree]] = {
-    parseRepeatable(parseWebhookSpecificSetting, "WebhookSpecificSettings")
+    repeat(parseWebhookSpecificSetting, "WebhookSpecificSettings")
   }
 
   /*WebhookSettings ::= WebhookUriSetting
@@ -123,12 +128,13 @@ class LL1SyntaxAnalyzer extends SyntaxAnalyzer with LL1SyntaxAnalysisState {
     attachToNonTerminal(parsed, "WebhookSettings")
   }
 
-  /*Webhook ::= '@webhook'
-                  WebhookSettings*/
+  /*Webhook ::= INDENT(1) '@webhook'
+                          WebhookSettings*/
   private def parseWebhook: Parsed[ParseTree] = {
 
     val parsed: Parsed[Seq[ParseTree]] = (for {
-      webhookKeyword <- EitherT.eitherT(parse[Token.Keyword.`@webhook`.type])
+      _ <- EitherT.eitherT(parseIndentToken(1).toTree)
+      webhookKeyword <- EitherT.eitherT(parseToken[Token.Keyword.`@webhook`.type].toTree)
       webhookSettings <- EitherT.eitherT(parseWebhookSettings)
     } yield Seq(webhookKeyword, webhookSettings)).run
 
@@ -164,6 +170,6 @@ class LL1SyntaxAnalyzer extends SyntaxAnalyzer with LL1SyntaxAnalysisState {
   def parse(tokens: Seq[LexerToken]): \/[Seq[ParseError], ParseTree] = {
     require(tokens.nonEmpty)
 
-    parseTopStat.run(ParserStateInternal(tokens, 0, 0))._2
+    parseTopStat.run(ParserStateInternal(tokens, 0, Map.empty))._2
   }
 }

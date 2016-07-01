@@ -22,25 +22,25 @@ import scalaz._
     NamespacePathPart ::= '.' identifier
     NamespacePathParts ::= {NamespacePathPart}
     NamespacePath ::= identifier NamespacePathParts
-    Namespace ::= 'namespace' NamespacePath # identifier
+    Namespace ::= INDENT(0) 'namespace' NamespacePath # identifier
 
-    Description ::= 'description' : stringLiteral
+    Description ::= INDENT(1) 'description' : stringLiteral
 
-    Constant ::= variable : stringLiteral
+    Constant ::= INDENT(1) variable : stringLiteral
     Constants ::= {Constant}
 
-    WebhookUriSetting ::= 'uri' : stringLiteral
+    WebhookUriSetting ::= INDENT(2) 'uri' : stringLiteral
 
-    WebhookSpecificSetting ::= 'method' : stringLiteral |
-                               'queryString' : stringLiteral
+    WebhookSpecificSetting ::= INDENT(2) 'method' : stringLiteral |
+                               INDENT(2) 'queryString' : stringLiteral
 
     WebhookSpecificSettings ::= {WebhookSpecificSetting}
 
     WebhookSettings ::= WebhookUriSetting
                         WebhookSpecificSettings
 
-    Webhook ::= '@webhook'
-                  WebhookSettings
+    Webhook ::= INDENT(1) '@webhook'
+                          WebhookSettings
 
     Rule ::= Description
              Constants
