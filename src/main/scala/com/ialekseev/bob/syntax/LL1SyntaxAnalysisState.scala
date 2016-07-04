@@ -4,6 +4,7 @@ import com.ialekseev.bob.Token
 import com.ialekseev.bob.lexical.LexicalAnalyzer._
 import com.ialekseev.bob.syntax.SyntaxAnalyzer._
 import scala.reflect.ClassTag
+import scala.reflect._
 import scalaz.Scalaz._
 import scalaz._
 
@@ -29,10 +30,22 @@ private[syntax] trait LL1SyntaxAnalysisState {
   })
 
   protected def move: ParserState[Unit] = modify(s => s.copy(position = s.position + 1))
+  protected def jump(to: Int): ParserState[Unit] = modify(s => s.copy(position = to))
+
+  protected def rule(apply: => EitherT[ParserState, Seq[ParseError], Seq[ParseTree]]): Parsed[Seq[ParseTree]] = {
+    get[ParserStateInternal] >>= (s => {
+      val rollbackPosition = s.position
+      val parsed: Parsed[Seq[ParseTree]] = apply.run
+      parsed >>= {
+        case \/-(nodes) => nodes.right[Seq[ParseError]].point[ParserState]
+        case -\/(error) => jump(rollbackPosition) >> error.left[Seq[ParseTree]].point[ParserState]
+      }
+    })
+  }
 
   protected def parseToken[T <: Token: ClassTag]: Parsed[LexerToken] = current >>= {
     case Some(t@LexerToken(_: T, _)) => move >| t.right
-    case Some(LexerToken(_, offset)) => get[ParserStateInternal] >| Seq(ParseError(offset, "Unexpected word")).left
+    case Some(LexerToken(token, offset)) => get[ParserStateInternal] >| Seq(ParseError(offset, s"Unexpected token: '$token' (expecting: '${classTag[T].runtimeClass.getSimpleName}')")).left
     case None => get[ParserStateInternal].map(s => Seq(ParseError(s.tokens.last.offset, "Unexpected end")).left)
   }
 
@@ -62,26 +75,34 @@ private[syntax] trait LL1SyntaxAnalysisState {
 
     parse(Seq.empty[ParseTree]) >>= {
       case \/-(Seq()) => none.right.point[ParserState]
-      case nodes@ \/-(_) => attachToNonTerminal(nodes, nonTerminalName).map(some(_)).point[ParserState]
+      case nodes@ \/-(_) => attachNodesToNonTerminal(nodes, nonTerminalName).map(some(_)).point[ParserState]
       case -\/(_) => sys.error("Not supposed to be here")
     }
   }
 
-  protected def attachToNonTerminal(nodesE: ParsingResult[Seq[ParseTree]], nonTerminalName: String): ParsingResult[ParseTree] = {
+  protected def attachNodesToNonTerminal(nodesE: ParsingResult[Seq[ParseTree]], nonTerminalName: String): ParsingResult[ParseTree] = {
     nodesE.map(nodes => {
-      Tree.Node(NonTerminal(nonTerminalName), nodes.toStream)
+      Tree.Node(nonTerminal(nonTerminalName), nodes.toStream)
     })
   }
 
-  protected def attachToNonTerminal(nodesS: Parsed[Seq[ParseTree]], nonTerminalName: String): Parsed[ParseTree] = {
-    nodesS.map(nodesE => attachToNonTerminal(nodesE, nonTerminalName))
+  protected def attachNodesToNonTerminal(nodesS: Parsed[Seq[ParseTree]], nonTerminalName: String): Parsed[ParseTree] = {
+    nodesS.map(nodesE => attachNodesToNonTerminal(nodesE, nonTerminalName))
   }
 
   protected implicit class TokenSWrapper(tokenS: Parsed[LexerToken]) {
     def toTree: Parsed[ParseTree] = {
       tokenS.map(either => {
-        either.map(token => (Terminal(token): ParseTreeNode).leaf)
+        either.map(token => terminal(token).leaf)
       })
+    }
+  }
+
+  protected implicit class NodesSWrapper(nodesS: Parsed[Seq[ParseTree]]) {
+    def attachToNonTerminal(nonTerminalName: String): Parsed[ParseTree] = {
+      require(nonTerminalName.nonEmpty)
+
+      attachNodesToNonTerminal(nodesS, nonTerminalName)
     }
   }
 }
