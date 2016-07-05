@@ -3,9 +3,9 @@ package com.ialekseev.bob.syntax
 import com.ialekseev.bob.Token
 import com.ialekseev.bob.lexical.LexicalAnalyzer.LexerToken
 import com.ialekseev.bob.syntax.SyntaxAnalyzer._
+import com.ialekseev.bob.syntax.LL1SyntaxAnalysisState._
 import scalaz._
 import Scalaz._
-import scala.reflect.ClassTag
 
 //Top-Down Predictive Parsing for LL1 grammar (Recursive Descent technique)
 class LL1SyntaxAnalyzer extends SyntaxAnalyzer with LL1SyntaxAnalysisState {

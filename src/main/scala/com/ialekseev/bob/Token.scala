@@ -4,18 +4,8 @@ trait Token {
   val length: Int
 }
 
-trait CharToken extends Token {
-  val char: Char
-  val length = 1
-}
-
-trait WordToken extends Token {
-  val word: String
-  lazy val length = word.length
-}
-
 object Token {
-  case class Identifier(word: String) extends WordToken
+  case class Identifier(word: String) extends Token { val length = word.length }
 
   object Variable {val char = '$'}
   case class Variable(name: String) extends Token { val length = name.length + 1 }
@@ -24,18 +14,28 @@ object Token {
   case class StringLiteral(text: String) extends Token { val length = text.length + 2 }
 
   object Keyword {
-    case object `namespace` extends WordToken{ val word = "namespace"}
-    case object `description` extends WordToken { val word = "description" }
-    case object `@webhook` extends WordToken { val word = "@webhook" }
-    case object `uri` extends WordToken { val word = "uri"}
-    case object `method` extends WordToken { val word = "method"}
-    case object `queryString` extends WordToken { val word = "queryString" }
+    trait KeywordToken extends Token {
+      val word: String
+      lazy val length = word.length
+    }
+
+    case object `namespace` extends KeywordToken{ val word = "namespace"}
+    case object `description` extends KeywordToken { val word = "description" }
+    case object `@webhook` extends KeywordToken { val word = "@webhook" }
+    case object `uri` extends KeywordToken { val word = "uri"}
+    case object `method` extends KeywordToken { val word = "method"}
+    case object `queryString` extends KeywordToken { val word = "queryString" }
   }
 
   object Delimiter {
-    case object `.` extends CharToken { val char = '.' }
-    case object `#` extends CharToken { val char = '#' }
-    case object `:` extends CharToken { val char = ':' }
+    trait DelimiterToken extends Token {
+      val char: Char
+      val length = 1
+    }
+
+    case object `.` extends DelimiterToken { val char = '.' }
+    case object `#` extends DelimiterToken { val char = '#' }
+    case object `:` extends DelimiterToken { val char = ':' }
     val chars = Seq(`.`.char, `#`.char, `:`.char)
   }
 
