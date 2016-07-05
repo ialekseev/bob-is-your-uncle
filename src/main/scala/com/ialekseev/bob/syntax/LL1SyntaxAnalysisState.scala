@@ -10,8 +10,6 @@ import scalaz.Scalaz._
 import scalaz._
 
 private[syntax] trait LL1SyntaxAnalysisState {
-  import LL1SyntaxAnalysisState._
-
   protected type ParserState[A] = State[ParserStateInternal, A]
   protected type Parsed[A] = ParserState[ParsingResult[A]]
   protected type ParsingResult[A] = \/[Seq[ParseError], A]
@@ -20,6 +18,11 @@ private[syntax] trait LL1SyntaxAnalysisState {
   protected type IndentLength = Int
 
   protected case class ParserStateInternal(val tokens: Seq[LexerToken], position: Int, indentMap: Map[IndentLevel, IndentLength])
+
+  protected implicit def seqMonoid[T]: Monoid[Seq[T]] = new Monoid[Seq[T]] {
+    override def zero: Seq[T] = Seq.empty[T]
+    override def append(f1: Seq[T], f2: => Seq[T]): Seq[T] = f1 ++: f2
+  }
 
   protected def current: ParserState[Option[LexerToken]] = get.map(s => {
     if (s.position < s.tokens.length) some(s.tokens(s.position))
@@ -104,21 +107,5 @@ private[syntax] trait LL1SyntaxAnalysisState {
 
       attachNodesToNonTerminal(nodesS, nonTerminalName)
     }
-  }
-}
-
-private[syntax] object LL1SyntaxAnalysisState {
-  implicit def seqMonoid[T]: Monoid[Seq[T]] = new Monoid[Seq[T]] {
-    override def zero: Seq[T] = Seq.empty[T]
-    override def append(f1: Seq[T], f2: => Seq[T]): Seq[T] = f1 ++: f2
-  }
-
-  implicit def tokenShow: Show[Token] = Show.shows {
-    case Token.Identifier(word) => word
-    case Token.Variable(name) => Token.Variable.char + name
-    case Token.StringLiteral(text) => Token.StringLiteral.char + text + Token.StringLiteral.char
-    case k: Token.Keyword.KeywordToken => k.word
-    case d: Token.Delimiter.DelimiterToken => d.char.toString
-    case rest => rest.toString
   }
 }

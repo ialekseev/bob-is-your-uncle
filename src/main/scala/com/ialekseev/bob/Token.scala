@@ -1,5 +1,7 @@
 package com.ialekseev.bob
 
+import scalaz.Show
+
 trait Token {
   val length: Int
 }
@@ -42,4 +44,13 @@ object Token {
   object WS { val chars = Seq(' ', '\t')}
   object NL { val chars = Seq('\n','\r', SOT, EOT)}
   case class INDENT(length: Int) extends Token
+
+  implicit def tokenShow: Show[Token] = Show.shows {
+    case Token.Identifier(word) => word
+    case Token.Variable(name) => Token.Variable.char + name
+    case Token.StringLiteral(text) => Token.StringLiteral.char + text + Token.StringLiteral.char
+    case k: Token.Keyword.KeywordToken => k.word
+    case d: Token.Delimiter.DelimiterToken => d.char.toString
+    case rest => rest.toString
+  }
 }

@@ -3,7 +3,6 @@ package com.ialekseev.bob.syntax
 import com.ialekseev.bob.Token
 import com.ialekseev.bob.lexical.LexicalAnalyzer.LexerToken
 import com.ialekseev.bob.syntax.SyntaxAnalyzer._
-import com.ialekseev.bob.syntax.LL1SyntaxAnalysisState._
 import scalaz._
 import Scalaz._
 
