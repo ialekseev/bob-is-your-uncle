@@ -79,18 +79,24 @@ class LL1SyntaxAnalyzer extends SyntaxAnalyzer with LL1SyntaxAnalysisState {
 
 
   /*WebhookSpecificSetting ::= INDENT(2) 'method' : stringLiteral |
-                               INDENT(2) 'queryString' : stringLiteral*/
+                               INDENT(2) 'queryString' : dictionary*/
   private def parseWebhookSpecificSetting: Parsed[ParseTree] = {
+    val methodT = for {
+      indent <- EitherT.eitherT(parseIndentToken(2).toTree)
+      method <- EitherT.eitherT(parseToken[Token.Keyword.`method`.type].toTree)
+      colon <- EitherT.eitherT(parseToken[Token.Delimiter.`:`.type].toTree)
+      stringLiteral <- EitherT.eitherT(parseToken[Token.StringLiteral].toTree)
+    } yield Seq(method, colon, stringLiteral)
 
-    val keywordT = EitherT.eitherT(parseToken[Token.Keyword.`method`.type].toTree) orElse
-                 EitherT.eitherT(parseToken[Token.Keyword.`queryString`.type].toTree)
+    val queryStringT = for {
+      indent <- EitherT.eitherT(parseIndentToken(2).toTree)
+      queryString <- EitherT.eitherT(parseToken[Token.Keyword.`queryString`.type].toTree)
+      colon <- EitherT.eitherT(parseToken[Token.Delimiter.`:`.type].toTree)
+      dictionary <- EitherT.eitherT(parseToken[Token.Dictionary].toTree)
+    } yield Seq(queryString, colon, dictionary)
+
     rule {
-      for {
-        _ <- EitherT.eitherT(parseIndentToken(2).toTree)
-        keyword <- keywordT
-        colon <- EitherT.eitherT(parseToken[Token.Delimiter.`:`.type].toTree)
-        stringLiteral <- EitherT.eitherT(parseToken[Token.StringLiteral].toTree)
-      } yield Seq(keyword, colon, stringLiteral)
+      methodT orElse queryStringT
     }.attachToNonTerminal("WebhookSpecificSetting")
   }
 

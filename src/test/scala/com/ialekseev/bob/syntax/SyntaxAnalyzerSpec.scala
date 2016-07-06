@@ -183,8 +183,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
       }
     }
 
-    //todo: complete
-    /*"there is an error in namespace (invalid delimiter)" should {
+    "there is an error (invalid delimiter in namespace)" should {
       "fail" in {
         //arrange
         val tokens = Seq(
@@ -192,6 +191,97 @@ class SyntaxAnalyzerSpec extends BaseSpec {
           LexerToken(Token.Keyword.`namespace`, 0),
           LexerToken(Token.Identifier("com"), 10),
           LexerToken(Token.Delimiter.`:`, 13),
+          LexerToken(Token.Identifier("create"), 14)
+        )
+
+        //act
+        val result = parser.parse(tokens)
+
+        //assert
+        result.toEither.left.get should be (Seq(ParseError(13, "Unexpected: ':' (expecting: '#')")))
+      }
+    }
+
+    "there is an error (no indent before 'description')" should {
+      "fail" in {
+        //arrange
+        val tokens = Seq(
+          LexerToken(Token.INDENT(0), 0),
+          LexerToken(Token.Keyword.`namespace`, 0),
+          LexerToken(Token.Identifier("com"), 10),
+          LexerToken(Token.Delimiter.`#`, 13),
+          LexerToken(Token.Identifier("create"), 14),
+
+          LexerToken(Token.Keyword.`description`, 23)
+        )
+
+        //act
+        val result = parser.parse(tokens)
+
+        //assert
+        result.toEither.left.get should be (Seq(ParseError(23, "Unexpected: 'description' (expecting: 'indent')")))
+      }
+    }
+
+    "there is an error (got identifier instead of string literal in description)" should {
+      "succeed" in {
+        //arrange
+        val tokens = Seq(
+          LexerToken(Token.INDENT(0), 0),
+          LexerToken(Token.Keyword.`namespace`, 0),
+          LexerToken(Token.Identifier("com"), 10),
+          LexerToken(Token.Delimiter.`#`, 13),
+          LexerToken(Token.Identifier("create"), 14),
+
+          LexerToken(Token.INDENT(3), 20),
+          LexerToken(Token.Keyword.`description`, 23),
+          LexerToken(Token.Delimiter.`:`, 26),
+          LexerToken(Token.Identifier("com"), 35)
+        )
+
+        //act
+        val result = parser.parse(tokens)
+
+        //assert
+        result.toEither.left.get should be (Seq(ParseError(35, "Unexpected: 'com' (expecting: 'string literal')")))
+      }
+    }
+
+    "there is an error (invalid indent before '@webhook')" should {
+      "succeed" in {
+        //arrange
+        val tokens = Seq(
+          LexerToken(Token.INDENT(0), 0),
+          LexerToken(Token.Keyword.`namespace`, 0),
+          LexerToken(Token.Identifier("com"), 10),
+          LexerToken(Token.Delimiter.`#`, 13),
+          LexerToken(Token.Identifier("create"), 14),
+
+          LexerToken(Token.INDENT(3), 20),
+          LexerToken(Token.Keyword.`description`, 23),
+          LexerToken(Token.Delimiter.`:`, 26),
+          LexerToken(Token.StringLiteral("hello"), 35),
+
+          LexerToken(Token.INDENT(2), 40),
+          LexerToken(Token.Keyword.`@webhook`, 45)
+        )
+
+        //act
+        val result = parser.parse(tokens)
+
+        //assert
+        result.toEither.left.get should be (Seq(ParseError(40, "Unexpected indent width: 2")))
+      }
+    }
+
+    "there is an error (invalid keyword instead of mandatory 'uri' inside '@webhook')" should {
+      "succeed" in {
+        //arrange
+        val tokens = Seq(
+          LexerToken(Token.INDENT(0), 0),
+          LexerToken(Token.Keyword.`namespace`, 0),
+          LexerToken(Token.Identifier("com"), 10),
+          LexerToken(Token.Delimiter.`#`, 13),
           LexerToken(Token.Identifier("create"), 14),
 
           LexerToken(Token.INDENT(3), 20),
@@ -203,7 +293,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
           LexerToken(Token.Keyword.`@webhook`, 45),
 
           LexerToken(Token.INDENT(5), 50),
-          LexerToken(Token.Keyword.`uri`, 55),
+          LexerToken(Token.Keyword.`method`, 55),
           LexerToken(Token.Delimiter.`:`, 56),
           LexerToken(Token.StringLiteral("/example"), 61)
         )
@@ -212,7 +302,8 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
+        result.toEither.left.get should be (Seq(ParseError(55, "Unexpected: 'method' (expecting: 'uri')")))
       }
-    }*/
+    }
   }
 }

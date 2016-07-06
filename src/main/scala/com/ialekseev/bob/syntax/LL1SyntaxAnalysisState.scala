@@ -1,7 +1,6 @@
 package com.ialekseev.bob.syntax
 
-import com.ialekseev.bob.Token
-import com.ialekseev.bob.Token.Identifier
+import com.ialekseev.bob.{Token, TokenTag}
 import com.ialekseev.bob.lexical.LexicalAnalyzer._
 import com.ialekseev.bob.syntax.SyntaxAnalyzer._
 import scala.reflect.ClassTag
@@ -43,11 +42,10 @@ private[syntax] trait LL1SyntaxAnalysisState {
     })
   }
 
-  //todo: attach expected token T to the error message
-  protected def parseToken[T <: Token : ClassTag](implicit tokenShow: Show[Token]): Parsed[LexerToken] = {
+  protected def parseToken[T <: Token : ClassTag](implicit tokenShow: Show[Token], tokenTag: TokenTag[T]): Parsed[LexerToken] = {
     current >>= {
       case Some(t@LexerToken(_: T, _)) => move >| t.right
-      case Some(LexerToken(token, offset)) => get[ParserStateInternal] >| Seq(ParseError(offset, s"Unexpected token: '${tokenShow.show(token)}' (expecting: '???')")).left
+      case Some(LexerToken(token, offset)) => get[ParserStateInternal] >| Seq(ParseError(offset, s"Unexpected: '${tokenShow.show(token)}' (expecting: '${tokenTag.asString}')")).left
       case None => get[ParserStateInternal].map(s => Seq(ParseError(s.tokens.last.offset, "Unexpected end")).left)
     }
   }
@@ -62,7 +60,7 @@ private[syntax] trait LL1SyntaxAnalysisState {
           } else if (!state.indentMap.contains(indentLevel) && (!state.indentMap.contains(indentLevel - 1) || (state.indentMap(indentLevel - 1) < indent.token.length))) {
               modify[ParserStateInternal](s => s.copy(indentMap = s.indentMap + (indentLevel -> indent.token.length))) >>
                 indent.right[Seq[ParseError]].point[ParserState]
-          } else Seq(ParseError(indent.offset, "Unexpected indent")).left[LexerToken].point[ParserState]
+          } else Seq(ParseError(indent.offset, s"Unexpected indent width: ${indent.token.length}")).left[LexerToken].point[ParserState]
         )
       } yield result).run
     })

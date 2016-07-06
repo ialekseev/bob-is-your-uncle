@@ -129,7 +129,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
           val result = lexer.tokenize(
             """@webhook """ + "\n\n  \n\n" +
               """ method : "get"""" + "\n" +
-              """ queryString: "url/do"""")
+              """ queryString: [a=1, b=2]""")
 
           //assert
           result.toEither.right.get should be(List(
@@ -142,7 +142,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
             LexerToken(Token.INDENT(1), 31),
             LexerToken(Token.Keyword.`queryString`, 32),
             LexerToken(Token.Delimiter.`:`, 43),
-            LexerToken(Token.StringLiteral("url/do"), 45)
+            LexerToken(Token.Dictionary("[a=1, b=2]"), 45)
           ))
         }
       }

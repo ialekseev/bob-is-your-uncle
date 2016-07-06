@@ -63,9 +63,10 @@ private[lexical] trait AdHocLexicalAnalysisState {
   protected def hasCurrent: LexerState[Boolean] = currentChar.map(!isEOT(_))
   protected def currentChar: LexerState[Char] = get.map(s => s.input(s.position))
   protected def currentIsFirstChar: LexerState[Boolean] = get.map(s => s.position == 0)
-  protected def currentIsId: LexerState[Boolean]  = currentChar.map(isId(_))
-  protected def currentIsVariableStart: LexerState[Boolean]  = currentChar.map(isVariableStart(_))
-  protected def currentIsStringLiteralStart: LexerState[Boolean]  = currentChar.map(isStringLiteralChar(_))
+  protected def currentIsId: LexerState[Boolean] = currentChar.map(isId(_))
+  protected def currentIsVariableStart: LexerState[Boolean] = currentChar.map(isVariableStart(_))
+  protected def currentIsStringLiteralStart: LexerState[Boolean] = currentChar.map(isStringLiteralChar(_))
+  protected def currentIsDictionaryStart: LexerState[Boolean] = currentChar.map(isDictionaryStartChar(_))
   protected def currentIsNL: LexerState[Boolean]  = currentChar.map(isNL(_))
   protected def currentIsWS: LexerState[Boolean]  = currentChar.map(isWS(_))
 

@@ -13,7 +13,10 @@ object Token {
   case class Variable(name: String) extends Token { val length = name.length + 1 }
 
   object StringLiteral { val char = '"' }
-  case class StringLiteral(text: String) extends Token { val length = text.length + 2 }
+  case class StringLiteral(content: String) extends Token { val length = content.length + 2 }
+
+  object Dictionary {val startChar = '['; val endChar = ']'}
+  case class Dictionary(dic: String) extends Token { val length = dic.length }
 
   object Keyword {
     trait KeywordToken extends Token {
@@ -45,12 +48,32 @@ object Token {
   object NL { val chars = Seq('\n','\r', SOT, EOT)}
   case class INDENT(length: Int) extends Token
 
-  implicit def tokenShow: Show[Token] = Show.shows {
+  implicit val tokenShow: Show[Token] = Show.shows {
     case Token.Identifier(word) => word
     case Token.Variable(name) => Token.Variable.char + name
     case Token.StringLiteral(text) => Token.StringLiteral.char + text + Token.StringLiteral.char
-    case k: Token.Keyword.KeywordToken => k.word
-    case d: Token.Delimiter.DelimiterToken => d.char.toString
+    case keyword: Token.Keyword.KeywordToken => keyword.word
+    case delimiter: Token.Delimiter.DelimiterToken => delimiter.char.toString
     case rest => rest.toString
   }
+}
+
+trait TokenTag[T] { def asString: String }
+
+object TokenTag {
+  import Token._
+  implicit val identifierTag = new TokenTag[Identifier] { def asString = "identifier" }
+  implicit val variableTag = new TokenTag[Variable] { def asString = "variable" }
+  implicit val stringLiteralTag = new TokenTag[StringLiteral] { def asString = "string literal" }
+  implicit val dictionaryTag = new TokenTag[Dictionary] { def asString = "dictionary" }
+  implicit val namespaceKeywordTag = new TokenTag[Keyword.`namespace`.type] { def asString = Keyword.`namespace`.word}
+  implicit val descriptionKeywordTag = new TokenTag[Keyword.`description`.type] { def asString = Keyword.`description`.word}
+  implicit val webhookKeywordTag = new TokenTag[Keyword.`@webhook`.type] { def asString = Keyword.`@webhook`.word}
+  implicit val uriKeywordTag = new TokenTag[Keyword.`uri`.type] { def asString = Keyword.`uri`.word}
+  implicit val methodKeywordTag = new TokenTag[Keyword.`method`.type] { def asString = Keyword.`method`.word}
+  implicit val queryStringKeywordTag = new TokenTag[Keyword.`queryString`.type] { def asString = Keyword.`queryString`.word}
+  implicit val dotDelimiterTag = new TokenTag[Delimiter.`.`.type] { def asString = Delimiter.`.`.char.toString}
+  implicit val poundDelimiterTag = new TokenTag[Delimiter.`#`.type] { def asString = Delimiter.`#`.char.toString}
+  implicit val colonDelimiterTag = new TokenTag[Delimiter.`:`.type] { def asString = Delimiter.`:`.char.toString}
+  implicit val indentTag = new TokenTag[INDENT] { def asString = "indent"}
 }

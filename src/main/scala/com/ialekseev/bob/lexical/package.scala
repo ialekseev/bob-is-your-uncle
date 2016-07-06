@@ -1,6 +1,6 @@
 package com.ialekseev.bob
 
-import com.ialekseev.bob.Token.{StringLiteral, Identifier, Variable}
+import com.ialekseev.bob.Token.{Dictionary, StringLiteral, Identifier, Variable}
 
 package object lexical {
   def isLetter(char: Char): Boolean = char.isLetter && char <= 'z'
@@ -26,6 +26,16 @@ package object lexical {
       val content = str.substring(1, str.length - 1)
       val last = str(str.length - 1)
       if (isStringLiteralChar(head) && isStringLiteralChar(last)) Some(StringLiteral(content)) else None
+    } else None
+  }
+
+  def isDictionaryStartChar(char: Char) = char == Token.Dictionary.startChar
+  def isDictionaryEndChar(char: Char) = char == Token.Dictionary.endChar
+  def dictionary(str: String): Option[Token] = {
+    if (str.length > 1) {
+      val head = str(0)
+      val last = str(str.length - 1)
+      if (isDictionaryStartChar(head) && isDictionaryEndChar(last)) Some(Dictionary(str)) else None
     } else None
   }
 
