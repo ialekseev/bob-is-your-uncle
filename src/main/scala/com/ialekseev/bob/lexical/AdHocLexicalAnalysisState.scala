@@ -2,17 +2,20 @@ package com.ialekseev.bob.lexical
 
 import com.ialekseev.bob._
 import com.ialekseev.bob.lexical.LexicalAnalyzer._
-import scala.annotation.tailrec
 import scalaz._
 import Scalaz._
 
 private[lexical] trait AdHocLexicalAnalysisState {
   protected type LexerState[A] =  State[LexerStateInternal, A]
 
-  protected case class LexerStateInternal(private val raw: String, position: Int, tokens: Seq[LexerToken], errorOffsets: Seq[Int]) {
+  protected case class LexerStateInternal(private val raw: String, position: Int, tokens: Seq[LexerToken], errors: Seq[LexerError]) {
     require(raw.nonEmpty)
     require(position >= 0)
     val input = SOT + raw + EOT
+  }
+
+  protected case class Tokenized(token: Token, offset: Int, movePosition: Int) {
+    require(movePosition > 0)
   }
 
   protected def moveNext: LexerState[Unit] = modify(s => s.copy(position = s.position + 1))
@@ -20,7 +23,7 @@ private[lexical] trait AdHocLexicalAnalysisState {
   protected def jump(newPosition: Int): LexerState[Unit] = modify(s => s.copy(position = newPosition))
 
   protected def addToken(token: Token, offset: Int): LexerState[Unit] = modify(s => s.copy(tokens =  s.tokens :+ LexerToken(token, offset)))
-  protected def addErrorOffset(errorOffset: Int): LexerState[Unit] = modify(s => s.copy(errorOffsets = s.errorOffsets :+ errorOffset))
+  protected def addError(startOffset: Int, endOffset: Int): LexerState[Unit] = modify(s => s.copy(errors = s.errors :+ LexerError(startOffset, endOffset)))
 
   protected def look(position: Int, mover: Int => Int, what: Char => Boolean): LexerState[Option[(Char, Int)]] = {
     import scala.util.control.Breaks._
@@ -61,6 +64,7 @@ private[lexical] trait AdHocLexicalAnalysisState {
   protected def takeAheadIncludingLast(till: (Char => Boolean)*): LexerState[Option[String]] = takeAhead(till, _ + 1)
 
   protected def hasCurrent: LexerState[Boolean] = currentChar.map(!isEOT(_))
+  protected def currentPos: LexerState[Int] = get.map(_.position)
   protected def currentChar: LexerState[Char] = get.map(s => s.input(s.position))
   protected def currentIsFirstChar: LexerState[Boolean] = get.map(s => s.position == 0)
   protected def currentIsId: LexerState[Boolean] = currentChar.map(isId(_))
@@ -70,22 +74,31 @@ private[lexical] trait AdHocLexicalAnalysisState {
   protected def currentIsNL: LexerState[Boolean]  = currentChar.map(isNL(_))
   protected def currentIsWS: LexerState[Boolean]  = currentChar.map(isWS(_))
 
-  def extractResultingTokens: LexerState[Seq[LexerToken]] = get.map(_.tokens.map(c => c.copy(offset = c.offset - 1)))
-
-  def extractErrors: LexerState[Seq[LexerError]] = {
-    @tailrec def aggregateSpans(remaining: Vector[Int], openSpan: Vector[Int], res: Vector[LexerError]): Vector[LexerError] = {
-      if (remaining.nonEmpty) {
-        remaining match {
-          case x +: xs if openSpan.lastOption.isDefined && (x - openSpan.last === 1) => aggregateSpans(xs, openSpan :+ x, res)
-          case x +: xs if openSpan.nonEmpty => aggregateSpans(xs, Vector(x), res :+ LexerError(openSpan.head - 1, openSpan.last - 1))
-          case x +: xs  => aggregateSpans(xs, Vector(x), res)
-        }
-      } else {
-        if (openSpan.nonEmpty) res :+ LexerError(openSpan.head - 1, openSpan.last - 1)
-        else res
+  protected def wordStep(currentIs: LexerState[Boolean], takeAhead: => LexerState[Option[String]], tokenExtractor: (String => Option[Token])): LexerState[Option[Tokenized]] = {
+    currentIs >>= (is => {
+      if (is) {
+        for {
+          ahead <- takeAhead
+          token <- token(ahead >>= tokenExtractor)
+        } yield token
       }
-    }
-    get.map(s => aggregateSpans(s.errorOffsets.toVector, Vector.empty, Vector.empty))
+      else none[Tokenized].point[LexerState]
+    })
   }
+
+  protected def token(token: Option[Token]): LexerState[Option[Tokenized]] = {
+    get.map(s => token.map(t => Tokenized(t, s.position, t.length)))
+  }
+
+  protected def addTokenAndMove(step: LexerState[Option[Tokenized]]): LexerState[Option[Unit]] = {
+    val addAndMove: LexerState[Option[Tokenized]] = step >>= {
+      case t@Some(tokenized) => (addToken(tokenized.token, tokenized.offset) >> move(tokenized.movePosition)) >| t
+      case None => step
+    }
+    addAndMove.map(v => (if (v.isDefined) None else someUnit))
+  }
+
+  def extractResultingTokens: LexerState[Seq[LexerToken]] = get.map(_.tokens.map(c => c.copy(offset = c.offset - 1)))
+  def extractErrors: LexerState[Seq[LexerError]] = get.map(_.errors.map(c => c.copy(startOffset = c.startOffset - 1, endOffset = c.endOffset - 1)))
 }
 

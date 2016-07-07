@@ -41,7 +41,6 @@ class LL1SyntaxAnalyzer extends SyntaxAnalyzer with LL1SyntaxAnalysisState {
     } yield Seq(namespaceKeyword, namespacePath, pound, identifier)
   }.attachToNonTerminal("Namespace")
 
-
   //Description ::= INDENT(1) 'description' : stringLiteral
   private def parseDescription: Parsed[ParseTree] = rule {
     for {

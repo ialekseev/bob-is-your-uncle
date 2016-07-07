@@ -10,10 +10,6 @@ import scalaz.Scalaz._
 //Simple Ad hoc lexical analyzer without Regular Expressions and Finite Automata
 final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalysisState {
 
-  private case class Tokenized(token: Token, offset: Int, movePosition: Int) {
-    require(movePosition > 0)
-  }
-
   private def identifierStep: LexerState[Option[Tokenized]] = wordStep(currentIsId, takeAheadExcludingLast(isSeparator(_), isStringLiteralChar(_)), identifier(_))
   private def variableStep: LexerState[Option[Tokenized]] = wordStep(currentIsVariableStart, takeAheadExcludingLast(isSeparator(_), isStringLiteralChar(_)), variable(_))
   private def stringLiteralStep: LexerState[Option[Tokenized]] = wordStep(currentIsStringLiteralStart, takeAheadIncludingLast(isStringLiteralChar(_), isNL(_)), stringLiteral(_))
@@ -38,30 +34,6 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalys
     })
   }
 
-  private def wordStep(currentIs: LexerState[Boolean], takeAhead: => LexerState[Option[String]], tokenExtractor: (String => Option[Token])): LexerState[Option[Tokenized]] = {
-    currentIs >>= (is => {
-      if (is) {
-        for {
-          ahead <- takeAhead
-          token <- token(ahead >>= tokenExtractor)
-        } yield token
-      }
-      else none[Tokenized].point[LexerState]
-    })
-  }
-
-  private def token(token: Option[Token]): LexerState[Option[Tokenized]] = {
-    get.map(s => token.map(t => Tokenized(t, s.position, t.length)))
-  }
-
-  private def addTokenAndMove(step: LexerState[Option[Tokenized]]): LexerState[Option[Unit]] = {
-    val addAndMove: LexerState[Option[Tokenized]] = step >>= {
-      case t@Some(tokenized) => (addToken(tokenized.token, tokenized.offset) >> move(tokenized.movePosition)) >| t
-      case None => step
-    }
-    addAndMove.map(v => (if (v.isDefined) None else someUnit))
-  }
-
   private def ignoreWhiteSpaceAndMove(): LexerState[Option[Unit]] = {
     val isWSorNL = (currentIsWS |@| currentIsNL)(_ || _)
 
@@ -71,9 +43,12 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalys
     })
   }
 
-  private def addErrorOffsetAndMove(): LexerState[Option[Unit]] = {
-    val add: LexerState[Unit] = (get[LexerStateInternal]) >>= (s => addErrorOffset(s.position))
-    (add >> moveNext) >| someUnit
+  private def addErrorAndMove(): LexerState[Option[Unit]] = {
+    val posAndSeparator: LexerState[(Int, Option[(Char, Int)])] = (currentPos |@| lookAhead(isSeparator(_)))((_,_))
+    (posAndSeparator >>= {
+      case (pos, Some(sep)) => addError(pos, sep._2 - 1) >> jump(sep._2)
+      case (pos, None) => addError(pos, pos) >> moveNext
+    }) >| someUnit
   }
 
   def tokenize(input: String): \/[Seq[LexerError], Seq[LexerToken]] = {
@@ -91,7 +66,7 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalys
             _ <- OptionT.optionT(addTokenAndMove(identifierStep))
             _ <- OptionT.optionT(addTokenAndMove(indentStep))
             _ <- OptionT.optionT(ignoreWhiteSpaceAndMove)
-            _ <- OptionT.optionT(addErrorOffsetAndMove)
+            _ <- OptionT.optionT(addErrorAndMove)
           } yield ()).run
 
           (steps >| unit).lift[Trampoline]

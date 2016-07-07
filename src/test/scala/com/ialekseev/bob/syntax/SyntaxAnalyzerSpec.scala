@@ -71,6 +71,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
       }
     }
 
+    //todo: when there is an error in optional (repeated) block this error is swalloed. Fix this
     "there is a max valid set of lexer tokens" should {
       "succeed" in {
         //arrange

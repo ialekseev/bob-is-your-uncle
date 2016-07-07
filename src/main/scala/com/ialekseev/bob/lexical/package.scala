@@ -1,6 +1,7 @@
 package com.ialekseev.bob
 
 import com.ialekseev.bob.Token.{Dictionary, StringLiteral, Identifier, Variable}
+import scala.util.Try
 
 package object lexical {
   def isLetter(char: Char): Boolean = char.isLetter && char <= 'z'
@@ -34,8 +35,15 @@ package object lexical {
   def dictionary(str: String): Option[Token] = {
     if (str.length > 1) {
       val head = str(0)
+      val content = str.substring(1, str.length - 1)
       val last = str(str.length - 1)
-      if (isDictionaryStartChar(head) && isDictionaryEndChar(last)) Some(Dictionary(str)) else None
+      if (isDictionaryStartChar(head) && isDictionaryEndChar(last)) {
+        import org.json4s._
+        import org.json4s.native.JsonMethods._
+        implicit val formats = org.json4s.DefaultFormats
+        val jsonStr = "{" + content + "}"
+        Try(parse(jsonStr).extract[Map[String, String]]).toOption.map(Dictionary(str, _))
+      } else None
     } else None
   }
 

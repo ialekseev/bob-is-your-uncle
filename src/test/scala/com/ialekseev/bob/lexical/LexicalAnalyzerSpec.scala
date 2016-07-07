@@ -129,7 +129,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
           val result = lexer.tokenize(
             """@webhook """ + "\n\n  \n\n" +
               """ method : "get"""" + "\n" +
-              """ queryString: [a=1, b=2]""")
+              """ queryString: ["a":"1", "b":"2"]""")
 
           //assert
           result.toEither.right.get should be(List(
@@ -141,8 +141,8 @@ class LexicalAnalyzerSpec extends BaseSpec {
             LexerToken(Token.StringLiteral("get"), 25),
             LexerToken(Token.INDENT(1), 31),
             LexerToken(Token.Keyword.`queryString`, 32),
-            LexerToken(Token.Delimiter.`:`, 43),
-            LexerToken(Token.Dictionary("[a=1, b=2]"), 45)
+            LexerToken(Token.Delimiter.`:`, 43)           ,
+            LexerToken(Token.Dictionary("""["a":"1", "b":"2"]""", Map("a" -> "1", "b"->"2")), 45)
           ))
         }
       }
@@ -170,7 +170,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
 
           //assert
           result.toEither.left.get should be(List(
-            LexerError(0, 5),
+            LexerError(0, 10),
             LexerError(12, 12),
             LexerError(18, 24)
           ))
@@ -187,10 +187,23 @@ class LexicalAnalyzerSpec extends BaseSpec {
 
           //assert
           result.toEither.left.get should be(List(
-            LexerError(1, 1),
+            LexerError(1, 12),
             LexerError(22, 22),
-            LexerError(24, 28)
+            LexerError(24, 31)
           ))
+        }
+      }
+
+      "the source string has an error in queryString's dictionary" should {
+        "succeed with tokens" in {
+          //act
+          val result = lexer.tokenize(
+            """@webhook""" + "\n" +
+              """method:"get"""" + "\n" +
+              """queryString:["a": {"c":"3"}, "b":"2"]""")
+
+          //assert
+          result.toEither.left.get.head.startOffset should be (34)
         }
       }
 

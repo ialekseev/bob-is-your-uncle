@@ -16,7 +16,7 @@ object Token {
   case class StringLiteral(content: String) extends Token { val length = content.length + 2 }
 
   object Dictionary {val startChar = '['; val endChar = ']'}
-  case class Dictionary(dic: String) extends Token { val length = dic.length }
+  case class Dictionary(raw: String, dic: Map[String, String]) extends Token { val length = raw.length }
 
   object Keyword {
     trait KeywordToken extends Token {
