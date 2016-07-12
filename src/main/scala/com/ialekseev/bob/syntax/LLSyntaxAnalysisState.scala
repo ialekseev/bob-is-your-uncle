@@ -9,7 +9,7 @@ import scala.reflect._
 import scalaz.Scalaz._
 import scalaz._
 
-private[syntax] trait LL1SyntaxAnalysisState {
+private[syntax] trait LLSyntaxAnalysisState {
   protected type Parsed[A] = EitherT[ParserState, Seq[ParseError], A]
   protected type ParserState[A] = State[ParserStateInternal, A]
 

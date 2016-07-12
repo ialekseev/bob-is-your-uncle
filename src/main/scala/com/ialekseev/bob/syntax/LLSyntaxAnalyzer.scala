@@ -7,7 +7,7 @@ import scalaz._
 import Scalaz._
 
 //Top-Down Predictive Parsing for LL1 grammar (Recursive Descent technique)
-class LL1SyntaxAnalyzer extends SyntaxAnalyzer with LL1SyntaxAnalysisState {
+class LLSyntaxAnalyzer extends SyntaxAnalyzer with LLSyntaxAnalysisState {
 
   //NamespacePathPart ::= '.' identifier
   private def parseNamespacePathPart: Parsed[ParseTree] = rule("NamespacePathPart") {
