@@ -48,7 +48,7 @@ private[syntax] trait LLSyntaxAnalysisState {
   }
 
   //todo: trampoline
-  protected def repeat(parsed: => Parsed[ParseTree], nonTerminalName: String): Parsed[Option[ParseTree]] = {
+  protected def repeat(nonTerminalName: String)(parsed: => Parsed[ParseTree]): Parsed[Option[ParseTree]] = {
     def go(nodes: Seq[ParseTree]): EitherT[ParserState, (ParseError, Seq[ParseTree]), Seq[ParseTree]] = {
       for {
         node <- parsed.leftMap(errors => (errors.head, nodes))
@@ -57,24 +57,53 @@ private[syntax] trait LLSyntaxAnalysisState {
     }
 
     for {
-      gone: (ParseError, Seq[ParseTree]) <- go(Seq.empty[ParseTree]).swap.leftMap(_ => Seq.empty[ParseError])
+      done: (ParseError, Seq[ParseTree]) <- go(Seq.empty[ParseTree]).swap.leftMap(_ => Seq.empty[ParseError])
       currentPosition: Int <- EitherT.eitherT[ParserState, Seq[ParseError], Int](currentPosition.map(_.right[Seq[ParseError]]))
       result: Option[ParseTree] <- {
-        val errorTokenPosition = gone._1.tokenIndex
+        val errorTokenPosition = done._1.tokenIndex
         if (errorTokenPosition <= currentPosition + 1) {
-          gone._2 match {
+          done._2 match {
             case Seq() => EitherT.eitherT(none.right[Seq[ParseError]].point[ParserState])
-            case nodes@Seq(_, _*) => attachNodesToNonTerminal(EitherT.eitherT(gone._2.right.point[ParserState]), nonTerminalName).map(some(_))
+            case nodes@Seq(_, _*) => attachNodesToNonTerminal(EitherT.eitherT(done._2.right.point[ParserState]), nonTerminalName).map(some(_))
           }
         }
-        else EitherT.eitherT(Seq(gone._1).left[Option[ParseTree]].point[ParserState])
+        else EitherT.eitherT(Seq(done._1).left[Option[ParseTree]].point[ParserState])
       }
     } yield result
   }
 
-  protected def optional(parsed: => Parsed[Seq[ParseTree]]): Parsed[Option[Seq[ParseTree]]] = {
-    //todo: implement by analogy with 'repeat'
-    ???
+  protected def or(nonTerminalName: String)(one: Parsed[Seq[ParseTree]], others: Parsed[Seq[ParseTree]]*): Parsed[ParseTree] = {
+    def optional(parsed: => Parsed[Seq[ParseTree]]): Parsed[Option[Seq[ParseTree]]] = {
+      def adjust(done: Parsed[Seq[ParseTree]], currentPosition: Int): Parsed[Option[Seq[ParseTree]]] = {
+        (done.map(some(_)).swap >>= (errors => {
+          val error = errors.head
+          val errorTokenPosition = error.tokenIndex
+          if (errorTokenPosition <= currentPosition + 1) {
+            EitherT.eitherT[ParserState, Option[Seq[ParseTree]], Seq[ParseError]](none[Seq[ParseTree]].left[Seq[ParseError]].point[ParserState])
+          } else EitherT.eitherT[ParserState, Option[Seq[ParseTree]], Seq[ParseError]](errors.right[Option[Seq[ParseTree]]].point[ParserState])
+        })).swap
+      }
+
+      for {
+        currentPosition: Int <- EitherT.eitherT[ParserState, Seq[ParseError], Int](currentPosition.map(_.right[Seq[ParseError]])) //todo: refactor together with repeat's
+        adjusted <- adjust(parsed, currentPosition)
+      } yield adjusted
+    }
+
+    def or(one: Parsed[Option[Seq[ParseTree]]], another: Parsed[Option[Seq[ParseTree]]]): Parsed[Option[Seq[ParseTree]]] = {
+      one >>= (opt => {
+        opt match {
+          case Some(_) => EitherT.eitherT(opt.right[Seq[ParseError]].point[ParserState])
+          case _ => another
+        }
+      })
+    }
+
+   val done = others.foldLeft(optional(one))((a, b) => or(a, optional(b)))
+    done >>= {
+      case Some(nodes) => attachNodesToNonTerminal(EitherT.eitherT(nodes.right.point[ParserState]), nonTerminalName)
+      case _ => EitherT.eitherT(Seq(ParseError(0, 0, s"Ouch")).left.point[ParserState]) //todo: fill in
+    }
   }
 
   protected implicit def seqMonoid[T]: Monoid[Seq[T]] = new Monoid[Seq[T]] {

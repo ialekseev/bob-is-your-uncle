@@ -19,7 +19,7 @@ class AdHocSyntaxAnalyzer extends LLSyntaxAnalyzer with LLSyntaxAnalysisState {
 
   //NamespacePathParts ::= {NamespacePathPart}
   private def parseNamespacePathParts: Parsed[Option[ParseTree]] = {
-    repeat(parseNamespacePathPart, "NamespacePathParts")
+    repeat("NamespacePathParts")(parseNamespacePathPart)
   }
 
   //NamespacePath ::= identifier NamespacePathParts
@@ -63,7 +63,7 @@ class AdHocSyntaxAnalyzer extends LLSyntaxAnalyzer with LLSyntaxAnalysisState {
 
   //Constants ::= {Constant}
   private def parseConstants: Parsed[Option[ParseTree]] = {
-    repeat(parseConstant, "Constants")
+    repeat("Constants")(parseConstant)
   }
 
   //WebhookUriSetting ::= INDENT(2) 'uri' : stringLiteral
@@ -79,28 +79,26 @@ class AdHocSyntaxAnalyzer extends LLSyntaxAnalyzer with LLSyntaxAnalysisState {
   /*WebhookSpecificSetting ::= INDENT(2) 'method' : stringLiteral |
                                INDENT(2) 'queryString' : dictionary*/
   private def parseWebhookSpecificSetting: Parsed[ParseTree] = {
-    val methodT = for {
-      indent <- parse[Token.INDENT](2)
-      method <- parse[Token.Keyword.`method`.type]
-      colon <- parse[Token.Delimiter.`:`.type]
-      stringLiteral <- parse[Token.StringLiteral]
-    } yield Seq(method, colon, stringLiteral)
+    or("WebhookSpecificSetting")(
+      for {
+        indent <- parse[Token.INDENT](2)
+        method <- parse[Token.Keyword.`method`.type]
+        colon <- parse[Token.Delimiter.`:`.type]
+        stringLiteral <- parse[Token.StringLiteral]
+      } yield Seq(method, colon, stringLiteral),
 
-    val queryStringT = for {
-      indent <- parse[Token.INDENT](2)
-      queryString <- parse[Token.Keyword.`queryString`.type]
-      colon <- parse[Token.Delimiter.`:`.type]
-      dictionary <- parse[Token.Dictionary]
-    } yield Seq(queryString, colon, dictionary)
-
-    rule("WebhookSpecificSetting") {
-      methodT orElse queryStringT
-    }
+      for {
+        indent <- parse[Token.INDENT](2)
+        queryString <- parse[Token.Keyword.`queryString`.type]
+        colon <- parse[Token.Delimiter.`:`.type]
+        dictionary <- parse[Token.Dictionary]
+      } yield Seq(queryString, colon, dictionary)
+    )
   }
 
   //WebhookSpecificSettings ::= {WebhookSpecificSetting}
   private def parseWebhookSpecificSettings: Parsed[Option[ParseTree]] = {
-    repeat(parseWebhookSpecificSetting, "WebhookSpecificSettings")
+    repeat("WebhookSpecificSettings")(parseWebhookSpecificSetting)
   }
 
   /*WebhookSettings ::= WebhookUriSetting
