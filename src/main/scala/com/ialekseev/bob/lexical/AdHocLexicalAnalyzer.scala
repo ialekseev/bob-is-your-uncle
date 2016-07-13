@@ -8,7 +8,7 @@ import scalaz._
 import scalaz.Scalaz._
 
 //Simple Ad hoc lexical analyzer without Regular Expressions and Finite Automata
-final class AdHocLexicalAnalyzer extends LexicalAnalyzer with AdHocLexicalAnalysisState {
+final class AdHocLexicalAnalyzer extends LexicalAnalyzer with LexicalAnalysisState {
 
   private def identifierStep: LexerState[Option[Tokenized]] = wordStep(currentIsId, takeAheadExcludingLast(isSeparator(_), isStringLiteralChar(_)), identifier(_))
   private def variableStep: LexerState[Option[Tokenized]] = wordStep(currentIsVariableStart, takeAheadExcludingLast(isSeparator(_), isStringLiteralChar(_)), variable(_))

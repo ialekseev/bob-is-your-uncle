@@ -5,7 +5,7 @@ import com.ialekseev.bob.lexical.LexicalAnalyzer._
 import scalaz._
 import Scalaz._
 
-private[lexical] trait AdHocLexicalAnalysisState {
+private[lexical] trait LexicalAnalysisState {
   protected type LexerState[A] =  State[LexerStateInternal, A]
 
   protected case class LexerStateInternal(private val raw: String, position: Int, tokens: Seq[LexerToken], errors: Seq[LexerError]) {
