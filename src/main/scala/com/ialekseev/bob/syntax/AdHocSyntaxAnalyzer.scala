@@ -79,7 +79,7 @@ class AdHocSyntaxAnalyzer extends LLSyntaxAnalyzer with LLSyntaxAnalysisState {
   /*WebhookSpecificSetting ::= INDENT(2) 'method' : stringLiteral |
                                INDENT(2) 'queryString' : dictionary*/
   private def parseWebhookSpecificSetting: Parsed[ParseTree] = {
-    or("WebhookSpecificSetting")(
+    or("WebhookSpecificSetting")("Expecting a Webhook setting here")(
       for {
         indent <- parse[Token.INDENT](2)
         method <- parse[Token.Keyword.`method`.type]
