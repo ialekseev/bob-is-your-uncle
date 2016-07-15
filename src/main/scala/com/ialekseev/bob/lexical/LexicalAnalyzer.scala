@@ -16,7 +16,9 @@ import scalaz._
       variable ::= '$' identifier
       stringLiteral ::= "..."
       dictionary ::= [...]
-      keyword ::= 'namespace' | 'description' | '@webhook' | 'method' | 'uri' | 'queryString'
+      json ::= ~...~
+      type ::= stringLiteral | dictionary | json
+      keyword ::= 'namespace' | 'description' | '@webhook' | 'method' | 'uri' | 'queryString' | 'body'
       delimiter ::= '.' | '#' | ':'
       INDENT ::= NL{WS}
 */

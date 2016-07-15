@@ -13,6 +13,7 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with LexicalAnalysisSta
   private def variableStep: LexerState[Option[Tokenized]] = wordStep(currentIsVariableStart, takeAheadExcludingLast(isSeparator(_), isStringLiteralChar(_)), variable(_))
   private def stringLiteralStep: LexerState[Option[Tokenized]] = wordStep(currentIsStringLiteralStart, takeAheadIncludingLast(isStringLiteralChar(_), isNL(_)), stringLiteral(_))
   private def dictionaryStep: LexerState[Option[Tokenized]] = wordStep(currentIsDictionaryStart, takeAheadIncludingLast(isDictionaryEndChar(_), isNL(_)), dictionary(_))
+  private def jsonStep: LexerState[Option[Tokenized]] = wordStep(currentIsJsonStart, takeAheadIncludingLast(isJsonEndChar(_), isNL(_)), json(_))
   private def keywordStep: LexerState[Option[Tokenized]] = wordStep(currentIsId, takeAheadExcludingLast(isSeparator(_), isStringLiteralChar(_)), keyword(_))
   private def delimiterStep: LexerState[Option[Tokenized]] = currentChar >>= (c => token(delimiter(c)))
 
@@ -62,6 +63,7 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with LexicalAnalysisSta
             _ <- OptionT.optionT(addTokenAndMove(delimiterStep))
             _ <- OptionT.optionT(addTokenAndMove(stringLiteralStep))
             _ <- OptionT.optionT(addTokenAndMove(dictionaryStep))
+            _ <- OptionT.optionT(addTokenAndMove(jsonStep))
             _ <- OptionT.optionT(addTokenAndMove(identifierStep))
             _ <- OptionT.optionT(addTokenAndMove(indentStep))
             _ <- OptionT.optionT(ignoreWhiteSpaceAndMove)

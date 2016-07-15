@@ -2,6 +2,7 @@ package com.ialekseev.bob.syntax
 
 import com.ialekseev.bob.syntax.LLSyntaxAnalyzer._
 import com.ialekseev.bob.{Token, LexerToken, BaseSpec}
+import org.json4s.JsonAST.{JString, JObject}
 import scalaz._
 import Scalaz._
 
@@ -23,7 +24,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
           LexerToken(Token.INDENT(3), 20),
           LexerToken(Token.Keyword.`description`, 23),
           LexerToken(Token.Delimiter.`:`, 26),
-          LexerToken(Token.StringLiteral("hello"), 35),
+          LexerToken(Token.Type.StringLiteral("hello"), 35),
 
           LexerToken(Token.INDENT(3), 40),
           LexerToken(Token.Keyword.`@webhook`, 45),
@@ -31,7 +32,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
           LexerToken(Token.INDENT(5), 50),
           LexerToken(Token.Keyword.`uri`, 55),
           LexerToken(Token.Delimiter.`:`, 56),
-          LexerToken(Token.StringLiteral("/example"), 61)
+          LexerToken(Token.Type.StringLiteral("/example"), 61)
         )
 
         //act
@@ -52,7 +53,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
               nonTerminal("Description").node(
                 terminal(LexerToken(Token.Keyword.`description`, 23)).leaf,
                 terminal(LexerToken(Token.Delimiter.`:`, 26)).leaf,
-                terminal(LexerToken(Token.StringLiteral("hello"), 35)).leaf
+                terminal(LexerToken(Token.Type.StringLiteral("hello"), 35)).leaf
               ),
               nonTerminal("Webhook").node(
                 terminal(LexerToken(Token.Keyword.`@webhook`, 45)).leaf,
@@ -60,7 +61,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
                   nonTerminal("WebhookUriSetting").node(
                     terminal(LexerToken(Token.Keyword.`uri`, 55)).leaf,
                     terminal(LexerToken(Token.Delimiter.`:`, 56)).leaf,
-                    terminal(LexerToken(Token.StringLiteral("/example"), 61)).leaf
+                    terminal(LexerToken(Token.Type.StringLiteral("/example"), 61)).leaf
                   )
                 )
               )
@@ -85,17 +86,17 @@ class SyntaxAnalyzerSpec extends BaseSpec {
           LexerToken(Token.INDENT(3), 650),
           LexerToken(Token.Keyword.`description`, 700),
           LexerToken(Token.Delimiter.`:`, 800),
-          LexerToken(Token.StringLiteral("hello"), 900),
+          LexerToken(Token.Type.StringLiteral("hello"), 900),
 
           LexerToken(Token.INDENT(3), 950),
           LexerToken(Token.Variable("var1"), 1000),
           LexerToken(Token.Delimiter.`:`, 1100),
-          LexerToken(Token.StringLiteral("alice"), 1200),
+          LexerToken(Token.Type.StringLiteral("alice"), 1200),
 
           LexerToken(Token.INDENT(3), 1250),
           LexerToken(Token.Variable("var2"), 1300),
           LexerToken(Token.Delimiter.`:`, 1400),
-          LexerToken(Token.StringLiteral("wonderland"), 1500),
+          LexerToken(Token.Type.StringLiteral("wonderland"), 1500),
 
           LexerToken(Token.INDENT(3), 1550),
           LexerToken(Token.Keyword.`@webhook`, 1600),
@@ -103,17 +104,22 @@ class SyntaxAnalyzerSpec extends BaseSpec {
           LexerToken(Token.INDENT(5), 1650),
           LexerToken(Token.Keyword.`uri`, 1700),
           LexerToken(Token.Delimiter.`:`, 1800),
-          LexerToken(Token.StringLiteral("/example"), 1900),
+          LexerToken(Token.Type.StringLiteral("/example"), 1900),
 
           LexerToken(Token.INDENT(5), 1950),
           LexerToken(Token.Keyword.`method`, 2000),
           LexerToken(Token.Delimiter.`:`, 2100),
-          LexerToken(Token.StringLiteral("get"), 2200),
+          LexerToken(Token.Type.StringLiteral("get"), 2200),
 
           LexerToken(Token.INDENT(5), 2250),
           LexerToken(Token.Keyword.`queryString`, 2300),
           LexerToken(Token.Delimiter.`:`, 2400),
-          LexerToken(Token.Dictionary("""["b":"18"]""", Map("b"->"18")), 2500)
+          LexerToken(Token.Type.Dictionary("""["b":"18"]""", Map("b"->"18")), 2500),
+
+          LexerToken(Token.INDENT(5), 2550),
+          LexerToken(Token.Keyword.`body`, 2600),
+          LexerToken(Token.Delimiter.`:`, 2700),
+          LexerToken(Token.Type.Json("""~{"c":"19"}~""", JObject("c"-> JString("19"))), 2800)
         )
 
         //act
@@ -140,18 +146,18 @@ class SyntaxAnalyzerSpec extends BaseSpec {
               nonTerminal("Description").node(
                 terminal(LexerToken(Token.Keyword.`description`, 700)).leaf,
                 terminal(LexerToken(Token.Delimiter.`:`, 800)).leaf,
-                terminal(LexerToken(Token.StringLiteral("hello"), 900)).leaf
+                terminal(LexerToken(Token.Type.StringLiteral("hello"), 900)).leaf
               ),
               nonTerminal("Constants").node(
                 nonTerminal("Constant").node(
                   terminal(LexerToken(Token.Variable("var1"), 1000)).leaf,
                   terminal(LexerToken(Token.Delimiter.`:`, 1100)).leaf,
-                  terminal(LexerToken(Token.StringLiteral("alice"), 1200)).leaf
+                  terminal(LexerToken(Token.Type.StringLiteral("alice"), 1200)).leaf
                 ),
                 nonTerminal("Constant").node(
                   terminal(LexerToken(Token.Variable("var2"), 1300)).leaf,
                   terminal(LexerToken(Token.Delimiter.`:`, 1400)).leaf,
-                  terminal(LexerToken(Token.StringLiteral("wonderland"), 1500)).leaf
+                  terminal(LexerToken(Token.Type.StringLiteral("wonderland"), 1500)).leaf
                 )
               ),
               nonTerminal("Webhook").node(
@@ -160,18 +166,25 @@ class SyntaxAnalyzerSpec extends BaseSpec {
                   nonTerminal("WebhookUriSetting").node(
                     terminal(LexerToken(Token.Keyword.`uri`, 1700)).leaf,
                     terminal(LexerToken(Token.Delimiter.`:`, 1800)).leaf,
-                    terminal(LexerToken(Token.StringLiteral("/example"), 1900)).leaf
+                    terminal(LexerToken(Token.Type.StringLiteral("/example"), 1900)).leaf
                   ),
                   nonTerminal("WebhookSpecificSettings").node(
                     nonTerminal("WebhookSpecificSetting").node(
                       terminal(LexerToken(Token.Keyword.`method`, 2000)).leaf,
                       terminal(LexerToken(Token.Delimiter.`:`, 2100)).leaf,
-                      terminal(LexerToken(Token.StringLiteral("get"), 2200)).leaf
+                      terminal(LexerToken(Token.Type.StringLiteral("get"), 2200)).leaf
                     ),
                     nonTerminal("WebhookSpecificSetting").node(
                       terminal(LexerToken(Token.Keyword.`queryString`, 2300)).leaf,
                       terminal(LexerToken(Token.Delimiter.`:`, 2400)).leaf,
-                      terminal(LexerToken(Token.Dictionary("""["b":"18"]""", Map("b"->"18")), 2500)).leaf
+                      terminal(LexerToken(Token.Type.Dictionary("""["b":"18"]""", Map("b"->"18")), 2500)).leaf
+                    ),
+                    nonTerminal("WebhookSpecificSetting").node(
+                      terminal(LexerToken(Token.Keyword.`body`, 2600)).leaf,
+                      terminal(LexerToken(Token.Delimiter.`:`, 2700)).leaf,
+                      nonTerminal("WebhookSpecificSettingBodyType").node(
+                        terminal(LexerToken(Token.Type.Json("""~{"c":"19"}~""", JObject("c"-> JString("19"))), 2800)).leaf
+                      )
                     )
                   )
                 )
@@ -259,12 +272,12 @@ class SyntaxAnalyzerSpec extends BaseSpec {
           LexerToken(Token.INDENT(3), 16),
           LexerToken(Token.Keyword.`description`, 18),
           LexerToken(Token.Delimiter.`:`, 20),
-          LexerToken(Token.StringLiteral("hello"), 22),
+          LexerToken(Token.Type.StringLiteral("hello"), 22),
 
           LexerToken(Token.INDENT(3), 24),
           LexerToken(Token.Variable("var1"), 26),
           LexerToken(Token.Delimiter.`#`, 28),
-          LexerToken(Token.StringLiteral("alice"), 30)
+          LexerToken(Token.Type.StringLiteral("alice"), 30)
         )
 
         //act
@@ -288,17 +301,17 @@ class SyntaxAnalyzerSpec extends BaseSpec {
           LexerToken(Token.INDENT(3), 16),
           LexerToken(Token.Keyword.`description`, 18),
           LexerToken(Token.Delimiter.`:`, 20),
-          LexerToken(Token.StringLiteral("hello"), 22),
+          LexerToken(Token.Type.StringLiteral("hello"), 22),
 
           LexerToken(Token.INDENT(3), 24),
           LexerToken(Token.Variable("var1"), 26),
           LexerToken(Token.Delimiter.`:`, 28),
-          LexerToken(Token.StringLiteral("alice"), 30),
+          LexerToken(Token.Type.StringLiteral("alice"), 30),
 
           LexerToken(Token.INDENT(3), 32),
           LexerToken(Token.Variable("var2"), 34),
           LexerToken(Token.Delimiter.`:`, 36),
-          LexerToken(Token.Dictionary("[b:11]", Map("b" -> "11")), 38)
+          LexerToken(Token.Type.Dictionary("[b:11]", Map("b" -> "11")), 38)
         )
 
         //act
@@ -322,7 +335,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
           LexerToken(Token.INDENT(3), 20),
           LexerToken(Token.Keyword.`description`, 23),
           LexerToken(Token.Delimiter.`:`, 26),
-          LexerToken(Token.StringLiteral("hello"), 35),
+          LexerToken(Token.Type.StringLiteral("hello"), 35),
 
           LexerToken(Token.INDENT(2), 40),
           LexerToken(Token.Keyword.`@webhook`, 45)
@@ -349,7 +362,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
           LexerToken(Token.INDENT(3), 20),
           LexerToken(Token.Keyword.`description`, 23),
           LexerToken(Token.Delimiter.`:`, 26),
-          LexerToken(Token.StringLiteral("hello"), 35),
+          LexerToken(Token.Type.StringLiteral("hello"), 35),
 
           LexerToken(Token.INDENT(3), 40),
           LexerToken(Token.Keyword.`@webhook`, 45),
@@ -357,7 +370,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
           LexerToken(Token.INDENT(5), 50),
           LexerToken(Token.Keyword.`method`, 55),
           LexerToken(Token.Delimiter.`:`, 56),
-          LexerToken(Token.StringLiteral("get"), 61)
+          LexerToken(Token.Type.StringLiteral("get"), 61)
         )
 
         //act
@@ -381,7 +394,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
           LexerToken(Token.INDENT(3), 20),
           LexerToken(Token.Keyword.`description`, 23),
           LexerToken(Token.Delimiter.`:`, 26),
-          LexerToken(Token.StringLiteral("hello"), 35),
+          LexerToken(Token.Type.StringLiteral("hello"), 35),
 
           LexerToken(Token.INDENT(3), 40),
           LexerToken(Token.Keyword.`@webhook`, 45),
@@ -389,12 +402,12 @@ class SyntaxAnalyzerSpec extends BaseSpec {
           LexerToken(Token.INDENT(5), 50),
           LexerToken(Token.Keyword.`uri`, 55),
           LexerToken(Token.Delimiter.`:`, 56),
-          LexerToken(Token.StringLiteral("/example"), 61),
+          LexerToken(Token.Type.StringLiteral("/example"), 61),
 
           LexerToken(Token.INDENT(5), 62),
           LexerToken(Token.Keyword.`method`, 65),
           LexerToken(Token.Delimiter.`#`, 66),
-          LexerToken(Token.StringLiteral("get"), 69)
+          LexerToken(Token.Type.StringLiteral("get"), 69)
         )
 
         //act
@@ -418,7 +431,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
           LexerToken(Token.INDENT(3), 20),
           LexerToken(Token.Keyword.`description`, 23),
           LexerToken(Token.Delimiter.`:`, 26),
-          LexerToken(Token.StringLiteral("hello"), 35),
+          LexerToken(Token.Type.StringLiteral("hello"), 35),
 
           LexerToken(Token.INDENT(3), 40),
           LexerToken(Token.Keyword.`@webhook`, 45),
@@ -426,17 +439,17 @@ class SyntaxAnalyzerSpec extends BaseSpec {
           LexerToken(Token.INDENT(5), 50),
           LexerToken(Token.Keyword.`uri`, 55),
           LexerToken(Token.Delimiter.`:`, 56),
-          LexerToken(Token.StringLiteral("/example"), 61),
+          LexerToken(Token.Type.StringLiteral("/example"), 61),
 
           LexerToken(Token.INDENT(5), 62),
           LexerToken(Token.Keyword.`method`, 65),
           LexerToken(Token.Delimiter.`:`, 66),
-          LexerToken(Token.StringLiteral("get"), 69),
+          LexerToken(Token.Type.StringLiteral("get"), 69),
 
           LexerToken(Token.INDENT(5), 72),
           LexerToken(Token.Keyword.`queryString`, 75),
           LexerToken(Token.Delimiter.`:`, 76),
-          LexerToken(Token.StringLiteral("/example"), 79)
+          LexerToken(Token.Type.StringLiteral("/example"), 79)
         )
 
         //act
@@ -444,6 +457,48 @@ class SyntaxAnalyzerSpec extends BaseSpec {
 
         //assert
         result.toEither.left.get should be (Seq(ParseError(79, 22, """Unexpected: '"/example"' (expecting: 'dictionary')""")))
+      }
+    }
+
+    "there is an error (an invalid type in the optional 'body' line inside '@webhook')" should {
+      "fail" in {
+        //arrange
+        val tokens = Seq(
+          LexerToken(Token.INDENT(0), 0),
+          LexerToken(Token.Keyword.`namespace`, 0),
+          LexerToken(Token.Identifier("com"), 10),
+          LexerToken(Token.Delimiter.`#`, 13),
+          LexerToken(Token.Identifier("create"), 14),
+
+          LexerToken(Token.INDENT(3), 20),
+          LexerToken(Token.Keyword.`description`, 23),
+          LexerToken(Token.Delimiter.`:`, 26),
+          LexerToken(Token.Type.StringLiteral("hello"), 35),
+
+          LexerToken(Token.INDENT(3), 40),
+          LexerToken(Token.Keyword.`@webhook`, 45),
+
+          LexerToken(Token.INDENT(5), 50),
+          LexerToken(Token.Keyword.`uri`, 55),
+          LexerToken(Token.Delimiter.`:`, 56),
+          LexerToken(Token.Type.StringLiteral("/example"), 61),
+
+          LexerToken(Token.INDENT(5), 62),
+          LexerToken(Token.Keyword.`body`, 65),
+          LexerToken(Token.Delimiter.`:`, 66),
+          LexerToken(Token.Type.Dictionary("[b:11]", Map("b" -> "11")), 69),
+
+          LexerToken(Token.INDENT(5), 72),
+          LexerToken(Token.Keyword.`queryString`, 75),
+          LexerToken(Token.Delimiter.`:`, 76),
+          LexerToken(Token.Type.StringLiteral("/example"), 79)
+        )
+
+        //act
+        val result = parser.parse(tokens)
+
+        //assert
+        result.toEither.left.get should be (Seq(ParseError(69, 18, "Expecting some valid Body type here")))
       }
     }
   }

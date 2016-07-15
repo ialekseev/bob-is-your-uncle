@@ -128,7 +128,11 @@ private[syntax] trait LLSyntaxAnalysisState {
    val done: Parsed[Option[Seq[ParseTree]]] = others.foldLeft(optional(applyOrRollback(one)))((a, b) => or(a, optional(applyOrRollback(b))))
     done >>= {
       case Some(nodes) => attachNodesToNonTerminal(EitherT.eitherT(nodes.right.point[ParserState]), nonTerminalName)
-      case _ => previousT >>= (p => EitherT.eitherT(Seq(ParseError(p._2.offset, p._1, absenceMessage)).left.point[ParserState]))
+      case _ => EitherT.eitherT[ParserState, Seq[ParseError], ParseTree](get[ParserStateInternal] >>= (s => {
+        val position = if (s.position < s.tokens.length) s.position else s.position - 1
+        val token = s.tokens(position)
+        Seq(ParseError(token.offset, position, absenceMessage)).left.point[ParserState]
+      }))
     }
   }
 

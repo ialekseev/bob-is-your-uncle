@@ -32,8 +32,11 @@ import Scalaz._
 
     WebhookUriSetting ::= INDENT(2) 'uri' : stringLiteral
 
+    WebhookSpecificSettingBodyType ::= 'stringLiteral' | 'json'
+
     WebhookSpecificSetting ::= INDENT(2) 'method' : stringLiteral |
-                               INDENT(2) 'queryString' : dictionary
+                               INDENT(2) 'queryString' : dictionary |
+                               INDENT(2) 'body': WebhookSpecificSettingBodyType
 
     WebhookSpecificSettings ::= {WebhookSpecificSetting}
 

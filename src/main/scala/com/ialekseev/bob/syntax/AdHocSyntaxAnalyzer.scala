@@ -5,7 +5,7 @@ import com.ialekseev.bob.syntax.LLSyntaxAnalyzer._
 import scalaz._
 import Scalaz._
 
-//Top-Down Predictive Parsing for LL1 grammar (Recursive Descent technique)
+//Top-Down Predictive Parsing for LL grammar (Recursive Descent technique)
 class AdHocSyntaxAnalyzer extends LLSyntaxAnalyzer with LLSyntaxAnalysisState {
 
   //NamespacePathPart ::= '.' identifier
@@ -46,7 +46,7 @@ class AdHocSyntaxAnalyzer extends LLSyntaxAnalyzer with LLSyntaxAnalysisState {
       _ <- parse[Token.INDENT](1)
       descriptionKeyword <- parse[Token.Keyword.`description`.type]
       colon <- parse[Token.Delimiter.`:`.type]
-      stringLiteral <- parse[Token.StringLiteral]
+      stringLiteral <- parse[Token.Type.StringLiteral]
     } yield Seq(descriptionKeyword, colon, stringLiteral)
   }
 
@@ -56,7 +56,7 @@ class AdHocSyntaxAnalyzer extends LLSyntaxAnalyzer with LLSyntaxAnalysisState {
       _ <- parse[Token.INDENT](1)
       variable <- parse[Token.Variable]
       colon <- parse[Token.Delimiter.`:`.type]
-      stringLiteral <- parse[Token.StringLiteral]
+      stringLiteral <- parse[Token.Type.StringLiteral]
     } yield Seq(variable, colon, stringLiteral)
   }
 
@@ -71,27 +71,43 @@ class AdHocSyntaxAnalyzer extends LLSyntaxAnalyzer with LLSyntaxAnalysisState {
       _ <- parse[Token.INDENT](2)
       keyword <- parse[Token.Keyword.`uri`.type]
       colon <- parse[Token.Delimiter.`:`.type]
-      stringLiteral <- parse[Token.StringLiteral]
+      stringLiteral <- parse[Token.Type.StringLiteral]
     } yield Seq(keyword, colon, stringLiteral)
   }
 
+  //WebhookSpecificSettingBodyType ::= 'stringLiteral' | 'json'
+  private def parseWebhookSpecificSettingBodyType: Parsed[ParseTree] = {
+    or("WebhookSpecificSettingBodyType")("Expecting some valid Body type here")(
+      for(stringLiteral <- parse[Token.Type.StringLiteral]) yield Seq(stringLiteral),
+      for(json <- parse[Token.Type.Json]) yield Seq(json)
+    )
+  }
+
   /*WebhookSpecificSetting ::= INDENT(2) 'method' : stringLiteral |
-                               INDENT(2) 'queryString' : dictionary*/
+                               INDENT(2) 'queryString' : dictionary |
+                               INDENT(2) 'body': WebhookSpecificSettingBodyType*/
   private def parseWebhookSpecificSetting: Parsed[ParseTree] = {
-    or("WebhookSpecificSetting")("Expecting a Webhook setting here")(
+    or("WebhookSpecificSetting")("Expecting some valid Webhook setting here")(
       for {
         _ <- parse[Token.INDENT](2)
         method <- parse[Token.Keyword.`method`.type]
         colon <- parse[Token.Delimiter.`:`.type]
-        stringLiteral <- parse[Token.StringLiteral]
+        stringLiteral <- parse[Token.Type.StringLiteral]
       } yield Seq(method, colon, stringLiteral),
 
       for {
         _ <- parse[Token.INDENT](2)
         queryString <- parse[Token.Keyword.`queryString`.type]
         colon <- parse[Token.Delimiter.`:`.type]
-        dictionary <- parse[Token.Dictionary]
-      } yield Seq(queryString, colon, dictionary)
+        dictionary <- parse[Token.Type.Dictionary]
+      } yield Seq(queryString, colon, dictionary),
+
+      for {
+        _ <- parse[Token.INDENT](2)
+        body <- parse[Token.Keyword.`body`.type]
+        colon <- parse[Token.Delimiter.`:`.type]
+        bodyType <- parseWebhookSpecificSettingBodyType
+      } yield Seq(body, colon, bodyType)
     )
   }
 

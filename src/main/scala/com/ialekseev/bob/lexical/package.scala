@@ -1,6 +1,6 @@
 package com.ialekseev.bob
 
-import com.ialekseev.bob.Token.{Dictionary, StringLiteral, Identifier, Variable}
+import com.ialekseev.bob.Token._
 import scala.util.Try
 
 package object lexical {
@@ -14,35 +14,44 @@ package object lexical {
   def isVariableStart(char: Char): Boolean = char == Token.Variable.char
   def variable(str: String): Option[Token] = {
     if (str.length > 1) {
-      val head = str(0)
-      val tail = str.substring(1)
+      val (head, tail) = str.dismantle2
       if (isVariableStart(head) && isIdentifier(tail)) Some(Variable(tail)) else None
     } else None
   }
 
-  def isStringLiteralChar(char: Char) = char == Token.StringLiteral.char
+  def isStringLiteralChar(char: Char) = char == Type.StringLiteral.char
   def stringLiteral(str: String): Option[Token] = {
     if (str.length > 1) {
-      val head = str(0)
-      val content = str.substring(1, str.length - 1)
-      val last = str(str.length - 1)
-      if (isStringLiteralChar(head) && isStringLiteralChar(last)) Some(StringLiteral(content)) else None
+      val (head, content, last) = str.dismantle3
+      if (isStringLiteralChar(head) && isStringLiteralChar(last)) Some(Type.StringLiteral(content)) else None
     } else None
   }
 
-  def isDictionaryStartChar(char: Char) = char == Token.Dictionary.startChar
-  def isDictionaryEndChar(char: Char) = char == Token.Dictionary.endChar
+  def isDictionaryStartChar(char: Char) = char == Type.Dictionary.startChar
+  def isDictionaryEndChar(char: Char) = char == Type.Dictionary.endChar
   def dictionary(str: String): Option[Token] = {
     if (str.length > 1) {
-      val head = str(0)
-      val content = str.substring(1, str.length - 1)
-      val last = str(str.length - 1)
+      val (head, content, last) = str.dismantle3
       if (isDictionaryStartChar(head) && isDictionaryEndChar(last)) {
         import org.json4s._
         import org.json4s.native.JsonMethods._
         implicit val formats = org.json4s.DefaultFormats
         val jsonStr = "{" + content + "}"
-        Try(parse(jsonStr).extract[Map[String, String]]).toOption.map(Dictionary(str, _))
+        Try(parse(jsonStr).extract[Map[String, String]]).toOption.map(Type.Dictionary(str, _))
+      } else None
+    } else None
+  }
+
+  def isJsonStartChar(char: Char) = char == Type.Json.char
+  def isJsonEndChar(char: Char) = char == Type.Json.char
+  def json(str: String): Option[Token] = {
+    if (str.length > 1) {
+      val (head, content, last) = str.dismantle3
+      if (isJsonStartChar(head) && isJsonEndChar(last)) {
+        import org.json4s._
+        import org.json4s.native.JsonMethods._
+        implicit val formats = org.json4s.DefaultFormats
+        Try(parse(content)).toOption.map(Type.Json(str, _))
       } else None
     } else None
   }
@@ -55,6 +64,7 @@ package object lexical {
       case l@Token.Keyword.`method`.word => Some(Token.Keyword.`method`)
       case l@Token.Keyword.`uri`.word => Some(Token.Keyword.`uri`)
       case l@Token.Keyword.`queryString`.word => Some(Token.Keyword.`queryString`)
+      case l@Token.Keyword.`body`.word => Some(Token.Keyword.`body`)
       case _ => None
     }
   }

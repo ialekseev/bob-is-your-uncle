@@ -1,5 +1,7 @@
 package com.ialekseev.bob
 
+import org.json4s.JsonAST.JValue
+
 import scalaz.Show
 
 trait Token {
@@ -12,11 +14,16 @@ object Token {
   object Variable {val char = '$'}
   case class Variable(name: String) extends Token { val length = name.length + 1 }
 
-  object StringLiteral { val char = '"' }
-  case class StringLiteral(content: String) extends Token { val length = content.length + 2 }
+  object Type {
+    object StringLiteral { val char = '"' }
+    case class StringLiteral(content: String) extends Token { val length = content.length + 2 }
 
-  object Dictionary {val startChar = '['; val endChar = ']'}
-  case class Dictionary(raw: String, dic: Map[String, String]) extends Token { val length = raw.length }
+    object Dictionary {val startChar = '['; val endChar = ']'}
+    case class Dictionary(raw: String, dic: Map[String, String]) extends Token { val length = raw.length }
+
+    object Json {val char = '~'}
+    case class Json(raw: String, json: JValue) extends Token { val length = raw.length}
+  }
 
   object Keyword {
     trait KeywordToken extends Token {
@@ -30,6 +37,7 @@ object Token {
     case object `uri` extends KeywordToken { val word = "uri"}
     case object `method` extends KeywordToken { val word = "method"}
     case object `queryString` extends KeywordToken { val word = "queryString" }
+    case object `body` extends KeywordToken { val word = "body" }
   }
 
   object Delimiter {
@@ -51,7 +59,7 @@ object Token {
   implicit val tokenShow: Show[Token] = Show.shows {
     case Token.Identifier(word) => word
     case Token.Variable(name) => Token.Variable.char + name
-    case Token.StringLiteral(text) => Token.StringLiteral.char + text + Token.StringLiteral.char
+    case Token.Type.StringLiteral(text) => Token.Type.StringLiteral.char + text + Token.Type.StringLiteral.char
     case keyword: Token.Keyword.KeywordToken => keyword.word
     case delimiter: Token.Delimiter.DelimiterToken => delimiter.char.toString
     case rest => rest.toString
@@ -66,16 +74,22 @@ object TokenTag {
   import Token._
   implicit val identifierTag = new TokenTag[Identifier] { def asString = "identifier" }
   implicit val variableTag = new TokenTag[Variable] { def asString = "variable" }
-  implicit val stringLiteralTag = new TokenTag[StringLiteral] { def asString = "string literal" }
-  implicit val dictionaryTag = new TokenTag[Dictionary] { def asString = "dictionary" }
+
+  implicit val stringLiteralTag = new TokenTag[Type.StringLiteral] { def asString = "string literal" }
+  implicit val dictionaryTag = new TokenTag[Type.Dictionary] { def asString = "dictionary" }
+  implicit val jsonTag = new TokenTag[Type.Json] { def asString = "json" }
+
   implicit val namespaceKeywordTag = new TokenTag[Keyword.`namespace`.type] { def asString = Keyword.`namespace`.word}
   implicit val descriptionKeywordTag = new TokenTag[Keyword.`description`.type] { def asString = Keyword.`description`.word}
   implicit val webhookKeywordTag = new TokenTag[Keyword.`@webhook`.type] { def asString = Keyword.`@webhook`.word}
   implicit val uriKeywordTag = new TokenTag[Keyword.`uri`.type] { def asString = Keyword.`uri`.word}
   implicit val methodKeywordTag = new TokenTag[Keyword.`method`.type] { def asString = Keyword.`method`.word}
+  implicit val bodyKeywordTag = new TokenTag[Keyword.`body`.type] { def asString = Keyword.`body`.word}
   implicit val queryStringKeywordTag = new TokenTag[Keyword.`queryString`.type] { def asString = Keyword.`queryString`.word}
+
   implicit val dotDelimiterTag = new TokenTag[Delimiter.`.`.type] { def asString = Delimiter.`.`.char.toString}
   implicit val poundDelimiterTag = new TokenTag[Delimiter.`#`.type] { def asString = Delimiter.`#`.char.toString}
   implicit val colonDelimiterTag = new TokenTag[Delimiter.`:`.type] { def asString = Delimiter.`:`.char.toString}
+
   implicit val indentTag = new TokenTag[INDENT] { def asString = "indent"}
 }
