@@ -58,8 +58,10 @@ object Token {
   }
 }
 
-trait TokenTag[T] { def asString: String }
+case class LexerToken(token: Token, offset: Int)
+case class LexerError(startOffset: Int, endOffset: Int)
 
+trait TokenTag[T] { def asString: String }
 object TokenTag {
   import Token._
   implicit val identifierTag = new TokenTag[Identifier] { def asString = "identifier" }

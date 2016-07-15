@@ -1,7 +1,6 @@
 package com.ialekseev.bob.syntax
 
-import com.ialekseev.bob.Token
-import com.ialekseev.bob.lexical.LexicalAnalyzer.LexerToken
+import com.ialekseev.bob.{Token, LexerToken}
 import com.ialekseev.bob.syntax.LLSyntaxAnalyzer._
 import scalaz._
 import Scalaz._
@@ -81,14 +80,14 @@ class AdHocSyntaxAnalyzer extends LLSyntaxAnalyzer with LLSyntaxAnalysisState {
   private def parseWebhookSpecificSetting: Parsed[ParseTree] = {
     or("WebhookSpecificSetting")("Expecting a Webhook setting here")(
       for {
-        indent <- parse[Token.INDENT](2)
+        _ <- parse[Token.INDENT](2)
         method <- parse[Token.Keyword.`method`.type]
         colon <- parse[Token.Delimiter.`:`.type]
         stringLiteral <- parse[Token.StringLiteral]
       } yield Seq(method, colon, stringLiteral),
 
       for {
-        indent <- parse[Token.INDENT](2)
+        _ <- parse[Token.INDENT](2)
         queryString <- parse[Token.Keyword.`queryString`.type]
         colon <- parse[Token.Delimiter.`:`.type]
         dictionary <- parse[Token.Dictionary]

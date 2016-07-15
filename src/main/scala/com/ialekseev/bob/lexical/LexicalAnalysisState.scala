@@ -1,7 +1,6 @@
 package com.ialekseev.bob.lexical
 
 import com.ialekseev.bob._
-import com.ialekseev.bob.lexical.LexicalAnalyzer._
 import scalaz._
 import Scalaz._
 

@@ -1,7 +1,6 @@
 package com.ialekseev.bob.syntax
 
-import com.ialekseev.bob.{Token, TokenTag}
-import com.ialekseev.bob.lexical.LexicalAnalyzer._
+import com.ialekseev.bob.{Token, TokenTag, LexerToken, LexerError}
 import com.ialekseev.bob.syntax.LLSyntaxAnalyzer._
 import scala.collection.generic.SeqFactory
 import scala.reflect.ClassTag
@@ -72,7 +71,7 @@ private[syntax] trait LLSyntaxAnalysisState {
     attachNodesToNonTerminal(applyOrRollback(apply), nonTerminalName)
   }
 
-  //todo: trampoline
+  //todo: trampoline?
   def repeat(nonTerminalName: String)(parsed: => Parsed[ParseTree]): Parsed[Option[ParseTree]] = {
     require(nonTerminalName.nonEmpty)
 

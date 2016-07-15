@@ -1,8 +1,7 @@
 package com.ialekseev.bob.syntax
 
-import com.ialekseev.bob.lexical.LexicalAnalyzer.LexerToken
 import com.ialekseev.bob.syntax.LLSyntaxAnalyzer._
-import com.ialekseev.bob.{Token, BaseSpec}
+import com.ialekseev.bob.{Token, LexerToken, BaseSpec}
 import scalaz._
 import Scalaz._
 
@@ -114,7 +113,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
           LexerToken(Token.INDENT(5), 2250),
           LexerToken(Token.Keyword.`queryString`, 2300),
           LexerToken(Token.Delimiter.`:`, 2400),
-          LexerToken(Token.Dictionary("[b:18]", Map("b"->"18")), 2500)
+          LexerToken(Token.Dictionary("""["b":"18"]""", Map("b"->"18")), 2500)
         )
 
         //act
@@ -172,7 +171,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
                     nonTerminal("WebhookSpecificSetting").node(
                       terminal(LexerToken(Token.Keyword.`queryString`, 2300)).leaf,
                       terminal(LexerToken(Token.Delimiter.`:`, 2400)).leaf,
-                      terminal(LexerToken(Token.Dictionary("[b:18]", Map("b"->"18")), 2500)).leaf
+                      terminal(LexerToken(Token.Dictionary("""["b":"18"]""", Map("b"->"18")), 2500)).leaf
                     )
                   )
                 )
@@ -224,7 +223,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
     }
 
     "there is an error (got an identifier instead of the string literal in the description)" should {
-      "succeed" in {
+      "fail" in {
         //arrange
         val tokens = Seq(
           LexerToken(Token.INDENT(0), 0),
@@ -247,8 +246,71 @@ class SyntaxAnalyzerSpec extends BaseSpec {
       }
     }
 
+    "there is an error (an invalid delimiter in the first constant line)" should {
+      "fail" in {
+        //arrange
+        val tokens = Seq(
+          LexerToken(Token.INDENT(0), 0),
+          LexerToken(Token.Keyword.`namespace`, 0),
+          LexerToken(Token.Identifier("com"), 10),
+          LexerToken(Token.Delimiter.`#`, 13),
+          LexerToken(Token.Identifier("create"), 14),
+
+          LexerToken(Token.INDENT(3), 16),
+          LexerToken(Token.Keyword.`description`, 18),
+          LexerToken(Token.Delimiter.`:`, 20),
+          LexerToken(Token.StringLiteral("hello"), 22),
+
+          LexerToken(Token.INDENT(3), 24),
+          LexerToken(Token.Variable("var1"), 26),
+          LexerToken(Token.Delimiter.`#`, 28),
+          LexerToken(Token.StringLiteral("alice"), 30)
+        )
+
+        //act
+        val result = parser.parse(tokens)
+
+        //assert
+        result.toEither.left.get should be (Seq(ParseError(28, 11, "Unexpected: '#' (expecting: ':')")))
+      }
+    }
+
+    "there is an error (an invalid type in the second constant line)" should {
+      "fail" in {
+        //arrange
+        val tokens = Seq(
+          LexerToken(Token.INDENT(0), 0),
+          LexerToken(Token.Keyword.`namespace`, 0),
+          LexerToken(Token.Identifier("com"), 10),
+          LexerToken(Token.Delimiter.`#`, 13),
+          LexerToken(Token.Identifier("create"), 14),
+
+          LexerToken(Token.INDENT(3), 16),
+          LexerToken(Token.Keyword.`description`, 18),
+          LexerToken(Token.Delimiter.`:`, 20),
+          LexerToken(Token.StringLiteral("hello"), 22),
+
+          LexerToken(Token.INDENT(3), 24),
+          LexerToken(Token.Variable("var1"), 26),
+          LexerToken(Token.Delimiter.`:`, 28),
+          LexerToken(Token.StringLiteral("alice"), 30),
+
+          LexerToken(Token.INDENT(3), 32),
+          LexerToken(Token.Variable("var2"), 34),
+          LexerToken(Token.Delimiter.`:`, 36),
+          LexerToken(Token.Dictionary("[b:11]", Map("b" -> "11")), 38)
+        )
+
+        //act
+        val result = parser.parse(tokens)
+
+        //assert
+        result.toEither.left.get should be (Seq(ParseError(38, 16, "Unexpected: 'Dictionary([b:11],Map(b -> 11))' (expecting: 'string literal')")))
+      }
+    }
+
     "there is an error (an invalid indent before '@webhook')" should {
-      "succeed" in {
+      "fail" in {
         //arrange
         val tokens = Seq(
           LexerToken(Token.INDENT(0), 0),
@@ -275,7 +337,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
     }
 
     "there is an error (an invalid keyword instead of mandatory 'uri' inside '@webhook')" should {
-      "succeed" in {
+      "fail" in {
         //arrange
         val tokens = Seq(
           LexerToken(Token.INDENT(0), 0),
@@ -307,7 +369,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
     }
 
     "there is an error (an invalid delimiter in the optional 'method' line inside '@webhook')" should {
-      "succeed" in {
+      "fail" in {
         //arrange
         val tokens = Seq(
           LexerToken(Token.INDENT(0), 0),
@@ -344,7 +406,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
     }
 
     "there is an error (an invalid type in the optional 'queryString' line inside '@webhook')" should {
-      "succeed" in {
+      "fail" in {
         //arrange
         val tokens = Seq(
           LexerToken(Token.INDENT(0), 0),

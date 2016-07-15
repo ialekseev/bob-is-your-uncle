@@ -1,7 +1,6 @@
 package com.ialekseev.bob.lexical
 
-import com.ialekseev.bob.{BaseSpec, Token}
-import com.ialekseev.bob.lexical.LexicalAnalyzer._
+import com.ialekseev.bob.{BaseSpec, Token, LexerToken, LexerError}
 
 class LexicalAnalyzerSpec extends BaseSpec {
   val lexer = new AdHocLexicalAnalyzer()
