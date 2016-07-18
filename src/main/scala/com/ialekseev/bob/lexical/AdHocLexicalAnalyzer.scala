@@ -18,20 +18,17 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with LexicalAnalysisSta
   private def delimiterStep: LexerState[Option[Tokenized]] = currentChar >>= (c => token(delimiter(c)))
 
   private def indentStep: LexerState[Option[Tokenized]] = {
-    currentIsNL >>= (currentIsNL => {
-      if (currentIsNL) {
-        get[LexerStateInternal] >>= (state => {
-          (for {
-            ahead: (Char, Int) <- OptionT.optionT(lookAhead(char => !isWS(char) && !isNL(char)))
-            nl <- OptionT.optionT(lookBack(isNL(_), ahead._2))
-          } yield {
+    currentIsNL.ifM({
+      get[LexerStateInternal] >>= (state => {
+        (for {
+          ahead: (Char, Int) <- OptionT.optionT(lookAhead(char => !isWS(char) && !isNL(char)))
+          nl <- OptionT.optionT(lookBack(isNL(_), ahead._2))
+        } yield {
             val indentLevel = ahead._2 - nl._2 - 1
             Tokenized(Token.INDENT(indentLevel), nl._2 + 1, ahead._2 - state.position)
           }).run
-        })
-      }
-      else none[Tokenized].point[LexerState]
-    })
+      })
+    }, none[Tokenized].point[LexerState])
   }
 
   private def ignoreWhiteSpaceAndMove(): LexerState[Option[Unit]] = {
