@@ -130,25 +130,34 @@ class LexicalAnalyzerSpec extends BaseSpec {
             """@webhook """ + "\n\n  \n\n" +
               """ method : "get"""" + "\n" +
               """ queryString: ["a":"1", "b":"2"]""" + "\n" +
-              """body: ~{"c": "3", "d": "hi!"}~"""
+              """body: ~{"c": "3", "d": "hi!"}~""" + "\n" +
+              """  headers : ["h1": "a", "h2": "b"]"""
           )
 
           //assert
           result.toEither.right.get should be(List(
             LexerToken(Token.INDENT(0), 0),
             LexerToken(Token.Keyword.`@webhook`, 0),
+
             LexerToken(Token.INDENT(1), 15),
             LexerToken(Token.Keyword.`method`, 16),
             LexerToken(Token.Delimiter.`:`, 23),
             LexerToken(Token.Type.StringLiteral("get"), 25),
+
             LexerToken(Token.INDENT(1), 31),
             LexerToken(Token.Keyword.`queryString`, 32),
             LexerToken(Token.Delimiter.`:`, 43),
             LexerToken(Token.Type.Dictionary("""["a":"1", "b":"2"]""", Map("a" -> "1", "b"->"2")), 45),
+
             LexerToken(Token.INDENT(0), 64),
             LexerToken(Token.Keyword.`body`, 64),
             LexerToken(Token.Delimiter.`:`, 68),
-            LexerToken(Token.Type.Json("""~{"c": "3", "d": "hi!"}~""", ("c" -> "3") ~ ("d" -> "hi!") ), 70)
+            LexerToken(Token.Type.Json("""~{"c": "3", "d": "hi!"}~""", ("c" -> "3") ~ ("d" -> "hi!") ), 70),
+
+            LexerToken(Token.INDENT(2), 95),
+            LexerToken(Token.Keyword.`headers`, 97),
+            LexerToken(Token.Delimiter.`:`, 105),
+            LexerToken(Token.Type.Dictionary("""["h1": "a", "h2": "b"]""", Map("h1" -> "a", "h2"->"b")), 107)
           ))
         }
       }
@@ -210,6 +219,19 @@ class LexicalAnalyzerSpec extends BaseSpec {
 
           //assert
           result.toEither.left.get.head.startOffset should be (34)
+        }
+      }
+
+      "the source string has an error in header's dictionary" should {
+        "fail" in {
+          //act
+          val result = lexer.tokenize(
+            """@webhook""" + "\n" +
+              """method:"get"""" + "\n" +
+              """header:["a": {"c":"3"}, "b":"2"]""")
+
+          //assert
+          result.toEither.left.get.head.startOffset should be (29)
         }
       }
 

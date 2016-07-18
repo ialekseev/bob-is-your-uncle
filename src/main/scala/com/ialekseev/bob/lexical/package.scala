@@ -61,8 +61,9 @@ package object lexical {
       case l@Token.Keyword.`namespace`.word => Some(Token.Keyword.`namespace`)
       case l@Token.Keyword.`description`.word => Some(Token.Keyword.`description`)
       case l@Token.Keyword.`@webhook`.word => Some(Token.Keyword.`@webhook`)
-      case l@Token.Keyword.`method`.word => Some(Token.Keyword.`method`)
       case l@Token.Keyword.`uri`.word => Some(Token.Keyword.`uri`)
+      case l@Token.Keyword.`method`.word => Some(Token.Keyword.`method`)
+      case l@Token.Keyword.`headers`.word => Some(Token.Keyword.`headers`)
       case l@Token.Keyword.`queryString`.word => Some(Token.Keyword.`queryString`)
       case l@Token.Keyword.`body`.word => Some(Token.Keyword.`body`)
       case _ => None

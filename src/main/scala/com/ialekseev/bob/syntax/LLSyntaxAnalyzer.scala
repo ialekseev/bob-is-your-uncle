@@ -9,13 +9,15 @@ import Scalaz._
   namespace com.ialekseev.core#create
     description: "{description}"
 
-    $var1: "{var1}"
-    $var2: "{var2}"
+    $var1: "..."
+    $var2: "..."
 
     @webhook
-      uri: "{binding}"
-      method: "{method}"
-      queryString: "{binding}"
+      uri: "..."
+      method: "..."
+      headers: "..."
+      queryString: "..."
+      body: "..."
 */
 
 /*[Syntax in EBNF form (LL Grammar)]
@@ -32,9 +34,10 @@ import Scalaz._
 
     WebhookUriSetting ::= INDENT(2) 'uri' : stringLiteral
 
-    WebhookSpecificSettingBodyType ::= 'stringLiteral' | 'json'
+    WebhookSpecificSettingBodyType ::= 'stringLiteral' | 'dictionary' | 'json'
 
     WebhookSpecificSetting ::= INDENT(2) 'method' : stringLiteral |
+                               INDENT(2) 'headers' : dictionary |
                                INDENT(2) 'queryString' : dictionary |
                                INDENT(2) 'body': WebhookSpecificSettingBodyType
 

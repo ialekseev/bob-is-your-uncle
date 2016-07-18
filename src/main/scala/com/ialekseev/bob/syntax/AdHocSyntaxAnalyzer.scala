@@ -75,15 +75,17 @@ class AdHocSyntaxAnalyzer extends LLSyntaxAnalyzer with LLSyntaxAnalysisState {
     } yield Seq(keyword, colon, stringLiteral)
   }
 
-  //WebhookSpecificSettingBodyType ::= 'stringLiteral' | 'json'
+  //WebhookSpecificSettingBodyType ::= 'stringLiteral' | 'dictionary' | 'json'
   private def parseWebhookSpecificSettingBodyType: Parsed[ParseTree] = {
     or("WebhookSpecificSettingBodyType")("Expecting some valid Body type here")(
       for(stringLiteral <- parse[Token.Type.StringLiteral]) yield Seq(stringLiteral),
+      for(dictionary <- parse[Token.Type.Dictionary]) yield Seq(dictionary),
       for(json <- parse[Token.Type.Json]) yield Seq(json)
     )
   }
 
   /*WebhookSpecificSetting ::= INDENT(2) 'method' : stringLiteral |
+                               INDENT(2) 'headers' : dictionary |
                                INDENT(2) 'queryString' : dictionary |
                                INDENT(2) 'body': WebhookSpecificSettingBodyType*/
   private def parseWebhookSpecificSetting: Parsed[ParseTree] = {
@@ -101,6 +103,13 @@ class AdHocSyntaxAnalyzer extends LLSyntaxAnalyzer with LLSyntaxAnalysisState {
         colon <- parse[Token.Delimiter.`:`.type]
         dictionary <- parse[Token.Type.Dictionary]
       } yield Seq(queryString, colon, dictionary),
+
+      for {
+        _ <- parse[Token.INDENT](2)
+        headers <- parse[Token.Keyword.`headers`.type]
+        colon <- parse[Token.Delimiter.`:`.type]
+        dictionary <- parse[Token.Type.Dictionary]
+      } yield Seq(headers, colon, dictionary),
 
       for {
         _ <- parse[Token.INDENT](2)

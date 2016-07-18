@@ -119,7 +119,12 @@ class SyntaxAnalyzerSpec extends BaseSpec {
           LexerToken(Token.INDENT(5), 2550),
           LexerToken(Token.Keyword.`body`, 2600),
           LexerToken(Token.Delimiter.`:`, 2700),
-          LexerToken(Token.Type.Json("""~{"c":"19"}~""", JObject("c"-> JString("19"))), 2800)
+          LexerToken(Token.Type.Json("""~{"c":"19"}~""", JObject("c"-> JString("19"))), 2800),
+
+          LexerToken(Token.INDENT(5), 2850),
+          LexerToken(Token.Keyword.`headers`, 2900),
+          LexerToken(Token.Delimiter.`:`, 3000),
+          LexerToken(Token.Type.Dictionary("""["h1":"a"]""", Map("h1"->"a")), 3100)
         )
 
         //act
@@ -185,6 +190,11 @@ class SyntaxAnalyzerSpec extends BaseSpec {
                       nonTerminal("WebhookSpecificSettingBodyType").node(
                         terminal(LexerToken(Token.Type.Json("""~{"c":"19"}~""", JObject("c"-> JString("19"))), 2800)).leaf
                       )
+                    ),
+                    nonTerminal("WebhookSpecificSetting").node(
+                      terminal(LexerToken(Token.Keyword.`headers`, 2900)).leaf,
+                      terminal(LexerToken(Token.Delimiter.`:`, 3000)).leaf,
+                      terminal(LexerToken(Token.Type.Dictionary("""["h1":"a"]""", Map("h1"->"a")), 3100)).leaf
                     )
                   )
                 )
@@ -460,7 +470,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
       }
     }
 
-    "there is an error (an invalid type in the optional 'body' line inside '@webhook')" should {
+    "there is an error (an invalid token in the optional 'body' line inside '@webhook')" should {
       "fail" in {
         //arrange
         val tokens = Seq(
@@ -486,7 +496,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
           LexerToken(Token.INDENT(5), 62),
           LexerToken(Token.Keyword.`body`, 65),
           LexerToken(Token.Delimiter.`:`, 66),
-          LexerToken(Token.Type.Dictionary("[b:11]", Map("b" -> "11")), 69),
+          LexerToken(Token.Identifier("super"), 69),
 
           LexerToken(Token.INDENT(5), 72),
           LexerToken(Token.Keyword.`queryString`, 75),

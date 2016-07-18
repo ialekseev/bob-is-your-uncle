@@ -18,7 +18,7 @@ import scalaz._
       dictionary ::= [...]
       json ::= ~...~
       type ::= stringLiteral | dictionary | json
-      keyword ::= 'namespace' | 'description' | '@webhook' | 'method' | 'uri' | 'queryString' | 'body'
+      keyword ::= 'namespace' | 'description' | '@webhook' | 'method' | 'uri' | 'queryString' | 'headers' | 'body'
       delimiter ::= '.' | '#' | ':'
       INDENT ::= NL{WS}
 */
