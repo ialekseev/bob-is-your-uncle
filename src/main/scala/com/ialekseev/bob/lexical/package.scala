@@ -2,6 +2,8 @@ package com.ialekseev.bob
 
 import com.ialekseev.bob.Token._
 import scala.util.Try
+import scalaz._
+import Scalaz._
 
 package object lexical {
   def isLetter(char: Char): Boolean = char.isLetter && char <= 'z'
@@ -58,23 +60,36 @@ package object lexical {
 
   def keyword(str: String): Option[Token] = {
     str match {
-      case l@Token.Keyword.`namespace`.word => Some(Token.Keyword.`namespace`)
-      case l@Token.Keyword.`description`.word => Some(Token.Keyword.`description`)
-      case l@Token.Keyword.`@webhook`.word => Some(Token.Keyword.`@webhook`)
-      case l@Token.Keyword.`uri`.word => Some(Token.Keyword.`uri`)
-      case l@Token.Keyword.`method`.word => Some(Token.Keyword.`method`)
-      case l@Token.Keyword.`headers`.word => Some(Token.Keyword.`headers`)
-      case l@Token.Keyword.`queryString`.word => Some(Token.Keyword.`queryString`)
-      case l@Token.Keyword.`body`.word => Some(Token.Keyword.`body`)
+      case l@Token.Keyword.`namespace`.word => some(Token.Keyword.`namespace`)
+      case l@Token.Keyword.`description`.word => some(Token.Keyword.`description`)
+
+      case l@Token.Keyword.`@webhook`.word => some(Token.Keyword.`@webhook`)
+      case l@Token.Keyword.`uri`.word => some(Token.Keyword.`uri`)
+      case l@Token.Keyword.`method`.word => some(Token.Keyword.`method`)
+      case l@Token.Keyword.`headers`.word => some(Token.Keyword.`headers`)
+      case l@Token.Keyword.`queryString`.word => some(Token.Keyword.`queryString`)
+      case l@Token.Keyword.`body`.word => some(Token.Keyword.`body`)
+
+      case l@Token.Keyword.`@process`.word => some(Token.Keyword.`@process`)
+
       case _ => None
+    }
+  }
+
+  def isBlockWordStartChar(char: Char) = char == Block.wordStartChar
+  def isBlockWordEndChar(char: Char) = char == Block.wordEndChar
+  def block(beginWord: String, content: String): Option[Token] = {
+    beginWord match {
+      case Token.Block.`<scala>`.beginWord => some(Token.Block.`<scala>`(content))
+      case _ => none
     }
   }
 
   def delimiter(char: Char): Option[Token] = {
     char match {
-      case Token.Delimiter.`.`.char => Some(Token.Delimiter.`.`)
-      case Token.Delimiter.`#`.char => Some(Token.Delimiter.`#`)
-      case Token.Delimiter.`:`.char => Some(Token.Delimiter.`:`)
+      case Token.Delimiter.`.`.char => some(Token.Delimiter.`.`)
+      case Token.Delimiter.`#`.char => some(Token.Delimiter.`#`)
+      case Token.Delimiter.`:`.char => some(Token.Delimiter.`:`)
       case _ => None
     }
   }

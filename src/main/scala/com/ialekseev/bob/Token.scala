@@ -11,17 +11,17 @@ trait Token {
 object Token {
   case class Identifier(word: String) extends Token { val length = word.length }
 
-  object Variable {val char = '$'}
+  object Variable { val char = '$' }
   case class Variable(name: String) extends Token { val length = name.length + 1 }
 
   object Type {
     object StringLiteral { val char = '"' }
     case class StringLiteral(content: String) extends Token { val length = content.length + 2 }
 
-    object Dictionary {val startChar = '['; val endChar = ']'}
+    object Dictionary { val startChar = '['; val endChar = ']' }
     case class Dictionary(raw: String, dic: Map[String, String]) extends Token { val length = raw.length }
 
-    object Json {val char = '~'}
+    object Json { val char = '~' }
     case class Json(raw: String, json: JValue) extends Token { val length = raw.length}
   }
 
@@ -33,12 +33,30 @@ object Token {
 
     case object `namespace` extends KeywordToken{ val word = "namespace"}
     case object `description` extends KeywordToken { val word = "description" }
+
     case object `@webhook` extends KeywordToken { val word = "@webhook" }
     case object `uri` extends KeywordToken { val word = "uri"}
     case object `method` extends KeywordToken { val word = "method"}
     case object `headers` extends KeywordToken { val word = "headers" }
     case object `queryString` extends KeywordToken { val word = "queryString" }
     case object `body` extends KeywordToken { val word = "body" }
+
+    case object `@process` extends KeywordToken { val word = "@process" }
+  }
+
+  object Block {
+    val wordStartChar = '<'
+    val wordEndChar = '>'
+    val endWord = wordStartChar + "end" + wordEndChar
+
+    trait BlockToken extends Token {
+      val beginWord: String
+      val content: String
+      lazy val length = beginWord.length + content.length + endWord.length
+    }
+
+    object `<scala>` { val beginWord =  wordStartChar + "scala" + wordEndChar }
+    case class `<scala>`(content: String) extends BlockToken { val beginWord = `<scala>`.beginWord }
   }
 
   object Delimiter {

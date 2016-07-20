@@ -44,14 +44,13 @@ private[lexical] trait LexicalAnalysisState {
     })
   }
 
-  def takeAhead(till: Seq[(Char => Boolean)], last: (Int => Int)): LexerState[Option[String]]  = {
-    get.flatMap(s => {
+  def takeAhead(till: Seq[(Char => Boolean)], last: (Int => Int)): LexerState[Option[String]] = {
+    get[LexerStateInternal] >>= (s => {
       lookAhead(char => till.exists(_(char))).map(ahead => {
         ahead.map(sep => s.input.substring(s.position, last(sep._2)))
       })
     })
   }
-
 
   def lookAhead(what: Char => Boolean, position: Int): LexerState[Option[(Char, Int)]] = look(position, _ + 1, what)
   def lookBack(what: Char => Boolean, position: Int): LexerState[Option[(Char, Int)]] = look(position, _ - 1, what)
@@ -62,6 +61,21 @@ private[lexical] trait LexicalAnalysisState {
   def takeAheadExcludingLast(till: (Char => Boolean)*): LexerState[Option[String]] = takeAhead(till, identity)
   def takeAheadIncludingLast(till: (Char => Boolean)*): LexerState[Option[String]] = takeAhead(till, _ + 1)
 
+  def lookAheadStr(str: String): LexerState[Option[(Int, Int)]] = {
+    get[LexerStateInternal] >>= (s => {
+      val found = s.input.indexOf(str, s.position + 1)
+      if (found > 0) some(found, found + str.length - 1).point[LexerState] else none.point[LexerState]
+    })
+  }
+
+  def takeTillStr(from: Int, str: String): LexerState[Option[String]] = {
+    get[LexerStateInternal] >>= (s => {
+      (OptionT.optionT(lookAheadStr(Token.Block.endWord)) >>= (found => {
+        OptionT.optionT(some(s.input.substring(from, found._1)).point[LexerState])
+      })).run
+    })
+  }
+
   def hasCurrent: LexerState[Boolean] = currentChar.map(!isEOT(_))
   def currentPos: LexerState[Int] = get.map(_.position)
   def currentChar: LexerState[Char] = get.map(s => s.input(s.position))
@@ -71,19 +85,17 @@ private[lexical] trait LexicalAnalysisState {
   def currentIsStringLiteralStart: LexerState[Boolean] = currentChar.map(isStringLiteralChar(_))
   def currentIsDictionaryStart: LexerState[Boolean] = currentChar.map(isDictionaryStartChar(_))
   def currentIsJsonStart: LexerState[Boolean] = currentChar.map(isJsonStartChar(_))
+  def currentIsBlockStart: LexerState[Boolean] = currentChar.map(isBlockWordStartChar(_))
   def currentIsNL: LexerState[Boolean]  = currentChar.map(isNL(_))
   def currentIsWS: LexerState[Boolean]  = currentChar.map(isWS(_))
 
   def wordStep(currentIs: LexerState[Boolean], takeAhead: => LexerState[Option[String]], tokenExtractor: (String => Option[Token])): LexerState[Option[Tokenized]] = {
-    currentIs >>= (is => {
-      if (is) {
+    currentIs.ifM({
         for {
           ahead <- takeAhead
           token <- token(ahead >>= tokenExtractor)
         } yield token
-      }
-      else none[Tokenized].point[LexerState]
-    })
+    }, none[Tokenized].point[LexerState])
   }
 
   def token(token: Option[Token]): LexerState[Option[Tokenized]] = {

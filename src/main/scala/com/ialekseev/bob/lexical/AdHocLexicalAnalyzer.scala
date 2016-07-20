@@ -15,6 +15,19 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with LexicalAnalysisSta
   private def dictionaryStep: LexerState[Option[Tokenized]] = wordStep(currentIsDictionaryStart, takeAheadIncludingLast(isDictionaryEndChar(_), isNL(_)), dictionary(_))
   private def jsonStep: LexerState[Option[Tokenized]] = wordStep(currentIsJsonStart, takeAheadIncludingLast(isJsonEndChar(_), isNL(_)), json(_))
   private def keywordStep: LexerState[Option[Tokenized]] = wordStep(currentIsId, takeAheadExcludingLast(isSeparator(_), isStringLiteralChar(_)), keyword(_))
+
+  private def blockStep: LexerState[Option[Tokenized]] = {
+    currentIsBlockStart.ifM({
+      get[LexerStateInternal] >>= (state => {
+        (for {
+          beginWord <- OptionT.optionT(takeAheadIncludingLast(isBlockWordEndChar(_)))
+          content <- OptionT.optionT(takeTillStr(state.position + beginWord.length, Token.Block.endWord))
+          blockToken <- OptionT.optionT(block(beginWord, content).point[LexerState])
+        } yield Tokenized(blockToken, state.position, beginWord.length + content.length + Token.Block.endWord.length)).run
+      })
+    },none[Tokenized].point[LexerState])
+  }
+
   private def delimiterStep: LexerState[Option[Tokenized]] = currentChar >>= (c => token(delimiter(c)))
 
   private def indentStep: LexerState[Option[Tokenized]] = {
