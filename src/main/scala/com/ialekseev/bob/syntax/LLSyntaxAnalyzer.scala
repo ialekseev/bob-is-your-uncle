@@ -18,6 +18,11 @@ import Scalaz._
       headers: "..."
       queryString: "..."
       body: "..."
+
+    @process
+      <scala>
+        ...
+      <end>
 */
 
 /*[Syntax in EBNF form (LL Grammar)]
@@ -49,9 +54,15 @@ import Scalaz._
     Webhook ::= INDENT(1) '@webhook'
                           WebhookSettings
 
+    Block ::= INDENT(2) '<scala>...<end>'
+
+    Process ::= INDENT(1) '@process'
+                          Block
+
     Rule ::= Description
              Constants
              Webhook
+             Process
 
     TopStat ::= Namespace
                 Rule

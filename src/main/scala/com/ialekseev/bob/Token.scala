@@ -100,12 +100,16 @@ object TokenTag {
 
   implicit val namespaceKeywordTag = new TokenTag[Keyword.`namespace`.type] { def asString = Keyword.`namespace`.word}
   implicit val descriptionKeywordTag = new TokenTag[Keyword.`description`.type] { def asString = Keyword.`description`.word}
+
   implicit val webhookKeywordTag = new TokenTag[Keyword.`@webhook`.type] { def asString = Keyword.`@webhook`.word}
   implicit val uriKeywordTag = new TokenTag[Keyword.`uri`.type] { def asString = Keyword.`uri`.word}
   implicit val methodKeywordTag = new TokenTag[Keyword.`method`.type] { def asString = Keyword.`method`.word}
   implicit val headersKeywordTag = new TokenTag[Keyword.`headers`.type] { def asString = Keyword.`headers`.word}
   implicit val queryStringKeywordTag = new TokenTag[Keyword.`queryString`.type] { def asString = Keyword.`queryString`.word}
   implicit val bodyKeywordTag = new TokenTag[Keyword.`body`.type] { def asString = Keyword.`body`.word}
+
+  implicit val processKeywordTag = new TokenTag[Keyword.`@process`.type] { def asString = Keyword.`@process`.word}
+  implicit val scalaBlockTag = new TokenTag[Block.`<scala>`] { def asString = Block.`<scala>`.beginWord + "..." + Block.endWord}
 
   implicit val dotDelimiterTag = new TokenTag[Delimiter.`.`.type] { def asString = Delimiter.`.`.char.toString}
   implicit val poundDelimiterTag = new TokenTag[Delimiter.`#`.type] { def asString = Delimiter.`#`.char.toString}

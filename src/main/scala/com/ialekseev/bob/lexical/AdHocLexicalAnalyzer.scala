@@ -68,6 +68,7 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with LexicalAnalysisSta
       def go(state: LexerStateT[Unit]): LexerStateT[Unit] = {
         state >> {
           val steps = (for {
+            _ <- OptionT.optionT(addTokenAndMove(blockStep))
             _ <- OptionT.optionT(addTokenAndMove(keywordStep))
             _ <- OptionT.optionT(addTokenAndMove(variableStep))
             _ <- OptionT.optionT(addTokenAndMove(delimiterStep))

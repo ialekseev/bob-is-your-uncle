@@ -162,6 +162,26 @@ class LexicalAnalyzerSpec extends BaseSpec {
         }
       }
 
+      "the source string contains @process" should {
+        "succeed with tokens" in {
+          //act
+          val result = lexer.tokenize(
+            """ @process""" + "\n" +
+            """  <scala>""" + "\n" +
+            """ val a = 4 > 3""" + "\n" +
+            """<end>"""
+          )
+
+          //assert
+          result.toEither.right.get should be(List(
+            LexerToken(Token.INDENT(1), 0),
+            LexerToken(Token.Keyword.`@process`, 1),
+            LexerToken(Token.INDENT(2), 10),
+            LexerToken(Token.Block.`<scala>`("\n val a = 4 > 3\n"), 12)
+          ))
+        }
+      }
+
       "the source string has an error in 'namespace' line" should {
         "fail" in {
           //act
@@ -218,7 +238,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
               """queryString:["a": {"c":"3"}, "b":"2"]""")
 
           //assert
-          result.toEither.left.get.head.startOffset should be (34)
+          result.toEither.left.get.head.startOffset should be(34)
         }
       }
 
@@ -245,6 +265,20 @@ class LexicalAnalyzerSpec extends BaseSpec {
 
           //assert
           result.toEither.left.get.head.startOffset should be (28)
+        }
+      }
+
+      "the source string has an error in @process (no end of the block)" should {
+        "fail" in {
+          //act
+          val result = lexer.tokenize(
+            """ @process""" + "\n" +
+              """  <scala>""" + "\n" +
+              """ val a = 4 > 3"""
+          )
+
+          //assert
+          result.toEither.left.get.head.startOffset should be (12)
         }
       }
 
