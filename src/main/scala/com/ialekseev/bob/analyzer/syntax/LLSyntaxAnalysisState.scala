@@ -1,7 +1,7 @@
-package com.ialekseev.bob.syntax
+package com.ialekseev.bob.analyzer.syntax
 
-import com.ialekseev.bob.{Token, TokenTag, LexerToken, LexerError}
-import com.ialekseev.bob.syntax.LLSyntaxAnalyzer._
+import com.ialekseev.bob.analyzer.{TokenTag, LexerToken, Token, ParseError}
+import com.ialekseev.bob.analyzer.syntax.LLSyntaxAnalyzer._
 import scala.collection.generic.SeqFactory
 import scala.reflect.ClassTag
 import scala.reflect._

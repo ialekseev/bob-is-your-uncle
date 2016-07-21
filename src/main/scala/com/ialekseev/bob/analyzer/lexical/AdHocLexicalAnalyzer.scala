@@ -1,6 +1,7 @@
-package com.ialekseev.bob.lexical
+package com.ialekseev.bob.analyzer.lexical
 
-import com.ialekseev.bob._
+import com.ialekseev.bob.analyzer._
+import com.ialekseev.bob.analyzer.{LexerError, LexerToken, Token}
 import scala.annotation.tailrec
 import scalaz.Free.Trampoline
 import scalaz._
@@ -61,7 +62,7 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with LexicalAnalysisSta
     }) >| someUnit
   }
 
-  def tokenize(input: String): \/[Seq[LexerError], Seq[LexerToken]] = {
+  def tokenize(input: String): Seq[LexerError] \/ Seq[LexerToken] = {
     if (input.nonEmpty) {
       type LexerStateT[S] = StateT[Trampoline, LexerStateInternal, S]
 
@@ -92,7 +93,7 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with LexicalAnalysisSta
       }
 
       val extractResultT = {
-        val extractResult: LexerState[\/[Seq[LexerError], Seq[LexerToken]]] = extractErrors >>= (errors => {
+        val extractResult: LexerState[Seq[LexerError] \/ Seq[LexerToken]] = extractErrors >>= (errors => {
           if (errors.isEmpty) extractResultingTokens.map(_.right)
           else errors.left.point[LexerState]
         })

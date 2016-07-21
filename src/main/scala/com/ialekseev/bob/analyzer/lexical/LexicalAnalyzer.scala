@@ -1,6 +1,6 @@
-package com.ialekseev.bob.lexical
+package com.ialekseev.bob.analyzer.lexical
 
-import com.ialekseev.bob.{LexerError, LexerToken}
+import com.ialekseev.bob.analyzer.{LexerError, LexerToken}
 import scalaz._
 
 /*[Lexical Syntax in EBNF form]
@@ -25,5 +25,5 @@ import scalaz._
 */
 
 trait LexicalAnalyzer {
-  def tokenize(input: String): \/[Seq[LexerError], Seq[LexerToken]]
+  def tokenize(input: String): Seq[LexerError] \/ Seq[LexerToken]
 }

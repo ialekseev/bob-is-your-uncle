@@ -1,8 +1,8 @@
-package com.ialekseev
+package com.ialekseev.bob
 
 import scalaz.Scalaz._
 
-package object bob {
+package object analyzer {
   val SOT = '\u0002' //Start of Text character
   val EOT = '\u0003' //End of Text character
 

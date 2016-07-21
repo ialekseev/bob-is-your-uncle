@@ -1,6 +1,6 @@
-package com.ialekseev.bob
+package com.ialekseev.bob.analyzer
 
-import com.ialekseev.bob.Token._
+import Token._
 import scala.util.Try
 import scalaz._
 import Scalaz._

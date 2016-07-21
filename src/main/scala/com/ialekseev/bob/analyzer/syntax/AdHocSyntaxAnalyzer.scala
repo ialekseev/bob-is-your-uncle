@@ -1,7 +1,7 @@
-package com.ialekseev.bob.syntax
+package com.ialekseev.bob.analyzer.syntax
 
-import com.ialekseev.bob.{Token, LexerToken}
-import com.ialekseev.bob.syntax.LLSyntaxAnalyzer._
+import com.ialekseev.bob.analyzer.{LexerToken, Token, ParseError}
+import com.ialekseev.bob.analyzer.syntax.LLSyntaxAnalyzer._
 import scalaz._
 import Scalaz._
 
@@ -184,7 +184,7 @@ class AdHocSyntaxAnalyzer extends LLSyntaxAnalyzer with LLSyntaxAnalysisState {
     } yield Seq(namespace, rule)
   }
 
-  def parse(tokens: Seq[LexerToken]): \/[Seq[ParseError], ParseTree] = {
+  def parse(tokens: Seq[LexerToken]): Seq[ParseError] \/ ParseTree = {
     require(tokens.nonEmpty)
 
     parseTopStat.run(ParserStateInternal(tokens, 0, Map.empty))._2

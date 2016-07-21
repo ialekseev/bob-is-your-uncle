@@ -1,7 +1,7 @@
-package com.ialekseev.bob.syntax
+package com.ialekseev.bob.analyzer.syntax
 
-import com.ialekseev.bob.LexerToken
-import com.ialekseev.bob.syntax.LLSyntaxAnalyzer.{ParseError, ParseTree}
+import com.ialekseev.bob.analyzer.{ParseError, LexerToken}
+import com.ialekseev.bob.analyzer.syntax.LLSyntaxAnalyzer.{ParseTree}
 import scalaz._
 import Scalaz._
 
@@ -70,13 +70,11 @@ import Scalaz._
 
 
 trait LLSyntaxAnalyzer {
-  def parse(tokens: Seq[LexerToken]): \/[Seq[ParseError], ParseTree]
+  def parse(tokens: Seq[LexerToken]): Seq[ParseError] \/ ParseTree
 }
 
 object LLSyntaxAnalyzer {
   type ParseTree = Tree[ParseTreeNode]
-
-  case class ParseError(offset: Int, tokenIndex: Int, message: String)
 
   sealed trait ParseTreeNode
   case class Terminal(token: LexerToken) extends ParseTreeNode

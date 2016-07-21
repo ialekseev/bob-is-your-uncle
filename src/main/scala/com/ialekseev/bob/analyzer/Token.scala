@@ -1,7 +1,6 @@
-package com.ialekseev.bob
+package com.ialekseev.bob.analyzer
 
 import org.json4s.JsonAST.JValue
-
 import scalaz.Show
 
 trait Token {
@@ -80,13 +79,16 @@ object Token {
     case Token.Variable(name) => Token.Variable.char + name
     case Token.Type.StringLiteral(text) => Token.Type.StringLiteral.char + text + Token.Type.StringLiteral.char
     case keyword: Token.Keyword.KeywordToken => keyword.word
+    case block: Token.Block.BlockToken => block.beginWord + "..." + Token.Block.endWord
     case delimiter: Token.Delimiter.DelimiterToken => delimiter.char.toString
     case rest => rest.toString
   }
 }
 
 case class LexerToken(token: Token, offset: Int)
-case class LexerError(startOffset: Int, endOffset: Int)
+sealed trait AnalysisError
+case class LexerError(startOffset: Int, endOffset: Int) extends AnalysisError
+case class ParseError(offset: Int, tokenIndex: Int, message: String) extends AnalysisError
 
 trait TokenTag[T] { def asString: String }
 object TokenTag {

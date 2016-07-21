@@ -1,7 +1,8 @@
-package com.ialekseev.bob.syntax
+package com.ialekseev.bob.analyzer.syntax
 
-import com.ialekseev.bob.syntax.LLSyntaxAnalyzer._
-import com.ialekseev.bob.{LexerToken, Token, BaseSpec}
+import com.ialekseev.bob.analyzer.{LexerToken, Token, ParseError}
+import com.ialekseev.bob.analyzer.syntax.LLSyntaxAnalyzer._
+import com.ialekseev.bob.BaseSpec
 import org.json4s.JsonAST.{JString, JObject}
 import scalaz._
 import Scalaz._
