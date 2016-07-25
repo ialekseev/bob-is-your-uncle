@@ -1,6 +1,6 @@
 package com.ialekseev.bob.analyzer.lexical
 
-import com.ialekseev.bob.analyzer.{LexerError, LexerToken, Token}
+import com.ialekseev.bob.analyzer.{LexicalError, LexerToken, Token}
 import com.ialekseev.bob.BaseSpec
 import org.json4s.JsonDSL._
 
@@ -191,8 +191,8 @@ class LexicalAnalyzerSpec extends BaseSpec {
             """  description : "super"""")
 
           //assert
-          result.toEither.left.get should be(List(
-            LexerError(10, 15)
+          result.toEither.left.get.errors should be(List(
+            LexicalError(10, 15)
           ))
         }
       }
@@ -205,10 +205,10 @@ class LexicalAnalyzerSpec extends BaseSpec {
               """  description : "super"""")
 
           //assert
-          result.toEither.left.get should be(List(
-            LexerError(0, 10),
-            LexerError(12, 12),
-            LexerError(18, 24)
+          result.toEither.left.get.errors should be(List(
+            LexicalError(0, 10),
+            LexicalError(12, 12),
+            LexicalError(18, 24)
           ))
         }
       }
@@ -222,10 +222,10 @@ class LexicalAnalyzerSpec extends BaseSpec {
               "\t" + """ $createMeUri: "http://example.com/1"""")
 
           //assert
-          result.toEither.left.get should be(List(
-            LexerError(1, 12),
-            LexerError(22, 22),
-            LexerError(24, 31)
+          result.toEither.left.get.errors should be(List(
+            LexicalError(1, 12),
+            LexicalError(22, 22),
+            LexicalError(24, 31)
           ))
         }
       }
@@ -239,7 +239,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
               """queryString:["a": {"c":"3"}, "b":"2"]""")
 
           //assert
-          result.toEither.left.get.head.startOffset should be(34)
+          result.toEither.left.get.errors.head.startOffset should be(34)
         }
       }
 
@@ -252,7 +252,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
               """header:["a": {"c":"3"}, "b":"2"]""")
 
           //assert
-          result.toEither.left.get.head.startOffset should be (29)
+          result.toEither.left.get.errors.head.startOffset should be (29)
         }
       }
 
@@ -265,7 +265,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
               """body: ~{"a": ["c":"3"}, "b":"2"}~""")
 
           //assert
-          result.toEither.left.get.head.startOffset should be (28)
+          result.toEither.left.get.errors.head.startOffset should be (28)
         }
       }
 
@@ -279,7 +279,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
           )
 
           //assert
-          result.toEither.left.get.head.startOffset should be (12)
+          result.toEither.left.get.errors.head.startOffset should be (12)
         }
       }
 

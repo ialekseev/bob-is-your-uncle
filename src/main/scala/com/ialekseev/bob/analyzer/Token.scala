@@ -86,9 +86,15 @@ object Token {
 }
 
 case class LexerToken(token: Token, offset: Int)
-sealed trait AnalysisError
-case class LexerError(startOffset: Int, endOffset: Int) extends AnalysisError
-case class ParseError(offset: Int, tokenIndex: Int, message: String) extends AnalysisError
+
+case class LexicalError(startOffset: Int, endOffset: Int)
+case class SyntaxError(offset: Int, tokenIndex: Int, message: String)
+case class SemanticError(offset: Int, message: String)
+sealed trait AnalysisFailed
+case class LexicalAnalysisFailed(errors: Seq[LexicalError]) extends AnalysisFailed
+case class SyntaxAnalysisFailed(errors: Seq[SyntaxError]) extends AnalysisFailed
+case class SemanticAnalysisFailed(errors: Seq[SemanticError]) extends AnalysisFailed
+
 
 trait TokenTag[T] { def asString: String }
 object TokenTag {

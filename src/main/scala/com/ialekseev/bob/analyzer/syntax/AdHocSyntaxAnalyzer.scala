@@ -1,6 +1,6 @@
 package com.ialekseev.bob.analyzer.syntax
 
-import com.ialekseev.bob.analyzer.{LexerToken, Token, ParseError}
+import com.ialekseev.bob.analyzer.{LexerToken, Token, SyntaxError, SyntaxAnalysisFailed}
 import com.ialekseev.bob.analyzer.syntax.LLSyntaxAnalyzer._
 import scalaz._
 import Scalaz._
@@ -184,9 +184,9 @@ class AdHocSyntaxAnalyzer extends LLSyntaxAnalyzer with LLSyntaxAnalysisState {
     } yield Seq(namespace, rule)
   }
 
-  def parse(tokens: Seq[LexerToken]): Seq[ParseError] \/ ParseTree = {
+  def parse(tokens: Seq[LexerToken]): SyntaxAnalysisFailed \/ ParseTree = {
     require(tokens.nonEmpty)
 
-    parseTopStat.run(ParserStateInternal(tokens, 0, Map.empty))._2
+    parseTopStat.run(ParserStateInternal(tokens, 0, Map.empty))._2.leftMap(SyntaxAnalysisFailed(_))
   }
 }

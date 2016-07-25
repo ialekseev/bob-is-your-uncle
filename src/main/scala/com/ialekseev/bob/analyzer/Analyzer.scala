@@ -1,16 +1,41 @@
 package com.ialekseev.bob.analyzer
 
+import com.ialekseev.bob.analyzer.lexical.{AdHocLexicalAnalyzer, LexicalAnalyzer}
+import com.ialekseev.bob.analyzer.syntax.LLSyntaxAnalyzer.ParseTree
+import com.ialekseev.bob.analyzer.syntax.{AdHocSyntaxAnalyzer, LLSyntaxAnalyzer}
 import org.json4s.JsonAST.JValue
 import scalaz._
+import Scalaz._
 
 trait Analyzer {
-  def analyze(source: String): AnalysisError \/ AnalysisResult
+  val lexicalAnalyzer: LexicalAnalyzer
+  val syntaxAnalyzer: LLSyntaxAnalyzer
+
+  protected def parse(source: String): AnalysisFailed \/ ParseTree = {
+    lexicalAnalyzer.tokenize(source) match {
+      case \/-(tokens) => syntaxAnalyzer.parse(tokens)
+      case lexFailed@ -\/(_) => lexFailed
+    }
+  }
+
+  protected def mapTreeToAnalysisResult(parseTree: ParseTree): AnalysisResult = {
+    ???
+  }
+
+  def analyze(source: String): AnalysisFailed \/ AnalysisResult = {
+    require(!source.isEmpty)
+
+    parse(source) match {
+      case \/-(parseTree) => mapTreeToAnalysisResult(parseTree).right
+      case syntaxFailed@ -\/(_) => syntaxFailed
+    }
+  }
 }
 
-class AnalyzerImpl extends Analyzer {
-  def analyze(source: String): AnalysisError \/ AnalysisResult = {
-    //todo
-    ???
+object Analyzer {
+  def apply() = new Analyzer {
+    val lexicalAnalyzer = new AdHocLexicalAnalyzer
+    val syntaxAnalyzer = new AdHocSyntaxAnalyzer
   }
 }
 

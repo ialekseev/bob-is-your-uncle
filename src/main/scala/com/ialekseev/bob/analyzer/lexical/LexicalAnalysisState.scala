@@ -1,14 +1,14 @@
 package com.ialekseev.bob.analyzer.lexical
 
 import com.ialekseev.bob.analyzer._
-import com.ialekseev.bob.analyzer.{LexerError, LexerToken, Token}
+import com.ialekseev.bob.analyzer.{LexicalError, LexerToken, Token}
 import scalaz._
 import Scalaz._
 
 private[lexical] trait LexicalAnalysisState {
   type LexerState[A] =  State[LexerStateInternal, A]
 
-  case class LexerStateInternal(private val raw: String, position: Int, tokens: Seq[LexerToken], errors: Seq[LexerError]) {
+  case class LexerStateInternal(private val raw: String, position: Int, tokens: Seq[LexerToken], errors: Seq[LexicalError]) {
     require(raw.nonEmpty)
     require(position >= 0)
     val input = SOT + raw + EOT
@@ -23,7 +23,7 @@ private[lexical] trait LexicalAnalysisState {
   def jump(newPosition: Int): LexerState[Unit] = modify(s => s.copy(position = newPosition))
 
   def addToken(token: Token, offset: Int): LexerState[Unit] = modify(s => s.copy(tokens =  s.tokens :+ LexerToken(token, offset)))
-  def addError(startOffset: Int, endOffset: Int): LexerState[Unit] = modify(s => s.copy(errors = s.errors :+ LexerError(startOffset, endOffset)))
+  def addError(startOffset: Int, endOffset: Int): LexerState[Unit] = modify(s => s.copy(errors = s.errors :+ LexicalError(startOffset, endOffset)))
 
   def look(position: Int, mover: Int => Int, what: Char => Boolean): LexerState[Option[(Char, Int)]] = {
     import scala.util.control.Breaks._
@@ -112,6 +112,6 @@ private[lexical] trait LexicalAnalysisState {
   }
 
   def extractResultingTokens: LexerState[Seq[LexerToken]] = get.map(_.tokens.map(c => c.copy(offset = c.offset - 1)))
-  def extractErrors: LexerState[Seq[LexerError]] = get.map(_.errors.map(c => c.copy(startOffset = c.startOffset - 1, endOffset = c.endOffset - 1)))
+  def extractErrors: LexerState[Seq[LexicalError]] = get.map(_.errors.map(c => c.copy(startOffset = c.startOffset - 1, endOffset = c.endOffset - 1)))
 }
 
