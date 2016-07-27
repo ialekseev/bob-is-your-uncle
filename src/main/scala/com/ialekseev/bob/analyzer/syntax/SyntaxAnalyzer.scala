@@ -1,7 +1,7 @@
 package com.ialekseev.bob.analyzer.syntax
 
 import com.ialekseev.bob.analyzer.{SyntaxAnalysisFailed, LexerToken}
-import com.ialekseev.bob.analyzer.syntax.LLSyntaxAnalyzer.{ParseTree}
+import com.ialekseev.bob.analyzer.syntax.SyntaxAnalyzer.{ParseTree}
 import scalaz._
 import Scalaz._
 
@@ -69,11 +69,11 @@ import Scalaz._
 */
 
 
-trait LLSyntaxAnalyzer {
+trait SyntaxAnalyzer {
   def parse(tokens: Seq[LexerToken]): SyntaxAnalysisFailed \/ ParseTree
 }
 
-object LLSyntaxAnalyzer {
+object SyntaxAnalyzer {
   type ParseTree = Tree[ParseTreeNode]
 
   sealed trait ParseTreeNode

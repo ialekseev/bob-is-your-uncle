@@ -1,14 +1,14 @@
 package com.ialekseev.bob.analyzer.syntax
 
 import com.ialekseev.bob.analyzer.{TokenTag, LexerToken, Token, SyntaxError}
-import com.ialekseev.bob.analyzer.syntax.LLSyntaxAnalyzer._
+import com.ialekseev.bob.analyzer.syntax.SyntaxAnalyzer._
 import scala.collection.generic.SeqFactory
 import scala.reflect.ClassTag
 import scala.reflect._
 import scalaz.Scalaz._
 import scalaz._
 
-private[syntax] trait LLSyntaxAnalysisState {
+private[syntax] trait SyntaxAnalysisState {
   type Parsed[R] = EitherT[ParserState, Seq[SyntaxError], R]
   type ParserState[S] = State[ParserStateInternal, S]
   type IndentLevel = Int

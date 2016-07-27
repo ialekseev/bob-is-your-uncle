@@ -1,12 +1,12 @@
 package com.ialekseev.bob.analyzer.syntax
 
 import com.ialekseev.bob.analyzer.{LexerToken, Token, SyntaxError, SyntaxAnalysisFailed}
-import com.ialekseev.bob.analyzer.syntax.LLSyntaxAnalyzer._
+import com.ialekseev.bob.analyzer.syntax.SyntaxAnalyzer._
 import scalaz._
 import Scalaz._
 
 //Top-Down Predictive Parsing for LL grammar (Recursive Descent technique)
-class AdHocSyntaxAnalyzer extends LLSyntaxAnalyzer with LLSyntaxAnalysisState {
+class AdHocSyntaxAnalyzer extends SyntaxAnalyzer with SyntaxAnalysisState {
 
   //NamespacePathPart ::= '.' identifier
   private def parseNamespacePathPart: Parsed[ParseTree] = rule("NamespacePathPart") {
