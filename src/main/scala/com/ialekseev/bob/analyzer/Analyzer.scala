@@ -3,7 +3,7 @@ package com.ialekseev.bob.analyzer
 import com.ialekseev.bob.analyzer.lexical.{AdHocLexicalAnalyzer, LexicalAnalyzer}
 import com.ialekseev.bob.analyzer.syntax.LLSyntaxAnalyzer._
 import com.ialekseev.bob.analyzer.syntax.{AdHocSyntaxAnalyzer, LLSyntaxAnalyzer}
-import org.json4s.JsonAST.JValue
+import org.json4s.JsonAST.{JString, JObject, JValue}
 import scalaz._
 import Scalaz._
 
@@ -52,14 +52,29 @@ trait Analyzer {
     }
 
     def extractWebhook: Webhook = {
-      ???
+      val settings = parseTree.loc.find(_.getLabel == nonTerminal("WebhookSettings"))
+      val uri = (settings >>= (_.find(_.getLabel == nonTerminal("WebhookUriSetting"))) >>= (_.lastChild)).map(_.getLabel).collect(stringLiteral).getOrElse(sys.error("Missing webhook uri"))
+      val specificSettings = ((settings >>= (_.find(_.getLabel == nonTerminal("WebhookSpecificSettings")))).map(_.tree.subForest) >>=
+                              (_.map(s => (s.loc.firstChild |@| s.loc.lastChild)((_, _))).sequence)).getOrElse(Stream.empty)
+
+      val method = specificSettings.map(s => (s._1.getLabel, s._2.getLabel)).collect { case (Terminal(LexerToken(Token.Keyword.`method`, _)), Terminal(LexerToken(Token.Type.StringLiteral(m), _))) => m }.headOption
+      val headers = specificSettings.map(s => (s._1.getLabel, s._2.getLabel)).collect { case (Terminal(LexerToken(Token.Keyword.`headers`, _)), Terminal(LexerToken(Token.Type.Dictionary(_, h), _))) => h }.headOption.getOrElse(Map.empty)
+      val queryString = specificSettings.map(s => (s._1.getLabel, s._2.getLabel)).collect { case (Terminal(LexerToken(Token.Keyword.`queryString`, _)), Terminal(LexerToken(Token.Type.Dictionary(_, q), _))) => q }.headOption.getOrElse(Map.empty)
+      val body: Option[Body] = ((specificSettings.map(s => (s._1.getLabel, s._2)).collect { case (Terminal(LexerToken(Token.Keyword.`body`, _)), b) => b }.headOption) >>=
+        (_.find(_.getLabel == nonTerminal("WebhookSpecificSettingBodyType"))) >>= (_.firstChild.map(_.getLabel))).collect {
+          case Terminal(LexerToken(Token.Type.StringLiteral(s), _)) => StringLiteralBody(s)
+          case Terminal(LexerToken(Token.Type.Dictionary(_, d), _)) => DictionaryBody(d)
+          case Terminal(LexerToken(Token.Type.Json(_, j), _)) => JsonBody(j)
+      }
+      Webhook(uri, method, headers, queryString, body)
     }
 
     val namespace = extractNamespace
     val description = extractDescription
+    val webhook = extractWebhook
 
     //todo: complete
-    AnalysisResult(namespace, description, null, null, null)
+    AnalysisResult(namespace, description, null, webhook, null)
   }
 }
 
