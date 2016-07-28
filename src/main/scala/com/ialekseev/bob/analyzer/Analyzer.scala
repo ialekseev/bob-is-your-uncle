@@ -38,23 +38,31 @@ trait Analyzer {
       val namespace = parseTree.loc.find(_.getLabel == nonTerminal("Namespace"))
       val namespacePath = namespace >>= (_.find(_.getLabel == nonTerminal("NamespacePath")))
 
-      val namespacePathMain = (namespacePath >>= (_.firstChild)).map(_.getLabel).collect(id).getOrElse(sys.error("Missing namespace main part"))
+      val namespacePathMain = (namespacePath >>= (_.firstChild)).map(_.getLabel).map(id).get
       val namespacePathOptional = (namespacePath >>= (_.find(_.getLabel == nonTerminal("NamespacePathParts")).map(parts => {
         parts.tree.flatten.collect(id)
       }))).getOrElse(Stream.empty)
 
       val path = namespacePathOptional.fold(namespacePathMain)(_ + "." + _)
-      val name = (namespace >>= (_.lastChild)).map(_.getLabel).collect(id).getOrElse(sys.error("Missing namespace name"))
+      val name = (namespace >>= (_.lastChild)).map(_.getLabel).map(id).get
       Namespace(path, name).successNel
     }
 
     def extractDescription: ValidationNel[SemanticError, String] = {
-      (parseTree.loc.find(_.getLabel == nonTerminal("Description")) >>= (_.lastChild)).map(_.getLabel).collect(stringLiteral).getOrElse(sys.error("Missing description")).successNel
+      (parseTree.loc.find(_.getLabel == nonTerminal("Description")) >>= (_.lastChild)).map(_.getLabel).map(stringLiteral).get.successNel
+    }
+
+    def extractConstants:  ValidationNel[SemanticError, Map[String, String]] = {
+      parseTree.loc.find(_.getLabel == nonTerminal("Constants")).map(_.tree.subForest).getOrElse(Stream.empty).
+        map(c => (c.loc.firstChild.map(_.getLabel).get, c.loc.lastChild.map(_.getLabel).get)).map {
+        case (Terminal(LexerToken(Token.Variable(name), _)), Terminal(LexerToken(Token.Type.StringLiteral(value), _))) => (name, value)
+        case _ => sys.error("Invalid constant")
+      }.toMap.successNel
     }
 
     def extractWebhook: ValidationNel[SemanticError, Webhook] = {
       val settings = parseTree.loc.find(_.getLabel == nonTerminal("WebhookSettings"))
-      val uri = (settings >>= (_.find(_.getLabel == nonTerminal("WebhookUriSetting"))) >>= (_.lastChild)).map(_.getLabel).collect(stringLiteral).getOrElse(sys.error("Missing webhook uri"))
+      val uri = (settings >>= (_.find(_.getLabel == nonTerminal("WebhookUriSetting"))) >>= (_.lastChild)).map(_.getLabel).map(stringLiteral).get
       val specificSettings = ((settings >>= (_.find(_.getLabel == nonTerminal("WebhookSpecificSettings")))).map(_.tree.subForest) >>=
                               (_.map(s => (s.loc.firstChild |@| s.loc.lastChild)((_, _))).sequence)).getOrElse(Stream.empty)
 
@@ -81,10 +89,10 @@ trait Analyzer {
     def extractCode: ValidationNel[SemanticError, Code] = {
       (parseTree.loc.find(_.getLabel == nonTerminal("Process")) >>= (_.find(_.getLabel == nonTerminal("Block"))) >>= (_.firstChild.map(_.getLabel))).collect {
         case Terminal(LexerToken(Token.Block.`<scala>`(s), _)) => ScalaCode(s)
-      }.getOrElse(sys.error("Missing code block")).successNel
+      }.get.successNel
     }
 
-    (extractNamespace |@| extractDescription |@| extractWebhook |@| extractCode)(AnalysisResult(_,_,_,_)).disjunction.leftMap(e => SemanticAnalysisFailed(e.toVector))
+    (extractNamespace |@| extractDescription |@| extractConstants |@| extractWebhook |@| extractCode)(AnalysisResult(_,_,_,_,_)).disjunction.leftMap(e => SemanticAnalysisFailed(e.toVector))
   }
 }
 
@@ -95,8 +103,7 @@ object Analyzer {
   }
 }
 
-case class AnalysisResult(namespace: Namespace, description: String, webhook: Webhook, code: Code)
-
+case class AnalysisResult(namespace: Namespace, description: String, constants: Map[String, String], webhook: Webhook, code: Code)
 case class Namespace(path: String, name: String)
 case class Webhook(uri: String, method: HttpMethod, headers: Map[String, String], queryString: Map[String, String], body: Option[Body])
 
