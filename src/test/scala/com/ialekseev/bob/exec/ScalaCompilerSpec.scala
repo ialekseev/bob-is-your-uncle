@@ -8,9 +8,11 @@ class ScalaCompilerSpec extends BaseSpec {
     "lexer returns errors" should {
       "fail with lexical error" in {
         //act
-        ScalaCompiler.compile("vak a = 1")
+        val result = ScalaCompiler.compile("vak a = 1")
 
         //assert
+        //todo: complete
+        result should be (111)
       }
     }
   }

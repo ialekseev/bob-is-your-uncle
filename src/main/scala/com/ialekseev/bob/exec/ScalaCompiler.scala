@@ -1,22 +1,23 @@
 package com.ialekseev.bob.exec
 
+import com.ialekseev.bob.{ExecutionAnalysisFailed, ExecutionError}
+import scala.collection.mutable.ListBuffer
+import scala.reflect.internal.util.Position
+import scala.tools.nsc.reporters.AbstractReporter
 import scala.util.Try
 import scalaz._
 import Scalaz._
 
 object ScalaCompiler {
-  val compiler = new Compiler(None)
+  val compiler = new Compiler(None, ListBuffer.empty)
 
-  def compile(code: String): String \/ String = {
+  def compile(code: String): ExecutionAnalysisFailed \/ Class[_] = {
     require(!code.isEmpty)
-    //todo
-    val a = Try(compiler.compile(code))
-    val b = compiler.global.reporter
-    (a.toString + b.toString).right
+    Try(compiler.compile(code)).map(_.right).getOrElse(ExecutionAnalysisFailed(compiler.reportedErrors).left)
   }
 }
 
-//https://eknet.org/main/dev/runtimecompilescala.html
+//https://eknet.org/main/dev/runtimecompilescala.html  + custom reporter
 import scala.tools.nsc.{Global, Settings}
 import scala.reflect.internal.util.{AbstractFileClassLoader, BatchSourceFile}
 import tools.nsc.io.{VirtualDirectory, AbstractFile}
@@ -25,7 +26,7 @@ import java.math.BigInteger
 import collection.mutable
 import java.io.File
 
-private[exec] class Compiler(targetDir: Option[File]) {
+private[exec] class Compiler(targetDir: Option[File], val reportedErrors: ListBuffer[ExecutionError]) {
 
   val target = targetDir match {
     case Some(dir) => AbstractFile.getDirectory(dir)
@@ -34,13 +35,26 @@ private[exec] class Compiler(targetDir: Option[File]) {
 
   val classCache = mutable.Map[String, Class[_]]()
 
-  private val settings = new Settings()
-  settings.deprecation.value = true // enable detailed deprecation warnings
-  settings.unchecked.value = true // enable detailed unchecked warnings
-  settings.outputDirs.setSingleOutput(target)
-  settings.usejavacp.value = true
+  private val s = new Settings()
+  s.deprecation.value = true // enable detailed deprecation warnings
+  s.unchecked.value = true // enable detailed unchecked warnings
+  s.outputDirs.setSingleOutput(target)
+  s.usejavacp.value = true
 
-  val global = new Global(settings)
+  private val reporter = new AbstractReporter {
+    val settings: Settings = s
+    override def reset() {
+      super.reset
+      reportedErrors.clear()
+    }
+
+    def displayPrompt(): Unit = ???
+    def display(pos: Position, msg: String, severity: Severity): Unit = {
+      reportedErrors += ExecutionError(pos.start, pos.point, pos.end, msg)
+    }
+  }
+
+  private val global = new Global(s, reporter)
   private lazy val run = new global.Run
 
   val classLoader = new AbstractFileClassLoader(target, this.getClass.getClassLoader)

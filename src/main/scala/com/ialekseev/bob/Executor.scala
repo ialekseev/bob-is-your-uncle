@@ -4,6 +4,7 @@ import com.ialekseev.bob.analyzer.Analyzer
 import com.ialekseev.bob.analyzer.Analyzer.{AnalysisResult, ScalaCode}
 import com.ialekseev.bob.exec.ScalaCompiler
 import scalaz._
+import Scalaz._
 
 trait Executor {
   val analyzer: Analyzer
@@ -21,7 +22,7 @@ object Executor {
         case \/-(result@ AnalysisResult(_, _, constants, _, ScalaCode(code))) => {
           val scalaConstants = constants.map(c => s"""val ${c._1} = "${c._2}""").mkString(";") + "\n"
           val scalaCode = scalaConstants + code
-          ScalaCompiler.compile(scalaCode).bimap(ExecutionAnalysisFailed(_), _ => result)
+          ScalaCompiler.compile(scalaCode) >| result
         }
         case failed@ -\/(_) => failed
       }
