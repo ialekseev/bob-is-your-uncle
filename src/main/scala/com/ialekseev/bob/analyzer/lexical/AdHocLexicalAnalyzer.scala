@@ -1,7 +1,8 @@
 package com.ialekseev.bob.analyzer.lexical
 
+import com.ialekseev.bob.{LexicalError, LexicalAnalysisFailed}
 import com.ialekseev.bob.analyzer._
-import com.ialekseev.bob.analyzer.{LexicalError, LexerToken, Token, LexicalAnalysisFailed}
+import com.ialekseev.bob.analyzer.{LexerToken, Token}
 import scala.annotation.tailrec
 import scalaz.Free.Trampoline
 import scalaz._

@@ -1,7 +1,8 @@
 package com.ialekseev.bob.analyzer.lexical
 
+import com.ialekseev.bob.LexicalError
 import com.ialekseev.bob.analyzer._
-import com.ialekseev.bob.analyzer.{LexicalError, LexerToken, Token}
+import com.ialekseev.bob.analyzer.{LexerToken, Token}
 import scalaz._
 import Scalaz._
 

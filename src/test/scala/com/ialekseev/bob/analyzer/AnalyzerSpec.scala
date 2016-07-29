@@ -1,9 +1,11 @@
 package com.ialekseev.bob.analyzer
 
+import com.ialekseev.bob._
 import com.ialekseev.bob.BaseSpec
 import com.ialekseev.bob.analyzer.lexical.{LexicalAnalyzer}
 import com.ialekseev.bob.analyzer.syntax.SyntaxAnalyzer._
 import com.ialekseev.bob.analyzer.syntax.{SyntaxAnalyzer}
+import com.ialekseev.bob.analyzer.Analyzer._
 import org.json4s.JsonAST.{JString, JObject}
 import org.mockito.Mockito
 import org.mockito.Mockito._

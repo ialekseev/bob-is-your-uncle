@@ -1,6 +1,7 @@
 package com.ialekseev.bob.analyzer.syntax
 
-import com.ialekseev.bob.analyzer.{SyntaxAnalysisFailed, LexerToken}
+import com.ialekseev.bob.SyntaxAnalysisFailed
+import com.ialekseev.bob.analyzer.LexerToken
 import com.ialekseev.bob.analyzer.syntax.SyntaxAnalyzer.{ParseTree}
 import scalaz._
 import Scalaz._

@@ -1,6 +1,7 @@
 package com.ialekseev.bob.analyzer.syntax
 
-import com.ialekseev.bob.analyzer.{LexerToken, Token, SyntaxError}
+import com.ialekseev.bob.SyntaxError
+import com.ialekseev.bob.analyzer.{LexerToken, Token}
 import com.ialekseev.bob.analyzer.syntax.SyntaxAnalyzer._
 import com.ialekseev.bob.BaseSpec
 import org.json4s.JsonAST.{JString, JObject}
