@@ -6,7 +6,7 @@ import com.ialekseev.bob.analyzer.{LexerToken, Token}
 import scala.annotation.tailrec
 import scalaz.Free.Trampoline
 import scalaz._
-import scalaz.Scalaz._
+import Scalaz._
 
 //Simple Ad hoc lexical analyzer without Regular Expressions and Finite Automata
 final class AdHocLexicalAnalyzer extends LexicalAnalyzer with LexicalAnalysisState {

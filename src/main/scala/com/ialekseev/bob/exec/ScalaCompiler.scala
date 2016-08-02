@@ -8,16 +8,23 @@ import scala.util.Try
 import scalaz._
 import Scalaz._
 
-object ScalaCompiler {
+class ScalaCompiler {
+  val amendPosition = 90
   val compiler = new Compiler(None, ListBuffer.empty)
 
   def compile(code: String): ExecutionAnalysisFailed \/ Class[_] = {
     require(!code.isEmpty)
-    Try(compiler.compile(code)).map(_.right).getOrElse(ExecutionAnalysisFailed(compiler.reportedErrors).left)
+
+    synchronized {
+      Try(compiler.compile(code)).map(_.right).getOrElse {
+        val errorsAmended = compiler.reportedErrors.map(e => e.copy(startOffset = e.startOffset - amendPosition, pointOffset = e.pointOffset - amendPosition, endOffset = e.endOffset - amendPosition))
+        ExecutionAnalysisFailed(errorsAmended).left
+      }
+    }
   }
 }
 
-//https://eknet.org/main/dev/runtimecompilescala.html  + custom reporter
+//https://eknet.org/main/dev/runtimecompilescala.html + custom reporter (todo: this is a thread-unsafe head-on implementation)
 import scala.tools.nsc.{Global, Settings}
 import scala.reflect.internal.util.{AbstractFileClassLoader, BatchSourceFile}
 import tools.nsc.io.{VirtualDirectory, AbstractFile}
@@ -43,11 +50,10 @@ private[exec] class Compiler(targetDir: Option[File], val reportedErrors: ListBu
 
   private val reporter = new AbstractReporter {
     val settings: Settings = s
-    override def reset() {
-      super.reset
+    override def reset(): Unit = {
+      super.reset()
       reportedErrors.clear()
     }
-
     def displayPrompt(): Unit = ???
     def display(pos: Position, msg: String, severity: Severity): Unit = {
       reportedErrors += ExecutionError(pos.start, pos.point, pos.end, msg)
@@ -65,6 +71,7 @@ private[exec] class Compiler(targetDir: Option[File], val reportedErrors: ListBu
     * @return
     */
   def compile(code: String) = {
+    reporter.reset()
     val className = classNameForCode(code)
     findClass(className).getOrElse {
       val sourceFiles = List(new BatchSourceFile("(inline)", wrapCodeInClass(className, code)))
@@ -86,15 +93,13 @@ private[exec] class Compiler(targetDir: Option[File], val reportedErrors: ListBu
   }
 
   def findClass(className: String): Option[Class[_]] = {
-    synchronized {
-      classCache.get(className).orElse {
-        try {
-          val cls = classLoader.loadClass(className)
-          classCache(className) = cls
-          Some(cls)
-        } catch {
-          case e: ClassNotFoundException => None
-        }
+    classCache.get(className).orElse {
+      try {
+        val cls = classLoader.loadClass(className)
+        classCache(className) = cls
+        Some(cls)
+      } catch {
+        case e: ClassNotFoundException => None
       }
     }
   }

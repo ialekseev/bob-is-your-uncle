@@ -115,9 +115,9 @@ object Analyzer {
 
   sealed trait Code
   case class ScalaCode(c: String) extends Code
+}
 
-  def apply() = new Analyzer {
-    val lexicalAnalyzer = new AdHocLexicalAnalyzer
-    val syntaxAnalyzer = new AdHocSyntaxAnalyzer
-  }
+object DefaultAnalyzer extends Analyzer {
+  val lexicalAnalyzer = new AdHocLexicalAnalyzer
+  val syntaxAnalyzer = new AdHocSyntaxAnalyzer
 }

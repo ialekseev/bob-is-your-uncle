@@ -8,24 +8,18 @@ import Scalaz._
 
 trait Executor {
   val analyzer: Analyzer
-  def check(source: String): AnalysisFailed \/ AnalysisResult
-}
+  val scalaCompiler: ScalaCompiler
 
-object Executor {
-  def apply = new Executor {
-    val analyzer = Analyzer()
+  def check(source: String): AnalysisFailed \/ AnalysisResult = {
+    require(!source.isEmpty)
 
-    def check(source: String): AnalysisFailed \/ AnalysisResult = {
-      require(!source.isEmpty)
-
-      analyzer.analyze(source) match {
-        case \/-(result@ AnalysisResult(_, _, constants, _, ScalaCode(code))) => {
-          val scalaConstants = constants.map(c => s"""val ${c._1} = "${c._2}""").mkString(";") + "\n"
-          val scalaCode = scalaConstants + code
-          ScalaCompiler.compile(scalaCode) >| result
-        }
-        case failed@ -\/(_) => failed
+    analyzer.analyze(source) match {
+      case \/-(result@ AnalysisResult(_, _, constants, _, ScalaCode(code))) => {
+        val scalaConstants = constants.map(c => s"""val ${c._1} = "${c._2}""").mkString(";") + "\n"
+        val scalaCode = scalaConstants + code
+        scalaCompiler.compile(scalaCode) >| result
       }
+      case failed@ -\/(_) => failed
     }
   }
 }
