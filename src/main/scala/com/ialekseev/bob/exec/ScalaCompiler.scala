@@ -9,15 +9,17 @@ import scalaz._
 import Scalaz._
 
 class ScalaCompiler {
-  val amendPosition = 90
+  val compilerPositionAmendment = 90
   val compiler = new Compiler(None, ListBuffer.empty)
 
-  def compile(code: String): ExecutionAnalysisFailed \/ Class[_] = {
+  def compile(code: String, positionAmendment: Int = 0): ExecutionAnalysisFailed \/ Class[_] = {
     require(!code.isEmpty)
+
+    def amend(pos: Int) = pos - compilerPositionAmendment - positionAmendment
 
     synchronized {
       Try(compiler.compile(code)).map(_.right).getOrElse {
-        val errorsAmended = compiler.reportedErrors.map(e => e.copy(startOffset = e.startOffset - amendPosition, pointOffset = e.pointOffset - amendPosition, endOffset = e.endOffset - amendPosition))
+        val errorsAmended = compiler.reportedErrors.map(e => e.copy(startOffset = amend(e.startOffset), pointOffset = amend(e.pointOffset), endOffset = amend(e.endOffset)))
         ExecutionAnalysisFailed(errorsAmended).left
       }
     }

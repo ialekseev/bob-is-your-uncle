@@ -1,11 +1,12 @@
-package com.ialekseev.bob
+package com.ialekseev.bob.exec
 
-import com.ialekseev.bob.analyzer.Analyzer
+import com.ialekseev.bob.AnalysisFailed
+import com.ialekseev.bob.analyzer.{DefaultAnalyzer, Analyzer}
 import com.ialekseev.bob.analyzer.Analyzer.{AnalysisResult, ScalaCode}
-import com.ialekseev.bob.exec.ScalaCompiler
+import scalaz.Scalaz._
 import scalaz._
-import Scalaz._
 
+//todo: add specs
 trait Executor {
   val analyzer: Analyzer
   val scalaCompiler: ScalaCompiler
@@ -15,9 +16,9 @@ trait Executor {
 
     analyzer.analyze(source) match {
       case \/-(result@ AnalysisResult(_, _, constants, _, ScalaCode(code))) => {
-        val scalaConstants = constants.map(c => s"""val ${c._1} = "${c._2}""").mkString(";") + "\n"
+        val scalaConstants = constants.map(c => s"""val ${c._1} = "${c._2}""").mkString("", ";", "\n")
         val scalaCode = scalaConstants + code
-        scalaCompiler.compile(scalaCode) >| result
+        scalaCompiler.compile(scalaCode, scalaConstants.length) >| result
       }
       case failed@ -\/(_) => failed
     }

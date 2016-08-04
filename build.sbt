@@ -22,6 +22,7 @@ libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-compiler" % scalaVersion.value,
   "org.scalaz" %% "scalaz-core" % "7.2.2",
   "org.json4s" %% "json4s-native" % "3.4.0",
+  "com.github.scopt" %% "scopt" % "3.5.0",
   "org.scalatest" %%  "scalatest"   % "2.2.1" % "test",
   "org.mockito" % "mockito-core" % "1.10.19" % "test"
 )
