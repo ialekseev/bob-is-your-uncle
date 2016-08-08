@@ -34,7 +34,7 @@ object Boot extends App {
               case LexicalAnalysisFailed(first +: _) => Console.println(Console.RED + s"   Lexical error on the positions from [${first.startOffset} to ${first.endOffset}]")
               case SyntaxAnalysisFailed(first +: _) => Console.println(Console.RED + s"   Error on the position [${first.offset}]. Message: ${first.message}")
               case SemanticAnalysisFailed(first +: _) => Console.println(Console.RED + s"   Error on the position [${first.offset}]. Message: ${first.message}")
-              case ExecutionAnalysisFailed(first +: _) => Console.println(Console.RED +  s"   Error on the position [${first.startOffset}]. Message: ${first.message}")
+              case CompilationFailed(first +: _) => Console.println(Console.RED +  s"   Error on the position [${first.startOffset}]. Message: ${first.message}")
             }
           }
         }

@@ -1,6 +1,6 @@
 package com.ialekseev.bob.exec
 
-import com.ialekseev.bob.{ExecutionAnalysisFailed, ExecutionError}
+import com.ialekseev.bob.{CompilationFailed, CompilationError}
 import scala.collection.mutable.ListBuffer
 import scala.reflect.internal.util.Position
 import scala.tools.nsc.reporters.AbstractReporter
@@ -12,7 +12,7 @@ class ScalaCompiler {
   val compilerPositionAmendment = 90
   val compiler = new Compiler(None, ListBuffer.empty)
 
-  def compile(code: String, positionAmendment: Int = 0): ExecutionAnalysisFailed \/ Class[_] = {
+  def compile(code: String, positionAmendment: Int = 0): CompilationFailed \/ Class[_] = {
     require(!code.isEmpty)
 
     def amend(pos: Int) = pos - compilerPositionAmendment - positionAmendment
@@ -20,7 +20,7 @@ class ScalaCompiler {
     synchronized {
       Try(compiler.compile(code)).map(_.right).getOrElse {
         val errorsAmended = compiler.reportedErrors.map(e => e.copy(startOffset = amend(e.startOffset), pointOffset = amend(e.pointOffset), endOffset = amend(e.endOffset)))
-        ExecutionAnalysisFailed(errorsAmended).left
+        CompilationFailed(errorsAmended).left
       }
     }
   }
@@ -35,7 +35,7 @@ import java.math.BigInteger
 import collection.mutable
 import java.io.File
 
-private[exec] class Compiler(targetDir: Option[File], val reportedErrors: ListBuffer[ExecutionError]) {
+private[exec] class Compiler(targetDir: Option[File], val reportedErrors: ListBuffer[CompilationError]) {
 
   val target = targetDir match {
     case Some(dir) => AbstractFile.getDirectory(dir)
@@ -58,7 +58,7 @@ private[exec] class Compiler(targetDir: Option[File], val reportedErrors: ListBu
     }
     def displayPrompt(): Unit = ???
     def display(pos: Position, msg: String, severity: Severity): Unit = {
-      reportedErrors += ExecutionError(pos.start, pos.point, pos.end, msg)
+      reportedErrors += CompilationError(pos.start, pos.point, pos.end, msg)
     }
   }
 

@@ -56,7 +56,7 @@ class AnalyzerSpec extends BaseSpec {
           val lexicalAnalyzer = null
           val syntaxAnalyzer = null
 
-          override def parse(source: String): AnalysisFailed \/ ParseTree = {
+          override def parse(source: String): StageFailed \/ ParseTree = {
             source should be ("source")
 
             nonTerminal("TopStat").node(
@@ -117,7 +117,7 @@ class AnalyzerSpec extends BaseSpec {
           val lexicalAnalyzer = null
           val syntaxAnalyzer = null
 
-          override def parse(source: String): AnalysisFailed \/ ParseTree = {
+          override def parse(source: String): StageFailed \/ ParseTree = {
             source should be ("source")
 
             nonTerminal("TopStat").node(
@@ -171,7 +171,7 @@ class AnalyzerSpec extends BaseSpec {
           val lexicalAnalyzer = null
           val syntaxAnalyzer = null
 
-          override def parse(source: String): AnalysisFailed \/ ParseTree = {
+          override def parse(source: String): StageFailed \/ ParseTree = {
             source should be ("source")
 
             nonTerminal("TopStat").node(

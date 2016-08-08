@@ -14,7 +14,7 @@ trait Analyzer {
   val lexicalAnalyzer: LexicalAnalyzer
   val syntaxAnalyzer: SyntaxAnalyzer
 
-  def analyze(source: String): AnalysisFailed \/ AnalysisResult = {
+  def analyze(source: String): StageFailed \/ AnalysisResult = {
     require(!source.isEmpty)
 
     parse(source) match {
@@ -23,7 +23,7 @@ trait Analyzer {
     }
   }
 
-  protected def parse(source: String): AnalysisFailed \/ ParseTree = {
+  protected def parse(source: String): StageFailed \/ ParseTree = {
     require(!source.isEmpty)
 
     lexicalAnalyzer.tokenize(source) match {
