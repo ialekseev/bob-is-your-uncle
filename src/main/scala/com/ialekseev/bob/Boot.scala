@@ -2,6 +2,7 @@ package com.ialekseev.bob
 
 import com.ialekseev.bob.analyzer.{DefaultAnalyzer}
 import com.ialekseev.bob.exec.{ScalaCompiler, Executor}
+import scala.io.Codec
 import scala.util.{Failure, Success, Try}
 import scalaz._
 
@@ -16,8 +17,8 @@ object Boot extends App {
   //todo: refactor this mess
   parser.parse(args, Config()) match {
     case Some(Config(check)) if check.nonEmpty => {
-      val fileToCheck = scala.io.Source.fromFile(check)
-      Try(fileToCheck.mkString("\n")) match {
+      val fileToCheck = scala.io.Source.fromFile(check)(Codec.UTF8)
+      Try(normalizeSource(fileToCheck.mkString)) match {
         case Success(content) => {
           println(Console.CYAN + "  +-------------------------------+")
           println(Console.CYAN + "  | Bob: I am checking...         |")
@@ -31,10 +32,10 @@ object Boot extends App {
           executor.check(content) match {
             case \/-(result) => println(Console.GREEN + "   OK")
             case -\/(error) => error match {
-              case LexicalAnalysisFailed(first +: _) => Console.println(Console.RED + s"   Lexical error on the positions from [${first.startOffset} to ${first.endOffset}]")
-              case SyntaxAnalysisFailed(first +: _) => Console.println(Console.RED + s"   Error on the position [${first.offset}]. Message: ${first.message}")
-              case SemanticAnalysisFailed(first +: _) => Console.println(Console.RED + s"   Error on the position [${first.offset}]. Message: ${first.message}")
-              case CompilationFailed(first +: _) => Console.println(Console.RED +  s"   Error on the position [${first.startOffset}]. Message: ${first.message}")
+              case LexicalAnalysisFailed(first +: _) => Console.println(Console.RED + s"   Lexical error positions: from ${errorCoordinate(content, first.startOffset)} to ${errorCoordinate(content, first.endOffset)}")
+              case SyntaxAnalysisFailed(first +: _) => Console.println(Console.RED + s"   Error position: ${errorCoordinate(content, first.offset)}. Message: ${first.message}")
+              case SemanticAnalysisFailed(first +: _) => Console.println(Console.RED + s"   Error position: ${errorCoordinate(content, first.offset)}. Message: ${first.message}")
+              case CompilationFailed(first +: _) => Console.println(Console.RED +  s"   Error position: ${errorCoordinate(content, first.startOffset)}. Message: ${first.message}")
             }
           }
         }
@@ -47,4 +48,22 @@ object Boot extends App {
     case None =>
   }
 
+
+  private def normalizeSource(source: String): String = {
+    source.replaceAll("\r\n", "\n")
+  }
+
+  private def errorCoordinate(source: String, offset: Int): (Int, Int) = {
+    require(offset >= 0)
+
+    if (source.isEmpty || offset == 0) (0, 0)
+    else {
+      val beforeOffset = source.take(offset)
+      val nlIndex = beforeOffset.reverse.indexWhere(_ == '\n')
+
+      val column = if (nlIndex > 0) nlIndex else 0
+      val line = beforeOffset.count(_ == '\n')
+      (line, column)
+    }
+  }
 }

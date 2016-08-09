@@ -15,12 +15,12 @@ trait Analyzer {
   val syntaxAnalyzer: SyntaxAnalyzer
 
   def analyze(source: String): StageFailed \/ AnalysisResult = {
-    require(!source.isEmpty)
-
-    parse(source) match {
-      case \/-(parseTree) => mapTreeToAnalysisResult(parseTree)
-      case syntaxFailed@ -\/(_) => syntaxFailed
-    }
+    if (source.nonEmpty) {
+      parse(source) match {
+        case \/-(parseTree) => mapTreeToAnalysisResult(parseTree)
+        case syntaxFailed@ -\/(_) => syntaxFailed
+      }
+    } else SemanticAnalysisFailed(Seq(SemanticError(0, "Empty source is not expected!"))).left
   }
 
   protected def parse(source: String): StageFailed \/ ParseTree = {
