@@ -6,29 +6,33 @@ import scala.util.control.Breaks._
 trait Shell {
   this: Check =>
 
-  case class ShellConfig(check: String = "", quit: Boolean = false)
-  //todo: using scopt's 'arguments'?
-  val shellParser = new scopt.OptionParser[ShellConfig]("bob's shell") {
-    override def terminate(exitState: Either[String, Unit]): Unit = ()
-
-    opt[String]("check").action((x, c) => c.copy(check = x)).text("[<value> is a path to file]")
-    opt[Unit]("quit").action((_, c) => c.copy(quit = true)).text("quit the shell")
-  }
+  lazy val color = Console.MAGENTA
 
   def shellCommand() = {
-    println("[Bob's shell]")
-    println()
+    println(color)
+    println("Welcome to Bob's shell. Type 'help' for information.")
+    println(Console.RESET)
     breakable {
       while(true){
-        val read = StdIn.readLine()
-        val readPrefixed = if (read.startsWith("--")) read else "--" + read
-        //todo: how to convert 'read' to args to be fed to 'scopt'
-        shellParser.parse(Seq(readPrefixed), ShellConfig()) match {
-          case Some(ShellConfig(path, _)) if path.nonEmpty => checkCommand(path)
-          case Some(ShellConfig(_, true)) => break
-          case None =>
+        StdIn.readLine(color + "bob> ").split(" +").toSeq match {
+          case Seq("check", path) => checkCommand(path)
+          case Seq("help") => showHelp()
+          case Seq("quit" | "exit" | ":q") => break
+          case _ => {
+            println(Console.RED + " Invalid command. See help:" + Console.RESET)
+            showHelp()
+          }
         }
       }
     }
+  }
+
+  private def showHelp() = {
+    println(Console.GREEN)
+    println(" ?HELP?")
+    println(" [check <path>]       - check if the specified file is a correct Bob's")
+    println(" [quit | exit | :q]   - quit the shell")
+    println(" [help]               - command listing")
+    println(Console.RESET)
   }
 }

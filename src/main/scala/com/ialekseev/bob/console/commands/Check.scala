@@ -21,8 +21,6 @@ trait Check {
     val fileToCheck = scala.io.Source.fromFile(path)(Codec.UTF8)
     Try(normalizeSource(fileToCheck.mkString)) match {
       case Success(c) => {
-        showTitleMessage("Bob: I am checking...")
-
         executor.check(c) match {
           case \/-(result) => showSuccess("OK")
           case -\/(error) => error match {
@@ -48,26 +46,27 @@ trait Check {
     println(Console.GREEN + s"  $message" + Console.RESET)
   }
 
+  def showErrorContext(source: String, startOffset: Int, endOffset: Int) = {
+    val after = if (endOffset + 1 < source.length - 1) some(source.substring(endOffset + 1)) else none
+    val context = (source.substring(0, startOffset), source.substring(startOffset, endOffset + 1), after)
+    println(Console.RED + "[" + Console.RESET)
+    println(context._1 + Console.RED + context._2 + Console.RESET + context._3.getOrElse(""))
+    println(Console.RED + "]" + Console.RESET)
+  }
+
+
   def showError(source: String, startOffset: Int, endOffset: Int) = {
-    println(Console.RED + s"  Error positions: from $startOffset} to $endOffset}" + Console.RESET)
+    println()
+    println(Console.RED + s"Unexpected token on positions: from ${errorCoordinate(source, startOffset)} to ${errorCoordinate(source, endOffset)}" + Console.RESET)
+    showErrorContext(source, startOffset, endOffset)
+    println()
   }
 
   def showError(source: String, offset: Int, message: String) = {
-    def showErrorPosition() = {
-      println(Console.RED + s"  Error position: ${errorCoordinate(source, offset)}. Message: $message" + Console.RESET)
-    }
-
-    def showErrorContext() = {
-      val after = if (offset + 1 < source.length - 1) some(source.substring(offset + 1)) else none
-      val context = (source.substring(0, offset), source(offset), after)
-      println(Console.RED + "  [" + Console.RESET)
-      println(context._1 + Console.RED + context._2 + Console.RESET + context._3.getOrElse(""))
-      println(Console.RED + "  ]" + Console.RESET)
-    }
-
     println()
-    showErrorPosition()
-    showErrorContext()
+    println(Console.RED + s"Error position: ${errorCoordinate(source, offset)}")
+    println(s"Message: $message" + Console.RESET)
+    showErrorContext(source, offset, offset)
     println()
   }
 

@@ -1,6 +1,6 @@
 package com.ialekseev.bob.exec
 
-import com.ialekseev.bob.StageFailed
+import com.ialekseev.bob.{CompilationFailed, StageFailed}
 import com.ialekseev.bob.analyzer.{Analyzer}
 import com.ialekseev.bob.analyzer.Analyzer.{AnalysisResult, ScalaCode}
 import scalaz.Scalaz._
@@ -15,7 +15,9 @@ trait Executor {
       case \/-(result@ AnalysisResult(_, _, constants, _, ScalaCode(code))) => {
         val scalaConstants = constants.map(c => s"""val ${c._1} = "${c._2}"""").mkString("", "; ", "\n")
         val scalaCode = scalaConstants + code
-        scalaCompiler.compile(scalaCode, scalaConstants.length) >| result
+        val start = source.indexOf("<scala>") + 7
+        def amend(pos: Int) = start + pos - scalaConstants.length
+        scalaCompiler.compile(scalaCode).leftMap(f => CompilationFailed(f.errors.map(e => e.copy(startOffset = amend(e.startOffset), pointOffset = amend(e.pointOffset), endOffset = amend(e.endOffset))))) >| result
       }
       case failed@ -\/(_) => failed
     }

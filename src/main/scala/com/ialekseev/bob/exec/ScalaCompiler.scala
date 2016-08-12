@@ -4,7 +4,7 @@ import com.ialekseev.bob.{CompilationFailed, CompilationError}
 import scala.collection.mutable.ListBuffer
 import scala.reflect.internal.util.Position
 import scala.tools.nsc.reporters.AbstractReporter
-import scala.util.Try
+import scala.util.{Random, Try}
 import scalaz._
 import Scalaz._
 
@@ -12,10 +12,10 @@ class ScalaCompiler {
   val compilerPositionAmendment = 90
   val compiler = new Compiler(None, ListBuffer.empty)
 
-  def compile(code: String, positionAmendment: Int = 0): CompilationFailed \/ Class[_] = {
+  def compile(code: String): CompilationFailed \/ Class[_] = {
     require(!code.isEmpty)
 
-    def amend(pos: Int) = pos - compilerPositionAmendment - positionAmendment
+    def amend(pos: Int) = pos - compilerPositionAmendment
 
     synchronized {
       Try(compiler.compile(code)).map(_.right).getOrElse {
@@ -30,9 +30,6 @@ class ScalaCompiler {
 import scala.tools.nsc.{Global, Settings}
 import scala.reflect.internal.util.{AbstractFileClassLoader, BatchSourceFile}
 import tools.nsc.io.{VirtualDirectory, AbstractFile}
-import java.security.MessageDigest
-import java.math.BigInteger
-import collection.mutable
 import java.io.File
 
 private[exec] class Compiler(targetDir: Option[File], val reportedErrors: ListBuffer[CompilationError]) {
@@ -42,16 +39,20 @@ private[exec] class Compiler(targetDir: Option[File], val reportedErrors: ListBu
     case None => new VirtualDirectory("(memory)", None)
   }
 
-  val classCache = mutable.Map[String, Class[_]]()
-
-  private val s = new Settings()
-  s.deprecation.value = true // enable detailed deprecation warnings
-  s.unchecked.value = true // enable detailed unchecked warnings
-  s.outputDirs.setSingleOutput(target)
-  s.usejavacp.value = true
+  val customSettings = {
+    val dependencies = List(
+      "org.scala-lang/scala-library/jars/scala-library-2.11.8.jar"
+    )
+    val s = new Settings()
+    s.outputDirs.setSingleOutput(target)
+    val homePath = System.getProperty("user.home")
+    val classPath = dependencies.map(homePath + "\\.ivy2\\cache\\" + _)
+    s.classpath.value = classPath.mkString(File.pathSeparator)
+    s
+  }
 
   private val reporter = new AbstractReporter {
-    val settings: Settings = s
+    val settings: Settings = customSettings
     override def reset(): Unit = {
       super.reset()
       reportedErrors.clear()
@@ -62,9 +63,7 @@ private[exec] class Compiler(targetDir: Option[File], val reportedErrors: ListBu
     }
   }
 
-  private val global = new Global(s, reporter)
-  private lazy val run = new global.Run
-
+  private val global = new Global(customSettings, reporter)
   val classLoader = new AbstractFileClassLoader(target, this.getClass.getClassLoader)
 
   /**Compiles the code as a class into the class loader of this compiler.
@@ -72,14 +71,14 @@ private[exec] class Compiler(targetDir: Option[File], val reportedErrors: ListBu
     * @param code
     * @return
     */
-  def compile(code: String) = {
+  def compile(code: String): Class[_] = {
     reporter.reset()
-    val className = classNameForCode(code)
-    findClass(className).getOrElse {
-      val sourceFiles = List(new BatchSourceFile("(inline)", wrapCodeInClass(className, code)))
-      run.compileSources(sourceFiles)
-      findClass(className).get
-    }
+    val run = new global.Run
+    //val className =  classNameForCode(code)
+    val className = "bob" + Random.alphanumeric.take(40).mkString
+    val sourceFiles = List(new BatchSourceFile("(inline)", wrapCodeInClass(className, code)))
+    run.compileSources(sourceFiles)
+    classLoader.loadClass(className)
   }
 
   /** Compiles the source string into the class loader and
@@ -94,22 +93,10 @@ private[exec] class Compiler(targetDir: Option[File], val reportedErrors: ListBu
     cls.getConstructor().newInstance().asInstanceOf[() => Any].apply().asInstanceOf[T]
   }
 
-  def findClass(className: String): Option[Class[_]] = {
-    classCache.get(className).orElse {
-      try {
-        val cls = classLoader.loadClass(className)
-        classCache(className) = cls
-        Some(cls)
-      } catch {
-        case e: ClassNotFoundException => None
-      }
-    }
-  }
-
-  protected def classNameForCode(code: String): String = {
+  /*protected def classNameForCode(code: String): String = {
     val digest = MessageDigest.getInstance("SHA-1").digest(code.getBytes)
     "sha"+new BigInteger(1, digest).toString(16)
-  }
+  }*/
 
   /*
   * Wrap source code in a new class with an apply method.

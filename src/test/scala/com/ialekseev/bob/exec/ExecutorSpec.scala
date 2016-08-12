@@ -40,7 +40,7 @@ class ExecutorSpec extends BaseSpec  {
         }
         val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Map("a" -> "1", "b" -> "2"), Webhook("abc/", HttpMethod.GET, Map.empty, Map.empty, none[Body]), ScalaCode("do()")).right
         Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned)
-        Mockito.when(compiler.compile("""val a = "1"; val b = "2"""" + "\n" + "do()", 25)).thenReturn(classOf[BaseSpec].right)
+        Mockito.when(compiler.compile("""val a = "1"; val b = "2"""" + "\n" + "do()")).thenReturn(classOf[BaseSpec].right)
 
         //act
         val result = executor.check("source")
