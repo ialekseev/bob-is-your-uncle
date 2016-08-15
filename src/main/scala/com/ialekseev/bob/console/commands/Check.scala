@@ -43,12 +43,20 @@ trait Check {
   }
 
   def showSuccess(message: String) = {
-    println(Console.GREEN + s"  $message" + Console.RESET)
+    println(Console.GREEN + s"$message" + Console.RESET)
+    println()
   }
 
   def showErrorContext(source: String, startOffset: Int, endOffset: Int) = {
+    val before = source.substring(0, startOffset)
+    val error = {
+      val err = source.substring(startOffset, endOffset + 1)
+      if (err.head == ' ') err.updated(0, '_') else err
+      //todo: underline the whole indent line + it would be nice to get a message about an expected indent, like 'Unexpected indent width ... Expected: ...' Currently we don't show 'expected'
+    }
     val after = if (endOffset + 1 < source.length - 1) some(source.substring(endOffset + 1)) else none
-    val context = (source.substring(0, startOffset), source.substring(startOffset, endOffset + 1), after)
+
+    val context = (before, error, after)
     println(Console.RED + "[" + Console.RESET)
     println(context._1 + Console.RED + context._2 + Console.RESET + context._3.getOrElse(""))
     println(Console.RED + "]" + Console.RESET)
