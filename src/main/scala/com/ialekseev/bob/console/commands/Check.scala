@@ -52,7 +52,7 @@ trait Check {
     val error = {
       val err = source.substring(startOffset, endOffset + 1)
       if (err.head == ' ') err.updated(0, '_') else err
-      //todo: underline the whole indent line + it would be nice to get a message about an expected indent, like 'Unexpected indent width ... Expected: ...' Currently we don't show 'expected'
+      //todo: underline the whole indent line
     }
     val after = if (endOffset + 1 < source.length - 1) some(source.substring(endOffset + 1)) else none
 

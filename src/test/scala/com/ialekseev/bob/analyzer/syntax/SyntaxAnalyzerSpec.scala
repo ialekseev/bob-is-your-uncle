@@ -378,7 +378,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(40, 9, "Unexpected indent width: 2")))
+        result.toEither.left.get.errors should be (Seq(SyntaxError(40, 9, "Unexpected indent width: 2. Expected: 3")))
       }
     }
 
@@ -638,7 +638,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(1250, 17, "Unexpected indent width: 4")))
+        result.toEither.left.get.errors should be (Seq(SyntaxError(1250, 17, "Unexpected indent width: 4. Expected: 5")))
       }
     }
   }

@@ -53,7 +53,10 @@ private[syntax] trait SyntaxAnalysisState {
           } else if (!state.indentMap.contains(indentLevel) && (!state.indentMap.contains(indentLevel - 1) || (state.indentMap(indentLevel - 1) < indent.token.length))) {
             modify[ParserStateInternal](s => s.copy(indentMap = s.indentMap + (indentLevel -> indent.token.length))) >>
               indent.right.point[ParserState]
-          } else Seq(SyntaxError(indent.offset, state.position - 1, s"Unexpected indent width: ${indent.token.length}")).left.point[ParserState]
+          } else {
+            val expectedIndentWidthMessage = (state.indentMap.get(indentLevel).map(_.toString).orElse(state.indentMap.get(indentLevel - 1).map("> " + _))).map("Expected: " + _ ).getOrElse("")
+            Seq(SyntaxError(indent.offset, state.position - 1, s"Unexpected indent width: ${indent.token.length}. $expectedIndentWidthMessage")).left.point[ParserState]
+          }
         })
       }
     } yield result).toTree
