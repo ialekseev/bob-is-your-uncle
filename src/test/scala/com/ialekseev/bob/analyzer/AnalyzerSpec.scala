@@ -39,13 +39,13 @@ class AnalyzerSpec extends BaseSpec {
       "fail with syntax error" in {
         //arrange
         Mockito.when(lexer.tokenize("source")).thenReturn(Seq(LexerToken(Token.Keyword.`description`, 10)).right)
-        Mockito.when(parser.parse(Seq(LexerToken(Token.Keyword.`description`, 10)))).thenReturn(SyntaxAnalysisFailed(Seq(SyntaxError(10, 0, "Bad!"))).left)
+        Mockito.when(parser.parse(Seq(LexerToken(Token.Keyword.`description`, 10)))).thenReturn(SyntaxAnalysisFailed(Seq(SyntaxError(10, 10, 0, "Bad!"))).left)
 
         //act
         val result = analyzer.analyze("source")
 
         //assert
-        result should be (SyntaxAnalysisFailed(Seq(SyntaxError(10, 0, "Bad!"))).left)
+        result should be (SyntaxAnalysisFailed(Seq(SyntaxError(10, 10, 0, "Bad!"))).left)
       }
     }
 
@@ -106,7 +106,7 @@ class AnalyzerSpec extends BaseSpec {
         val result = analyzer.analyze("source")
 
         //assert
-        result should be (SemanticAnalysisFailed(Seq(SemanticError(1400, "Unexpected Http method"))).left)
+        result should be (SemanticAnalysisFailed(Seq(SemanticError(1401, 1403, "Unexpected Http method"))).left)
       }
     }
 

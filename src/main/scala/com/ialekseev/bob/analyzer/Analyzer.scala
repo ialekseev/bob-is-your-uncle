@@ -20,7 +20,7 @@ trait Analyzer {
         case \/-(parseTree) => mapTreeToAnalysisResult(parseTree)
         case syntaxFailed@ -\/(_) => syntaxFailed
       }
-    } else SemanticAnalysisFailed(Seq(SemanticError(0, "Empty source is not expected!"))).left
+    } else SemanticAnalysisFailed(Seq(SemanticError(0, 0, "Empty source is not expected!"))).left
   }
 
   protected def parse(source: String): StageFailed \/ ParseTree = {
@@ -71,7 +71,7 @@ trait Analyzer {
       def extractMethod: ValidationNel[SemanticError, HttpMethod]  = {
         val method = specificSettings.map(s => (s._1.getLabel, s._2.getLabel)).collect { case (Terminal(LexerToken(Token.Keyword.`method`, _)), Terminal(LexerToken(Token.Type.StringLiteral(m), off))) => (m, off) }.headOption
         method match {
-          case Some((m, offset)) => HttpMethod.values.find(_.toString.toUpperCase == m.toUpperCase).map(_.successNel[SemanticError]).getOrElse(SemanticError(offset, "Unexpected Http method").failureNel[HttpMethod])
+          case Some((m, offset)) => HttpMethod.values.find(_.toString.toUpperCase == m.toUpperCase).map(_.successNel[SemanticError]).getOrElse(SemanticError(offset + 1, offset + m.length, "Unexpected Http method").failureNel[HttpMethod])
           case _ => HttpMethod.GET.successNel
         }
       }

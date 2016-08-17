@@ -112,7 +112,7 @@ private[lexical] trait LexicalAnalysisState {
     addAndMove.map(v => (if (v.isDefined) None else someUnit))
   }
 
-  def extractResultingTokens: LexerState[Seq[LexerToken]] = get.map(_.tokens.map(c => c.copy(offset = c.offset - 1)))
+  def extractResultingTokens: LexerState[Seq[LexerToken]] = get.map(_.tokens.map(c => c.copy(startOffset = c.startOffset - 1)))
   def extractErrors: LexerState[Seq[LexicalError]] = get.map(_.errors.map(c => c.copy(startOffset = c.startOffset - 1, endOffset = c.endOffset - 1)))
 }
 

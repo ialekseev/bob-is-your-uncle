@@ -33,8 +33,8 @@ private[syntax] trait SyntaxAnalysisState {
     EitherT.eitherT {
       current >>= {
         case (_, Some(t@LexerToken(_: T, _))) => move >| t.right
-        case (position, Some(LexerToken(token, offset))) => Seq(SyntaxError(offset, position, s"Unexpected: '${tokenShow.show(token)}' (expecting: '${tokenTag.asString}')")).left.point[ParserState]
-        case (_, None) => get[ParserStateInternal].map(s => Seq(SyntaxError(s.tokens.last.offset, s.position, "Unexpected end")).left)
+        case (position, Some(t@LexerToken(token, _))) => Seq(SyntaxError(t.startOffset, t.endOffset, position, s"Unexpected: '${tokenShow.show(token)}' (expecting: '${tokenTag.asString}')")).left.point[ParserState]
+        case (_, None) => get[ParserStateInternal].map(s => Seq(SyntaxError(s.tokens.last.startOffset, s.tokens.last.endOffset, s.position, "Unexpected end")).left)
       }
     }
   }
@@ -55,7 +55,7 @@ private[syntax] trait SyntaxAnalysisState {
               indent.right.point[ParserState]
           } else {
             val expectedIndentWidthMessage = (state.indentMap.get(indentLevel).map(_.toString).orElse(state.indentMap.get(indentLevel - 1).map("> " + _))).map("Expected: " + _ ).getOrElse("")
-            Seq(SyntaxError(indent.offset, state.position - 1, s"Unexpected indent width: ${indent.token.length}. $expectedIndentWidthMessage")).left.point[ParserState]
+            Seq(SyntaxError(indent.startOffset, indent.endOffset, state.position - 1, s"Unexpected indent width: ${indent.token.length}. $expectedIndentWidthMessage")).left.point[ParserState]
           }
         })
       }
@@ -135,7 +135,7 @@ private[syntax] trait SyntaxAnalysisState {
       case _ => EitherT.eitherT[ParserState, Seq[SyntaxError], ParseTree](get[ParserStateInternal] >>= (s => {
         val position = if (s.position < s.tokens.length) s.position else s.position - 1
         val token = s.tokens(position)
-        Seq(SyntaxError(token.offset, position, absenceMessage)).left.point[ParserState]
+        Seq(SyntaxError(token.startOffset, token.endOffset, position, absenceMessage)).left.point[ParserState]
       }))
     }
   }

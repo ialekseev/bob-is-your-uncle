@@ -243,7 +243,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(13, 3, "Unexpected: ':' (expecting: '#')")))
+        result.toEither.left.get.errors should be (Seq(SyntaxError(13, 13, 3, "Unexpected: ':' (expecting: '#')")))
       }
     }
 
@@ -264,7 +264,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(23, 5, "Unexpected: 'description' (expecting: 'indent')")))
+        result.toEither.left.get.errors should be (Seq(SyntaxError(23, 33, 5, "Unexpected: 'description' (expecting: 'indent')")))
       }
     }
 
@@ -288,7 +288,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(35, 8, "Unexpected: 'com' (expecting: 'string literal')")))
+        result.toEither.left.get.errors should be (Seq(SyntaxError(35, 37, 8, "Unexpected: 'com' (expecting: 'string literal')")))
       }
     }
 
@@ -317,7 +317,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(28, 11, "Unexpected: '#' (expecting: ':')")))
+        result.toEither.left.get.errors should be (Seq(SyntaxError(28, 28, 11, "Unexpected: '#' (expecting: ':')")))
       }
     }
 
@@ -351,7 +351,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(38, 16, "Unexpected: 'Dictionary([b:11],Map(b -> 11))' (expecting: 'string literal')")))
+        result.toEither.left.get.errors should be (Seq(SyntaxError(38, 43, 16, "Unexpected: 'Dictionary([b:11],Map(b -> 11))' (expecting: 'string literal')")))
       }
     }
 
@@ -378,7 +378,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(40, 9, "Unexpected indent width: 2. Expected: 3")))
+        result.toEither.left.get.errors should be (Seq(SyntaxError(40, 41, 9, "Unexpected indent width: 2. Expected: 3")))
       }
     }
 
@@ -410,7 +410,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(55, 12, "Unexpected: 'method' (expecting: 'uri')")))
+        result.toEither.left.get.errors should be (Seq(SyntaxError(55, 60, 12, "Unexpected: 'method' (expecting: 'uri')")))
       }
     }
 
@@ -447,7 +447,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(66, 17, "Unexpected: '#' (expecting: ':')")))
+        result.toEither.left.get.errors should be (Seq(SyntaxError(66, 66, 17, "Unexpected: '#' (expecting: ':')")))
       }
     }
 
@@ -489,7 +489,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(79, 22, """Unexpected: '"/example"' (expecting: 'dictionary')""")))
+        result.toEither.left.get.errors should be (Seq(SyntaxError(79, 88, 22, """Unexpected: '"/example"' (expecting: 'dictionary')""")))
       }
     }
 
@@ -531,7 +531,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(69, 18, "Expecting some valid Body type here")))
+        result.toEither.left.get.errors should be (Seq(SyntaxError(69, 73, 18, "Expecting some valid Body type here")))
       }
     }
 
@@ -566,7 +566,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(1250, 18, "Unexpected end")))
+        result.toEither.left.get.errors should be (Seq(SyntaxError(1250, 1254, 18, "Unexpected end")))
       }
     }
 
@@ -602,7 +602,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(1300, 18, "Unexpected: 'body' (expecting: '<scala>...<end>')")))
+        result.toEither.left.get.errors should be (Seq(SyntaxError(1300, 1303, 18, "Unexpected: 'body' (expecting: '<scala>...<end>')")))
       }
     }
 
@@ -638,7 +638,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(1250, 17, "Unexpected indent width: 4. Expected: 5")))
+        result.toEither.left.get.errors should be (Seq(SyntaxError(1250, 1253, 17, "Unexpected indent width: 4. Expected: 5")))
       }
     }
   }

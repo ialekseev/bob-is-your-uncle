@@ -13,7 +13,7 @@ trait Command {
       val beforeOffset = source.take(offset)
       val nlIndex = beforeOffset.reverse.indexWhere(_ == '\n')
 
-      val column = if (nlIndex > 0) nlIndex + 1 else 1
+      val column = if (nlIndex >= 0) nlIndex + 1 else offset + 1
       val line = beforeOffset.count(_ == '\n') + 1
       (line, column)
     }

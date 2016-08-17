@@ -2,8 +2,8 @@ package com.ialekseev
 
 package object bob {
   case class LexicalError(startOffset: Int, endOffset: Int)
-  case class SyntaxError(offset: Int, tokenIndex: Int, message: String)
-  case class SemanticError(offset: Int, message: String)
+  case class SyntaxError(startOffset: Int, endOffset: Int, tokenIndex: Int, message: String)
+  case class SemanticError(startOffset: Int, endOffset: Int, message: String)
   case class CompilationError(startOffset: Int, pointOffset: Int, endOffset: Int, message: String)
 
   sealed trait StageFailed

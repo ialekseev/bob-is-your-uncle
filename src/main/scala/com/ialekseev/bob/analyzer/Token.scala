@@ -85,7 +85,9 @@ object Token {
   }
 }
 
-case class LexerToken(token: Token, offset: Int)
+case class LexerToken(token: Token, startOffset: Int) {
+  val endOffset = startOffset + token.length - 1
+}
 
 trait TokenTag[T] { def asString: String }
 object TokenTag {
