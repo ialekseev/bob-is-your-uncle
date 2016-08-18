@@ -1,5 +1,6 @@
 package com.ialekseev.bob.console.commands
 
+import com.ialekseev.bob.analyzer.Analyzer.AnalysisResult
 import com.ialekseev.bob.analyzer.DefaultAnalyzer
 import com.ialekseev.bob.console.{Command}
 import com.ialekseev.bob.exec.{Executor, ScalaCompiler}
@@ -26,7 +27,7 @@ trait Check {
     } match {
       case Success(c) => {
         executor.check(c) match {
-          case \/-(result) => showSuccess("OK")
+          case \/-(result) => showSuccess(result)
           case -\/(error) => error match {
             case LexicalAnalysisFailed(first +: _) => showError(c, first.startOffset, first.endOffset, "Unexpected token")
             case SyntaxAnalysisFailed(first +: _) => showError(c, first.startOffset, first.endOffset, first.message)
@@ -39,14 +40,11 @@ trait Check {
     }
   }
 
-  def showTitleMessage(message: String) = {
+  def showSuccess(result: AnalysisResult) = {
     println()
-    println(Console.CYAN + s"  | $message |")
-    println()
-  }
-
-  def showSuccess(message: String) = {
-    println(Console.GREEN + s"$message" + Console.RESET)
+    println(Console.WHITE + "namespace: " + result.namespace.path + "#" + result.namespace.name + Console.RESET)
+    println(Console.WHITE + "description: "+ result.description + Console.RESET)
+    println(Console.WHITE + "result: " + Console.GREEN + s"OK" + Console.RESET)
     println()
   }
 
@@ -62,13 +60,13 @@ trait Check {
 
       val context = (before, error, after)
       println(Console.RED + "[" + Console.RESET)
-      println(context._1 + Console.RED + context._2 + Console.RESET + context._3.getOrElse(""))
+      println(Console.WHITE + context._1 + Console.RED + context._2 + Console.WHITE + context._3.getOrElse("") + Console.RESET)
       println(Console.RED + "]" + Console.RESET)
     }
 
     println()
-    println(Console.RED + s"Error position: ${errorCoordinate(source, startOffset)}")
-    println(s"Message: $message" + Console.RESET)
+    println(Console.RED + s"Error position: ${errorCoordinate(source, startOffset)}" + Console.RESET)
+    println(Console.RED + s"Message: $message" + Console.RESET)
     showErrorContext(source, startOffset, endOffset)
     println()
   }

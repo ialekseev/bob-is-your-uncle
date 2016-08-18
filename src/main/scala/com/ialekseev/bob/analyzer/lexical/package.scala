@@ -13,11 +13,13 @@ package object lexical {
   def isIdentifier(str: String): Boolean = str.forall(isId(_))
   def identifier(str: String): Option[Token] = if (isIdentifier(str)) Some(Identifier(str)) else None
 
-  def isVariableStart(char: Char): Boolean = char == Token.Variable.char
+  def isVarFirst(char: Char): Boolean = char == Token.Variable.char
+  def isVarSecond(char: Char): Boolean = isLetter(char)
+  def isVariableRest(str: String): Boolean = str.forall(char => isLetter(char) || isDigit(char))
   def variable(str: String): Option[Token] = {
     if (str.length > 1) {
-      val (head, tail) = str.dismantle2
-      if (isVariableStart(head) && isIdentifier(tail)) Some(Variable(tail)) else None
+      val (first, second, rest) = (str(0), str(1), str.substring(2))
+      if (isVarFirst(first) && isVarSecond(second) && isVariableRest(rest)) Some(Variable(second + rest)) else None
     } else None
   }
 

@@ -29,8 +29,8 @@ class ExecutorSpec extends BaseSpec  {
       }
     }
 
-    "analyzer succeeds and returns scala-code" should {
-      "compile code with Scala compiler" in {
+    "analyzer succeeds & returns constants + scala-code" should {
+      "add variables & compile code with Scala compiler" in {
         //arrange
         val anal = mock[Analyzer]
         val compiler = mock[ScalaCompiler]
@@ -41,6 +41,27 @@ class ExecutorSpec extends BaseSpec  {
         val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Map("a" -> "1", "b" -> "2"), Webhook("abc/", HttpMethod.GET, Map.empty, Map.empty, none[Body]), ScalaCode("do()")).right
         Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned)
         Mockito.when(compiler.compile("""val a = "1"; val b = "2"""" + "\n" + "do()")).thenReturn(classOf[BaseSpec].right)
+
+        //act
+        val result = executor.check("source")
+
+        //assert
+        result should be (resultToBeReturned)
+      }
+    }
+
+    "analyzer succeeds & returns constant + bound variable in uri + scala-code" should {
+      "add variables & compile code with Scala compiler" in {
+        //arrange
+        val anal = mock[Analyzer]
+        val compiler = mock[ScalaCompiler]
+        val executor = new Executor {
+          val scalaCompiler = compiler
+          val analyzer = anal
+        }
+        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Map("a" -> "1"), Webhook("abc/{$b}/", HttpMethod.GET, Map.empty, Map.empty, none[Body]), ScalaCode("do()")).right
+        Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned)
+        Mockito.when(compiler.compile("""val a = "1"; val b = """"" + "\n" + "do()")).thenReturn(classOf[BaseSpec].right)
 
         //act
         val result = executor.check("source")

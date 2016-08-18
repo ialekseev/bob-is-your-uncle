@@ -83,7 +83,7 @@ private[lexical] trait LexicalAnalysisState {
   def currentChar: LexerState[Char] = get.map(s => s.input(s.position))
   def currentIsFirstChar: LexerState[Boolean] = get.map(s => s.position == 0)
   def currentIsId: LexerState[Boolean] = currentChar.map(isId(_))
-  def currentIsVariableStart: LexerState[Boolean] = currentChar.map(isVariableStart(_))
+  def currentIsVarFirst: LexerState[Boolean] = currentChar.map(isVarFirst(_))
   def currentIsStringLiteralStart: LexerState[Boolean] = currentChar.map(isStringLiteralChar(_))
   def currentIsDictionaryStart: LexerState[Boolean] = currentChar.map(isDictionaryStartChar(_))
   def currentIsJsonStart: LexerState[Boolean] = currentChar.map(isJsonStartChar(_))

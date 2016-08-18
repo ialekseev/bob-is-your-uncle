@@ -10,11 +10,14 @@ import scalaz._
       letter ::= upper | lower
       digit ::=  '0' |...| '9'
       id ::= letter | digit | @
+      varFirst ::= '$'
+      varSecond ::= letter
+      varRest ::= letter | digit
       WS ::= ' '
       NL ::= '\n'
 
       identifier ::= id {id}
-      variable ::= '$' identifier
+      variable ::= varFirst varSecond {varRest}
       stringLiteral ::= "..."
       dictionary ::= [...]
       json ::= ~...~

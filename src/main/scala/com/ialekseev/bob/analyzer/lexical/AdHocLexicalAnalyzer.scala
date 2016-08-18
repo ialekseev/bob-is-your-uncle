@@ -12,7 +12,7 @@ import Scalaz._
 final class AdHocLexicalAnalyzer extends LexicalAnalyzer with LexicalAnalysisState {
 
   private def identifierStep: LexerState[Option[Tokenized]] = wordStep(currentIsId, takeAheadExcludingLast(isSeparator(_), isStringLiteralChar(_)), identifier(_))
-  private def variableStep: LexerState[Option[Tokenized]] = wordStep(currentIsVariableStart, takeAheadExcludingLast(isSeparator(_), isStringLiteralChar(_)), variable(_))
+  private def variableStep: LexerState[Option[Tokenized]] = wordStep(currentIsVarFirst, takeAheadExcludingLast(isSeparator(_), isStringLiteralChar(_)), variable(_))
   private def stringLiteralStep: LexerState[Option[Tokenized]] = wordStep(currentIsStringLiteralStart, takeAheadIncludingLast(isStringLiteralChar(_), isNL(_)), stringLiteral(_))
   private def dictionaryStep: LexerState[Option[Tokenized]] = wordStep(currentIsDictionaryStart, takeAheadIncludingLast(isDictionaryEndChar(_), isNL(_)), dictionary(_))
   private def jsonStep: LexerState[Option[Tokenized]] = wordStep(currentIsJsonStart, takeAheadIncludingLast(isJsonEndChar(_), isNL(_)), json(_))
