@@ -26,7 +26,7 @@ trait Check {
       source
     } match {
       case Success(c) => {
-        executor.check(c) match {
+        executor.build(c) match {
           case \/-(result) => showSuccess(result)
           case -\/(error) => error match {
             case LexicalAnalysisFailed(first +: _) => showError(c, first.startOffset, first.endOffset, "Unexpected token")

@@ -1,7 +1,7 @@
 package com.ialekseev.bob.analyzer
 
+import com.ialekseev.bob.HttpMethod.HttpMethod
 import com.ialekseev.bob._
-import com.ialekseev.bob.analyzer.Analyzer.HttpMethod.HttpMethod
 import com.ialekseev.bob.analyzer.Analyzer._
 import com.ialekseev.bob.analyzer.lexical.{AdHocLexicalAnalyzer, LexicalAnalyzer}
 import com.ialekseev.bob.analyzer.syntax.SyntaxAnalyzer._
@@ -84,8 +84,7 @@ trait Analyzer {
           case Terminal(LexerToken(Token.Type.Dictionary(_, d), _)) => DictionaryBody(d)
           case Terminal(LexerToken(Token.Type.Json(_, j), _)) => JsonBody(j)
       }
-
-      extractMethod.map(method => Webhook(uri, method, headers, queryString, body))
+      extractMethod.map(method => Webhook(HttpRequest(uri, method, headers, queryString, body)))
     }
 
     def extractCode: ValidationNel[SemanticError, Code] = {
@@ -101,17 +100,7 @@ trait Analyzer {
 object Analyzer {
   case class AnalysisResult(namespace: Namespace, description: String, constants: Map[String, String], webhook: Webhook, code: Code)
   case class Namespace(path: String, name: String)
-  case class Webhook(uri: String, method: HttpMethod, headers: Map[String, String], queryString: Map[String, String], body: Option[Body])
-
-  object HttpMethod extends Enumeration {
-    type HttpMethod = Value
-    val GET, POST, PUT, DELETE = Value
-  }
-
-  sealed trait Body
-  case class StringLiteralBody(text: String) extends Body
-  case class DictionaryBody(dic: Map[String, String]) extends Body
-  case class JsonBody(j: JValue) extends Body
+  case class Webhook(req: HttpRequest)
 
   sealed trait Code
   case class ScalaCode(c: String) extends Code
