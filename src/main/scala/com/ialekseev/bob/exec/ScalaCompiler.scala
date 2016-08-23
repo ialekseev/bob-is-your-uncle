@@ -72,8 +72,7 @@ private[exec] class Compiler(targetDir: Option[File], val reportedErrors: ListBu
     reporter.reset()
     val run = new global.Run
     val className = "bob" + Random.alphanumeric.take(40).mkString
-    val test = wrapCodeInClass(className, code, fields)
-    val sourceFiles = List(new BatchSourceFile("(inline)", test))
+    val sourceFiles = List(new BatchSourceFile("(inline)", wrapCodeInClass(className, code, fields)))
     run.compileSources(sourceFiles)
     className
   }

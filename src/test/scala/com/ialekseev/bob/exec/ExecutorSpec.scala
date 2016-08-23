@@ -3,6 +3,7 @@ package com.ialekseev.bob.exec
 import com.ialekseev.bob.analyzer.Analyzer._
 import com.ialekseev.bob._
 import com.ialekseev.bob.analyzer.Analyzer
+import com.ialekseev.bob.exec.Executor.Build
 import org.mockito.Mockito
 import scalaz._
 import Scalaz._
@@ -38,15 +39,15 @@ class ExecutorSpec extends BaseSpec  {
           val scalaCompiler = compiler
           val analyzer = anal
         }
-        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Map("a" -> "1", "b" -> "2"), Webhook(HttpRequest("abc/", HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")).right
-        Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned)
+        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2"), Webhook(HttpRequest("abc/", HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
+        Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
         Mockito.when(compiler.compile("do()", """var a = "1"; var b = "2"""")).thenReturn("abc".right)
 
         //act
         val result = executor.build("source")
 
         //assert
-        result should be (resultToBeReturned)
+        result should be (Build(resultToBeReturned, "abc").right)
       }
     }
 
@@ -59,15 +60,15 @@ class ExecutorSpec extends BaseSpec  {
           val scalaCompiler = compiler
           val analyzer = anal
         }
-        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Map("a" -> "1"), Webhook(HttpRequest("abc/{$b}/", HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")).right
-        Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned)
+        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1"), Webhook(HttpRequest("abc/{$b}/", HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
+        Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
         Mockito.when(compiler.compile("do()", """var a = "1"; var b = """"")).thenReturn("abc".right)
 
         //act
         val result = executor.build("source")
 
         //assert
-        result should be (resultToBeReturned)
+        result should be (Build(resultToBeReturned, "abc").right)
       }
     }
   }

@@ -54,12 +54,12 @@ trait Analyzer {
       (parseTree.loc.find(_.getLabel == nonTerminal("Description")) >>= (_.lastChild)).map(_.getLabel).map(stringLiteral).get.successNel
     }
 
-    def extractConstants:  ValidationNel[SemanticError, Map[String, String]] = {
+    def extractConstants:  ValidationNel[SemanticError, Seq[(String, String)]] = {
       parseTree.loc.find(_.getLabel == nonTerminal("Constants")).map(_.tree.subForest).getOrElse(Stream.empty).
         map(c => (c.loc.firstChild.map(_.getLabel).get, c.loc.lastChild.map(_.getLabel).get)).map {
         case (Terminal(LexerToken(Token.Variable(name), _)), Terminal(LexerToken(Token.Type.StringLiteral(value), _))) => (name, value)
         case _ => sys.error("Invalid constant")
-      }.toMap.successNel
+      }.toSeq.successNel
     }
 
     def extractWebhook: ValidationNel[SemanticError, Webhook] = {
@@ -98,7 +98,7 @@ trait Analyzer {
 }
 
 object Analyzer {
-  case class AnalysisResult(namespace: Namespace, description: String, constants: Map[String, String], webhook: Webhook, code: Code)
+  case class AnalysisResult(namespace: Namespace, description: String, constants: Seq[(String, String)], webhook: Webhook, code: Code)
   case class Namespace(path: String, name: String)
   case class Webhook(req: HttpRequest)
 

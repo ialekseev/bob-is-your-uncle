@@ -27,7 +27,7 @@ trait Check {
     } match {
       case Success(c) => {
         executor.build(c) match {
-          case \/-(result) => showSuccess(result)
+          case \/-(built) => showSuccess(built.analysisResult)
           case -\/(error) => error match {
             case LexicalAnalysisFailed(first +: _) => showError(c, first.startOffset, first.endOffset, "Unexpected token")
             case SyntaxAnalysisFailed(first +: _) => showError(c, first.startOffset, first.endOffset, first.message)
@@ -40,10 +40,10 @@ trait Check {
     }
   }
 
-  def showSuccess(result: AnalysisResult) = {
+  def showSuccess(r: AnalysisResult) = {
     println()
-    println(Console.WHITE + "namespace: " + result.namespace.path + "#" + result.namespace.name + Console.RESET)
-    println(Console.WHITE + "description: "+ result.description + Console.RESET)
+    println(Console.WHITE + "namespace: " + r.namespace.path + "#" + r.namespace.name + Console.RESET)
+    println(Console.WHITE + "description: "+ r.description + Console.RESET)
     println(Console.WHITE + "result: " + Console.GREEN + s"OK" + Console.RESET)
     println()
   }

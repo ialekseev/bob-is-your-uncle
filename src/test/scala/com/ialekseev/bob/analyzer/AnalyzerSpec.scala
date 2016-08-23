@@ -160,7 +160,7 @@ class AnalyzerSpec extends BaseSpec {
         val result = analyzer.analyze("source")
 
         //assert
-        result should be (AnalysisResult(Namespace("com", "create"), "hello", Map.empty, Webhook(HttpRequest("/example", HttpMethod.GET, Map.empty, Map.empty, none)), ScalaCode("val a = 1")).right)
+        result should be (AnalysisResult(Namespace("com", "create"), "hello", Seq.empty, Webhook(HttpRequest("/example", HttpMethod.GET, Map.empty, Map.empty, none)), ScalaCode("val a = 1")).right)
       }
     }
 
@@ -256,7 +256,7 @@ class AnalyzerSpec extends BaseSpec {
         val result = analyzer.analyze("source")
 
         //assert
-        result should be (AnalysisResult(Namespace("com.ialekseev", "create"), "hello", Map("var1" -> "alice", "var2" -> "wonderland"), Webhook(HttpRequest("/example", HttpMethod.POST, Map("h1"->"a"), Map("b"->"18"), some(JsonBody(JObject("c"-> JString("19")))))), ScalaCode("val a = 1")).right)
+        result should be (AnalysisResult(Namespace("com.ialekseev", "create"), "hello", Seq("var1" -> "alice", "var2" -> "wonderland"), Webhook(HttpRequest("/example", HttpMethod.POST, Map("h1"->"a"), Map("b"->"18"), some(JsonBody(JObject("c"-> JString("19")))))), ScalaCode("val a = 1")).right)
       }
     }
   }

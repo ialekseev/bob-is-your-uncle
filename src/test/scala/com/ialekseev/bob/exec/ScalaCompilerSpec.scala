@@ -65,7 +65,5 @@ class ScalaCompilerSpec extends BaseSpec {
         result should be ("1hi")
       }
     }
-
-    //todo: test error-paths
   }
 }
