@@ -1,4 +1,4 @@
-package com.ialekseev.bob.console
+package com.ialekseev.bob.run
 
 trait Command {
   def normalizeSource(source: String): String = {

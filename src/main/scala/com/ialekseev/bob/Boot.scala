@@ -1,7 +1,7 @@
 package com.ialekseev.bob
 
-import com.ialekseev.bob.console.commands.{Shell, Check}
-import com.ialekseev.bob.console.{Command}
+import com.ialekseev.bob.run.commands.{Shell, Check}
+import com.ialekseev.bob.run.{Command}
 
 object Boot extends App with Command with Check with Shell {
 

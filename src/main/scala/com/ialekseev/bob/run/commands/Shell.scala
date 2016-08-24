@@ -1,4 +1,4 @@
-package com.ialekseev.bob.console.commands
+package com.ialekseev.bob.run.commands
 
 import scala.io._
 import scala.util.control.Breaks._

@@ -1,8 +1,8 @@
-package com.ialekseev.bob.console.commands
+package com.ialekseev.bob.run.commands
 
 import com.ialekseev.bob.analyzer.Analyzer.AnalysisResult
 import com.ialekseev.bob.analyzer.DefaultAnalyzer
-import com.ialekseev.bob.console.{Command}
+import com.ialekseev.bob.run.{Command}
 import com.ialekseev.bob.exec.{Executor, ScalaCompiler}
 import com.ialekseev.bob.{CompilationFailed, LexicalAnalysisFailed, SemanticAnalysisFailed, SyntaxAnalysisFailed}
 import scala.io.Codec
@@ -26,7 +26,7 @@ trait Check {
       source
     } match {
       case Success(c) => {
-        executor.build(c) match {
+        executor.build(c).unsafePerformSync match {
           case \/-(built) => showSuccess(built.analysisResult)
           case -\/(error) => error match {
             case LexicalAnalysisFailed(first +: _) => showError(c, first.startOffset, first.endOffset, "Unexpected token")
