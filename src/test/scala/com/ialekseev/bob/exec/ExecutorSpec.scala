@@ -84,8 +84,8 @@ class ExecutorSpec extends BaseSpec  {
           val scalaCompiler = compiler
           val analyzer = anal
         }
-        val incoming = HttpRequest("example.com/", HttpMethod.GET, Map.empty, Map.empty, none)
-        val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest("example.ru/", HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")),"super"))
+        val incoming = HttpRequest("example.com/1/2/", HttpMethod.GET, Map.empty, Map.empty, none)
+        val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest("example.ru/{$a}/2/", HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")),"super"))
 
         //act
         val result = executor.run(incoming, builds).unsafePerformSync
@@ -95,7 +95,7 @@ class ExecutorSpec extends BaseSpec  {
       }
     }
 
-    "there is a matching build (without bound variables)" should {
+    "there is a matching build (with matching 'uri' (without vars))" should {
       "run it" in {
         //arrange
         val anal = mock[Analyzer]
@@ -116,7 +116,28 @@ class ExecutorSpec extends BaseSpec  {
       }
     }
 
-    "there is a matching build (with bound variables)" should {
+    "there is a matching build (with matching 'uri' (without vars) and 'headers' (without vars))" should {
+      "run it" in {
+        //arrange
+        val anal = mock[Analyzer]
+        val compiler = mock[ScalaCompiler]
+        val executor = new Executor {
+          val scalaCompiler = compiler
+          val analyzer = anal
+        }
+        val incoming = HttpRequest("example.com/", HttpMethod.GET, Map("header1" -> "secret", "header2" -> "xxx"), Map.empty, none)
+        val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest("example.com/", HttpMethod.GET, Map("header1" -> "secret", "header2" -> "xxx"), Map.empty, none[Body])), ScalaCode("do()")), "abc"))
+        Mockito.when(compiler.eval("abc", Seq.empty)).thenReturn("1")
+
+        //act
+        val result = executor.run(incoming, builds).unsafePerformSync
+
+        //assert
+        result should be (Seq(Run(builds(0), "1")))
+      }
+    }
+
+    "there is a matching build (with matching 'uri' (with vars))" should {
       "run it" in {
         //arrange
         val anal = mock[Analyzer]

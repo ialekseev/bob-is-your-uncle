@@ -6,17 +6,17 @@ import com.ialekseev.bob.analyzer.{Analyzer}
 import com.ialekseev.bob.analyzer.Analyzer.{Webhook, AnalysisResult, ScalaCode}
 import scala.util.matching.Regex
 import scalaz._
+import Scalaz._
 import scalaz.concurrent.Task
 
-//todo: refactor the regex mess
 trait Executor {
   val analyzer: Analyzer
   val scalaCompiler: ScalaCompiler
+  private val variableRegexPattern = """\{\$([a-zA-Z]+[a-zA-Z0-9]*)\}""".r
 
   def build(source: String): Task[BuildFailed \/ Build] = {
     def extractBoundVariables(str: String): Seq[(String, String)] = {
-      val pattern = """\{\$([a-zA-Z]+[a-zA-Z0-9]*)\}""".r
-      pattern.findAllIn(str).matchData.map(m => (m.group(1), "")).toSeq
+      variableRegexPattern.findAllIn(str).matchData.map(m => (m.group(1), "")).toSeq
     }
 
     analyzer.analyze(source) match {
@@ -39,20 +39,27 @@ trait Executor {
     }
   }
 
-  //todo: test heavily
   def run(incoming: HttpRequest, builds: Seq[Build]): Task[Seq[Run]] = {
 
-    def matchStr(incomingStr: String): Option[Seq[(String, String)]] = {
-       val patternStr = ("^" + """\{\$([a-zA-Z]+[a-zA-Z0-9]*)\}""".r.replaceAllIn(incomingStr, """(?<$1>.+)""") + "$")
-       val groupNames = """\{\$([a-zA-Z]+[a-zA-Z0-9]*)\}""".r.findAllIn(incomingStr).matchData.map(m => m.group(1)).toSeq
+    def matchStr(buildStr: String, incomingStr: String): Option[List[(String, String)]] = {
+       val patternStr = ("^" + variableRegexPattern.replaceAllIn(buildStr, """(?<$1>.+)""") + "$")
+       val groupNames = variableRegexPattern.findAllIn(buildStr).matchData.map(m => m.group(1)).toSeq
        val pattern = new Regex(patternStr, groupNames: _*)
-       pattern.findFirstMatchIn(incoming.uri).map(r => {
-         r.groupNames.map(n => (n, r.group(n)))
+       pattern.findFirstMatchIn(incomingStr).map(r => {
+         r.groupNames.map(n => (n, r.group(n))).toList
        })
     }
 
-    val matchedBuilds = builds.map(build => {
-      matchStr(build.analysisResult.webhook.req.uri).map(variables => (build, variables)) //todo: just uri for now
+    //todo: key comparison should be case insensitive
+    def matchMap(buildMap: Map[String, String], incomingMap: Map[String, String]): Option[List[(String, String)]] = {
+      if (buildMap.size != incomingMap.size) none
+      else buildMap.toList.map(b => (incomingMap.get(b._1) >>= (in => matchStr(b._2, in)))).sequence.map(v => v.suml)
+    }
+
+    val matchedBuilds = builds.map(build => { //todo: just uri and headers for now
+      (matchStr(build.analysisResult.webhook.req.uri, incoming.uri) |@|
+        matchMap(build.analysisResult.webhook.req.headers, incoming.headers))(_ |+| _).
+        map(variables => (build, variables))
     }).flatten
 
     Task {
