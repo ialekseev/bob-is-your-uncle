@@ -137,6 +137,27 @@ class ExecutorSpec extends BaseSpec  {
       }
     }
 
+    "there is a matching build (with matching 'uri' (without vars) and 'headers' (with vars))" should {
+      "run it" in {
+        //arrange
+        val anal = mock[Analyzer]
+        val compiler = mock[ScalaCompiler]
+        val executor = new Executor {
+          val scalaCompiler = compiler
+          val analyzer = anal
+        }
+        val incoming = HttpRequest("example.com/", HttpMethod.GET, Map("header1" -> "secret", "header2" -> "app_xxx"), Map.empty, none)
+        val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest("example.com/", HttpMethod.GET, Map("header1" -> "{$h1}", "header2" -> "app_{$h2}"), Map.empty, none[Body])), ScalaCode("do()")), "abc"))
+        Mockito.when(compiler.eval("abc", Seq("h1" -> "secret", "h2" -> "xxx"))).thenReturn("1")
+
+        //act
+        val result = executor.run(incoming, builds).unsafePerformSync
+
+        //assert
+        result should be (Seq(Run(builds(0), "1")))
+      }
+    }
+
     "there is a matching build (with matching 'uri' (with vars))" should {
       "run it" in {
         //arrange
