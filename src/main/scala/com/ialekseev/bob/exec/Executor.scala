@@ -9,19 +9,25 @@ import scalaz._
 import Scalaz._
 import scalaz.concurrent.Task
 
+//todo: extract variables from 'body'
+
 trait Executor {
   val analyzer: Analyzer
   val scalaCompiler: ScalaCompiler
   private val variableRegexPattern = """\{\$([a-zA-Z]+[a-zA-Z0-9]*)\}""".r
 
   def build(source: String): Task[BuildFailed \/ Build] = {
-    def extractBoundVariables(str: String): Seq[(String, String)] = {
-      variableRegexPattern.findAllIn(str).matchData.map(m => (m.group(1), "")).toSeq
+    def extractBoundVariablesFromStr(str: String): List[(String, String)] = {
+      variableRegexPattern.findAllIn(str).matchData.map(m => (m.group(1), "")).toList
+    }
+
+    def extractBoundVariablesFromMap(map: Map[String, String]): List[(String, String)] = {
+      map.map(m => extractBoundVariablesFromStr(m._2)).toList.map(v => v.suml)
     }
 
     analyzer.analyze(source) match {
-      case \/-(result@ AnalysisResult(_, _, constants,  Webhook(HttpRequest(uri, _, _, _, _)), ScalaCode(scalaCode))) => {
-        val variables = constants ++ extractBoundVariables(uri) //todo: just uri for now
+      case \/-(result@ AnalysisResult(_, _, constants,  Webhook(HttpRequest(uri, _, headers, queryString, _)), ScalaCode(scalaCode))) => {
+        val variables = constants.toList |+| extractBoundVariablesFromStr(uri) |+| extractBoundVariablesFromMap(headers) |+| extractBoundVariablesFromMap(queryString)
         val scalaVariables = variables.map(c => s"""var ${c._1} = "${c._2}"""").mkString("; ")
 
         def amend(pos: Int) = {
@@ -29,6 +35,7 @@ trait Executor {
           val start = source.indexOf("<scala>") + 7
           start + pos - compilerPositionAmendment - scalaVariables.length
         }
+
         Task {
           scalaCompiler.compile(scalaCode, scalaVariables).
             leftMap(f => CompilationFailed(f.errors.map(e => e.copy(startOffset = amend(e.startOffset), pointOffset = amend(e.pointOffset), endOffset = amend(e.endOffset))))).
@@ -50,16 +57,19 @@ trait Executor {
        })
     }
 
-    //todo: key comparison should be case insensitive
     def matchMap(buildMap: Map[String, String], incomingMap: Map[String, String]): Option[List[(String, String)]] = {
       if (buildMap.size != incomingMap.size) none
-      else buildMap.toList.map(b => (incomingMap.get(b._1) >>= (in => matchStr(b._2, in)))).sequence.map(v => v.suml)
+      else {
+        val incomingMapWithUpperCaseKeys = incomingMap.mapKeys(_.toUpperCase)
+        buildMap.toList.map(b => (incomingMapWithUpperCaseKeys.get(b._1.toUpperCase) >>= (in => matchStr(b._2, in)))).sequence.map(v => v.suml)
+      }
     }
 
-    val matchedBuilds = builds.map(build => { //todo: just uri and headers for now
+    val matchedBuilds = builds.map(build => {
       (matchStr(build.analysisResult.webhook.req.uri, incoming.uri) |@|
-        matchMap(build.analysisResult.webhook.req.headers, incoming.headers))(_ |+| _).
-        map(variables => (build, variables))
+       matchMap(build.analysisResult.webhook.req.headers, incoming.headers) |@|
+       matchMap(build.analysisResult.webhook.req.queryString, incoming.queryString))(_ |+| _ |+| _).
+       map(variables => (build, variables))
     }).flatten
 
     Task {

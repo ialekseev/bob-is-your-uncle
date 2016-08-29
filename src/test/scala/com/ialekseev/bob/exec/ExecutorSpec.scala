@@ -71,6 +71,27 @@ class ExecutorSpec extends BaseSpec  {
         result should be (Build(resultToBeReturned, "abc").right)
       }
     }
+
+    "analyzer succeeds & returns constants + bound variables in uri, header, queryString + scala-code" should {
+      "add variables & compile code with Scala compiler" in {
+        //arrange
+        val anal = mock[Analyzer]
+        val compiler = mock[ScalaCompiler]
+        val executor = new Executor {
+          val scalaCompiler = compiler
+          val analyzer = anal
+        }
+        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "hi"), Webhook(HttpRequest("example/{$c}/{$d}", HttpMethod.GET, Map("header1" -> "{$h}", "header2" -> "head_{$header2}"), Map("query1" -> "{$q}_queryString", "query2" -> "{$query2}"), none[Body])), ScalaCode("do()"))
+        Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
+        Mockito.when(compiler.compile("do()", """var a = "1"; var b = "hi"; var c = ""; var d = ""; var h = ""; var header2 = ""; var q = ""; var query2 = """"")).thenReturn("abc".right)
+
+        //act
+        val result = executor.build("source").unsafePerformSync
+
+        //assert
+        result should be (Build(resultToBeReturned, "abc").right)
+      }
+    }
   }
 
   "Executor: running" when {
@@ -170,6 +191,27 @@ class ExecutorSpec extends BaseSpec  {
         val incoming = HttpRequest("example.com/1/2/", HttpMethod.GET, Map.empty, Map.empty, none)
         val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest("example.com/{$a}/{$b}/", HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")), "abc"))
         Mockito.when(compiler.eval("abc", Seq("a" -> "1", "b" -> "2"))).thenReturn("1")
+
+        //act
+        val result = executor.run(incoming, builds).unsafePerformSync
+
+        //assert
+        result should be (Seq(Run(builds(0), "1")))
+      }
+    }
+
+    "there is a matching build (with matching 'uri' (without vars) and 'queryString' (with vars)) - CASE INSENSITIVE KEYS" should {
+      "run it" in {
+        //arrange
+        val anal = mock[Analyzer]
+        val compiler = mock[ScalaCompiler]
+        val executor = new Executor {
+          val scalaCompiler = compiler
+          val analyzer = anal
+        }
+        val incoming = HttpRequest("example.com/", HttpMethod.POST, Map.empty, Map("q1" -> "start_john_end", "Q2" -> "smith", "Q3" -> "super"), none)
+        val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest("example.com/", HttpMethod.POST, Map.empty, Map("Q1" -> "start_{$name}_end", "q2" -> "{$surname}", "Q3" -> "super"), none[Body])), ScalaCode("do()")), "abc"))
+        Mockito.when(compiler.eval("abc", Seq("name" -> "john", "surname" -> "smith"))).thenReturn("1")
 
         //act
         val result = executor.run(incoming, builds).unsafePerformSync
