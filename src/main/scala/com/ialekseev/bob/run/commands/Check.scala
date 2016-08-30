@@ -1,9 +1,7 @@
 package com.ialekseev.bob.run.commands
 
 import com.ialekseev.bob.analyzer.Analyzer.AnalysisResult
-import com.ialekseev.bob.analyzer.DefaultAnalyzer
 import com.ialekseev.bob.run.{Command}
-import com.ialekseev.bob.exec.{Executor, ScalaCompiler}
 import com.ialekseev.bob.{CompilationFailed, LexicalAnalysisFailed, SemanticAnalysisFailed, SyntaxAnalysisFailed}
 import scala.io.Codec
 import scala.util.{Failure, Success, Try}
@@ -12,11 +10,6 @@ import Scalaz._
 
 trait Check {
   this: Command =>
-
-  val executor = new Executor {
-    val analyzer = DefaultAnalyzer
-    val scalaCompiler = new ScalaCompiler
-  }
 
   def checkCommand(path: String) = {
     Try {
@@ -37,6 +30,24 @@ trait Check {
         }
       }
       case Failure(e) => showError("Can't read the file provided", e)
+    }
+  }
+
+  def normalizeSource(source: String): String = {
+    source.replaceAll("\r\n", "\n")
+  }
+
+  def errorCoordinate(source: String, offset: Int): (Int, Int) = {
+    require(offset >= 0)
+
+    if (source.isEmpty || offset == 0) (1, 1)
+    else {
+      val beforeOffset = source.take(offset)
+      val nlIndex = beforeOffset.reverse.indexWhere(_ == '\n')
+
+      val column = if (nlIndex >= 0) nlIndex + 1 else offset + 1
+      val line = beforeOffset.count(_ == '\n') + 1
+      (line, column)
     }
   }
 

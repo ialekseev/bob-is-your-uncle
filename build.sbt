@@ -19,6 +19,7 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
+  "com.typesafe.akka" %% "akka-http-experimental" % "2.4.9",
   "org.scala-lang" % "scala-compiler" % scalaVersion.value,
   "org.scalaz" %% "scalaz-core" % "7.2.2",
   "org.scalaz" %% "scalaz-concurrent" % "7.2.2",

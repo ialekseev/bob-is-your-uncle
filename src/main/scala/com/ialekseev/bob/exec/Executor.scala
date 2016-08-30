@@ -33,7 +33,7 @@ trait Executor {
         def amend(pos: Int) = {
           val compilerPositionAmendment = 90
           val start = source.indexOf("<scala>") + 7
-          start + pos - compilerPositionAmendment - scalaVariables.length
+          start + pos - compilerPositionAmendment - scalaVariables.length - 1
         }
 
         Task {

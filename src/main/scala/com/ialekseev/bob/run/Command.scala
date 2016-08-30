@@ -1,21 +1,11 @@
 package com.ialekseev.bob.run
 
+import com.ialekseev.bob.analyzer.DefaultAnalyzer
+import com.ialekseev.bob.exec.{ScalaCompiler, Executor}
+
 trait Command {
-  def normalizeSource(source: String): String = {
-    source.replaceAll("\r\n", "\n")
-  }
-
-  def errorCoordinate(source: String, offset: Int): (Int, Int) = {
-    require(offset >= 0)
-
-    if (source.isEmpty || offset == 0) (1, 1)
-    else {
-      val beforeOffset = source.take(offset)
-      val nlIndex = beforeOffset.reverse.indexWhere(_ == '\n')
-
-      val column = if (nlIndex >= 0) nlIndex + 1 else offset + 1
-      val line = beforeOffset.count(_ == '\n') + 1
-      (line, column)
-    }
+  val executor = new Executor {
+    val analyzer = DefaultAnalyzer
+    val scalaCompiler = new ScalaCompiler
   }
 }
