@@ -20,11 +20,13 @@ resolvers ++= Seq(
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-http-experimental" % "2.4.9",
+  "de.heikoseeberger" %% "akka-http-json4s" % "1.5.3",
   "org.scala-lang" % "scala-compiler" % scalaVersion.value,
   "org.scalaz" %% "scalaz-core" % "7.2.2",
   "org.scalaz" %% "scalaz-concurrent" % "7.2.2",
   "org.json4s" %% "json4s-native" % "3.4.0",
   "com.github.scopt" %% "scopt" % "3.5.0",
   "org.scalatest" %%  "scalatest"   % "2.2.1" % "test",
-  "org.mockito" % "mockito-core" % "1.10.19" % "test"
+  "org.mockito" % "mockito-core" % "1.10.19" % "test",
+  "com.typesafe.akka" % "akka-http-testkit_2.11" % "2.4.9" % "test"
 )

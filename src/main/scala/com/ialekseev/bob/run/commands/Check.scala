@@ -19,7 +19,7 @@ trait Check {
       source
     } match {
       case Success(c) => {
-        executor.build(c).unsafePerformSync match {
+        exec.build(c).unsafePerformSync match {
           case \/-(built) => showSuccess(built.analysisResult)
           case -\/(error) => error match {
             case LexicalAnalysisFailed(first +: _) => showError(c, first.startOffset, first.endOffset, "Unexpected token")

@@ -1,7 +1,9 @@
 package com.ialekseev
 
-import com.ialekseev.bob.HttpMethod.HttpMethod
 import org.json4s.JsonAST.JValue
+import scala.concurrent.{Promise, Future}
+import scalaz.concurrent.Task
+import scalaz.{-\/, \/-}
 
 package object bob {
   case class LexicalError(startOffset: Int, endOffset: Int)
@@ -15,9 +17,8 @@ package object bob {
   case class SemanticAnalysisFailed(errors: Seq[SemanticError]) extends StageFailed
   case class CompilationFailed(errors: Seq[CompilationError]) extends StageFailed
 
-  case class HttpRequest(uri: String, method: HttpMethod, headers: Map[String, String], queryString: Map[String, String], body: Option[Body])
+  case class HttpRequest(uri: String, method: HttpMethod.Value, headers: Map[String, String], queryString: Map[String, String], body: Option[Body])
   object HttpMethod extends Enumeration {
-    type HttpMethod = Value
     val GET, POST, PUT, DELETE = Value
   }
 
@@ -25,4 +26,13 @@ package object bob {
   case class StringLiteralBody(text: String) extends Body
   case class DictionaryBody(dic: Map[String, String]) extends Body
   case class JsonBody(j: JValue) extends Body
+
+  def unsafeToScala[A](task: Task[A]): Future[A] = {
+    val p = Promise[A]
+    task.unsafePerformAsync {
+      case \/-(a) => p.success(a)
+      case -\/(t) => p.failure(t)
+    }
+    p.future
+  }
 }

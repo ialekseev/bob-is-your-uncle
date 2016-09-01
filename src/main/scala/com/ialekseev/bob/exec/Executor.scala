@@ -65,6 +65,10 @@ trait Executor {
       }
     }
 
+    //todo: should uri/path collation be case-insensitive?
+    //todo: should we drop starting/ending slashes?
+    //todo: should we support absolute URIs (currently we assume working with PATHs)?
+
     val matchedBuilds = builds.map(build => {
       (matchStr(build.analysisResult.webhook.req.uri, incoming.uri) |@|
        matchMap(build.analysisResult.webhook.req.headers, incoming.headers) |@|

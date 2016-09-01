@@ -1,6 +1,5 @@
 package com.ialekseev.bob.analyzer
 
-import com.ialekseev.bob.HttpMethod.HttpMethod
 import com.ialekseev.bob._
 import com.ialekseev.bob.analyzer.Analyzer._
 import com.ialekseev.bob.analyzer.lexical.{AdHocLexicalAnalyzer, LexicalAnalyzer}
@@ -68,10 +67,10 @@ trait Analyzer {
       val specificSettings = ((settings >>= (_.find(_.getLabel == nonTerminal("WebhookSpecificSettings")))).map(_.tree.subForest) >>=
                               (_.map(s => (s.loc.firstChild |@| s.loc.lastChild)((_, _))).sequence)).getOrElse(Stream.empty)
 
-      def extractMethod: ValidationNel[SemanticError, HttpMethod]  = {
+      def extractMethod: ValidationNel[SemanticError, HttpMethod.Value]  = {
         val method = specificSettings.map(s => (s._1.getLabel, s._2.getLabel)).collect { case (Terminal(LexerToken(Token.Keyword.`method`, _)), Terminal(LexerToken(Token.Type.StringLiteral(m), off))) => (m, off) }.headOption
         method match {
-          case Some((m, offset)) => HttpMethod.values.find(_.toString.toUpperCase == m.toUpperCase).map(_.successNel[SemanticError]).getOrElse(SemanticError(offset + 1, offset + m.length, "Unexpected Http method").failureNel[HttpMethod])
+          case Some((m, offset)) => HttpMethod.values.find(_.toString.toUpperCase == m.toUpperCase).map(_.successNel[SemanticError]).getOrElse(SemanticError(offset + 1, offset + m.length, "Unexpected Http method").failureNel[HttpMethod.Value])
           case _ => HttpMethod.GET.successNel
         }
       }
