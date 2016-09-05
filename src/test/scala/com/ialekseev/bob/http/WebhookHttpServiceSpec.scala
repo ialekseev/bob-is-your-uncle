@@ -1,6 +1,7 @@
 package com.ialekseev.bob.http
 
-import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model.headers.RawHeader
+import akka.http.scaladsl.model.{StatusCodes}
 import com.ialekseev.bob.analyzer.Analyzer.{ScalaCode, Webhook, Namespace, AnalysisResult}
 import com.ialekseev.bob.exec.Executor.{Run, Build}
 import com.ialekseev.bob.{Body, HttpMethod, HttpRequest, BaseSpec}
@@ -17,20 +18,93 @@ class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with Scala
 
   "Routing" when {
 
-    "GET request has just uri there IS a matching build" should {
-      "run" in {
+    "GET request has just uri AND there IS a matching build" should {
+      "succeed with the build" in {
         //arrange
-        val request = HttpRequest("/example/1", HttpMethod.GET, Map.empty, Map.empty, none)
-        val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2"), Webhook(HttpRequest("/example/1", HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
-        val build = Build(analysisResult, "code")
+        val uri = "/example/1"
+        val method = HttpMethod.GET
+        val build = {
+          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2"), Webhook(HttpRequest(uri, method, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
+          Build(analysisResult, "code")
+        }
+        val request = HttpRequest(uri, method, Map.empty, Map.empty, none)
         when(exec.run(request, Seq(build))).thenReturn(Task.now(Seq(Run(build, "1"))))
 
         //act
-        Get("/example/1") ~> createRoute(Seq(build)) ~> check {
+        Get(uri) ~> createRoute(Seq(build)) ~> check {
 
           //assert
           response.status should be (StatusCodes.OK)
           responseAs[Seq[Namespace]] should be (Seq(Namespace("com", "create")))
+        }
+      }
+    }
+
+    "POST request has uri & headers AND there IS a matching build" should {
+      "succeed with the build" in {
+        //arrange
+        val uri = "/example/1"
+        val method = HttpMethod.POST
+        val headers = Map("h1" -> "super", "head2" -> "cool")
+        val build = {
+          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2"), Webhook(HttpRequest("/example/1", method, headers, Map.empty, none[Body])), ScalaCode("do()"))
+          Build(analysisResult, "code")
+        }
+        val request = HttpRequest(uri, method, headers, Map.empty, none)
+        when(exec.run(request, Seq(build))).thenReturn(Task.now(Seq(Run(build, "1"))))
+
+        //act
+        Post(uri).withHeaders(RawHeader("h1", "super"), RawHeader("head2", "cool")) ~> createRoute(Seq(build)) ~> check {
+
+          //assert
+          response.status should be (StatusCodes.OK)
+          responseAs[Seq[Namespace]] should be (Seq(Namespace("com", "create")))
+        }
+      }
+    }
+
+    "PUT request has uri & queryString AND there IS a matching build" should {
+      "succeed with the build" in {
+        //arrange
+        val path = "/example/1"
+        val uri = path + "?q1=super&query2=cool"
+        val method = HttpMethod.PUT
+        val queryString = Map("q1" -> "super", "query2" -> "cool")
+        val build = {
+          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2"), Webhook(HttpRequest("/example/1", method, Map.empty, queryString, none[Body])), ScalaCode("do()"))
+          Build(analysisResult, "code")
+        }
+        val request = HttpRequest(path, method, Map.empty, queryString, none)
+        when(exec.run(request, Seq(build))).thenReturn(Task.now(Seq(Run(build, "1"))))
+
+        //act
+        Put(uri) ~> createRoute(Seq(build)) ~> check {
+
+          //assert
+          response.status should be (StatusCodes.OK)
+          responseAs[Seq[Namespace]] should be (Seq(Namespace("com", "create")))
+        }
+      }
+    }
+
+    "GET request has just uri AND there are NO matching builds" should {
+      "succeed with empty Seq response" in {
+        //arrange
+        val uri = "/example/1"
+        val method = HttpMethod.GET
+        val build = {
+          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2"), Webhook(HttpRequest("/example/2", method, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
+          Build(analysisResult, "code")
+        }
+        val request = HttpRequest(uri, method, Map.empty, Map.empty, none)
+        when(exec.run(request, Seq(build))).thenReturn(Task.now(Seq.empty)) //NO matching builds
+
+        //act
+        Get(uri) ~> createRoute(Seq(build)) ~> check {
+
+          //assert
+          response.status should be (StatusCodes.OK)
+          responseAs[Seq[Namespace]] should be (Seq.empty)
         }
       }
     }
