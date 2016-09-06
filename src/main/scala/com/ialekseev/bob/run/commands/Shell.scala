@@ -1,26 +1,26 @@
 package com.ialekseev.bob.run.commands
 
-import scala.io._
+import com.ialekseev.bob.run.Command
 import scala.util.control.Breaks._
 
 trait Shell {
-  this: Check with Service =>
+  this: Command with Check with Service =>
 
   lazy val color = Console.MAGENTA
 
   def shellCommand() = {
-    println(color)
-    println("Welcome to Bob's shell. Type 'help' for information.")
-    println(Console.RESET)
+    show(color)
+    show("Welcome to Bob's shell. Type 'help' for information.")
+    show(Console.RESET)
     breakable {
       while(true){
-        StdIn.readLine(color + "bob> ").split(" +").toSeq match {
+        read(color + "bob> ").split(" +").toSeq match {
           case Seq("check", path) => checkCommand(path)
           case Seq("service") => serviceCommand()
           case Seq("help") => showHelp()
           case Seq("quit" | "exit" | ":q") => break
           case _ => {
-            println(Console.RED + " Invalid command. See help:" + Console.RESET)
+            show(Console.RED + " Invalid command. See help:" + Console.RESET)
             showHelp()
           }
         }
@@ -29,12 +29,12 @@ trait Shell {
   }
 
   private def showHelp() = {
-    println(Console.GREEN)
-    println(" ?HELP?")
-    println(" [check <path>]       - check if the specified file is a correct Bob's")
-    println(" [service]            - run the http service")
-    println(" [quit | exit | :q]   - quit the shell")
-    println(" [help]               - command listing")
-    println(Console.RESET)
+    show(Console.GREEN)
+    show(" ?HELP?")
+    show(" [check <path>]       - check if the specified file is a correct Bob's")
+    show(" [service]            - run the http service")
+    show(" [quit | exit | :q]   - quit the shell")
+    show(" [help]               - command listing")
+    show(Console.RESET)
   }
 }

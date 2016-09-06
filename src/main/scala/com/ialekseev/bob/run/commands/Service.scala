@@ -20,36 +20,32 @@ trait Service extends WebhookHttpService {
   val fileExtension = ".bob"
 
   def serviceCommand() = {
-    implicit val system = ActorSystem("my-system")
-    implicit val materializer = ActorMaterializer()
-    implicit val executionContext = system.dispatcher
-
-     val sourcesTry = for {
-      sourceFiles <- Try(new java.io.File(defaultBuildsLocation).listFiles.filter(_.getName.endsWith(fileExtension)))
-      sources <- Try(sourceFiles.map(file => readSource(Source.fromFile(file)(Codec.UTF8)).get).toList)
-    } yield sources
-
-    sourcesTry match {
+    readSources(defaultBuildsLocation) match {
       case scala.util.Success(sources) => {
 
         val built: List[BuildFailed \/ Build] = sources.map(source => {
-         val build = exec.build(source).unsafePerformSync
-         showResult(source, build)
+         val build = exec.build(source._2).unsafePerformSync
+         showResult(source._1, source._2, build)
          build
        })
 
         built.sequenceU match {
           case \/-(builds) => {
+            implicit val system = ActorSystem("my-system")
+            implicit val materializer = ActorMaterializer()
+            implicit val executionContext = system.dispatcher
+
             val bindingFuture = Http().bindAndHandle(createRoute(builds), "localhost", 8080)
 
-            println(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
-            StdIn.readLine() // let it run until user presses return
+            show(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
+            read() // let it run until user presses return
             bindingFuture.flatMap(_.unbind()) // trigger unbinding from the port
               .onComplete(_ => system.terminate()) // and shutdown when done
           }
-          case -\/(failed) => showError("Please fix the failed builds")
+          case -\/(failed) => {
+            show("Please fix the failed sources before\n")
+          }
         }
-
       }
       case scala.util.Failure(e) => showError("Problem while trying to read the source files", e)
     }
