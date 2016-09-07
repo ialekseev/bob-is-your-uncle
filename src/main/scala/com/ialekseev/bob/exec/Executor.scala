@@ -1,15 +1,13 @@
 package com.ialekseev.bob.exec
 
 import com.ialekseev.bob.exec.Executor.{Run, BuildFailed, Build}
-import com.ialekseev.bob.{HttpRequest, CompilationFailed, StageFailed}
+import com.ialekseev.bob.{HttpRequest, CompilationFailed, StageFailed, Body, StringLiteralBody, DictionaryBody, JsonBody}
 import com.ialekseev.bob.analyzer.{Analyzer}
 import com.ialekseev.bob.analyzer.Analyzer.{Webhook, AnalysisResult, ScalaCode}
 import scala.util.matching.Regex
 import scalaz._
 import Scalaz._
 import scalaz.concurrent.Task
-
-//todo: extract variables from 'body'
 
 trait Executor {
   val analyzer: Analyzer
@@ -25,9 +23,20 @@ trait Executor {
       map.map(m => extractBoundVariablesFromStr(m._2)).toList.map(v => v.suml)
     }
 
+    def extractBoundVariablesFromBody(body: Option[Body]): List[(String, String)] = {
+      body match {
+        case Some(StringLiteralBody(str)) => extractBoundVariablesFromStr(str)
+        case Some(DictionaryBody(dic)) => extractBoundVariablesFromMap(dic)
+        case Some(JsonBody(json)) => extractBoundVariablesFromStr(json.toString)
+        case None => List.empty
+        case b => sys.error(s"The body ($b) is not supported!")
+      }
+    }
+
     analyzer.analyze(source) match {
-      case \/-(result@ AnalysisResult(_, _, constants,  Webhook(HttpRequest(uri, _, headers, queryString, _)), ScalaCode(scalaCode))) => {
-        val variables = constants.toList |+| extractBoundVariablesFromStr(uri) |+| extractBoundVariablesFromMap(headers) |+| extractBoundVariablesFromMap(queryString)
+      case \/-(result@ AnalysisResult(_, _, constants,  Webhook(HttpRequest(uri, _, headers, queryString, body)), ScalaCode(scalaCode))) => {
+        val variables = constants.toList |+| extractBoundVariablesFromStr(uri) |+|
+          extractBoundVariablesFromMap(headers) |+| extractBoundVariablesFromMap(queryString) |+| extractBoundVariablesFromBody(body)
         val scalaVariables = variables.map(c => s"""var ${c._1} = "${c._2}"""").mkString("; ")
 
         def amend(pos: Int) = {
@@ -49,12 +58,10 @@ trait Executor {
   def run(incoming: HttpRequest, builds: Seq[Build]): Task[Seq[Run]] = {
 
     def matchStr(buildStr: String, incomingStr: String): Option[List[(String, String)]] = {
-       val patternStr = ("^" + variableRegexPattern.replaceAllIn(buildStr, """(?<$1>.+)""") + "$")
+      val patternStr = """^\Q""" + variableRegexPattern.replaceAllIn(buildStr, """\\E(?<$1>.+)\\Q""") + """\E$"""
        val groupNames = variableRegexPattern.findAllIn(buildStr).matchData.map(m => m.group(1)).toSeq
        val pattern = new Regex(patternStr, groupNames: _*)
-       pattern.findFirstMatchIn(incomingStr).map(r => {
-         r.groupNames.map(n => (n, r.group(n))).toList
-       })
+       pattern.findFirstMatchIn(incomingStr).map(r => r.groupNames.map(n => (n, r.group(n))).toList)
     }
 
     def matchMap(buildMap: Map[String, String], incomingMap: Map[String, String]): Option[List[(String, String)]] = {
@@ -65,14 +72,26 @@ trait Executor {
       }
     }
 
-    //todo: should uri/path collation be case-insensitive?
-    //todo: should we drop starting/ending slashes?
-    //todo: should we support absolute URIs (currently we assume working with PATHs)?
+    //todo: add JsonBody matching (using 'diff' method of json4s probably)
+
+    def matchBody(buildBody: Option[Body], incomingBody: Option[Body]): Option[List[(String, String)]] = {
+      (buildBody, incomingBody) match {
+        case (Some(StringLiteralBody(bStr)), Some(StringLiteralBody(iStr))) => matchStr(bStr, iStr)
+        case (Some(DictionaryBody(bDic)), Some(DictionaryBody(iDic))) => matchMap(bDic, iDic)
+        case (None, None) => some(List.empty)
+        case m => sys.error(s"The match ($m) is not supported!")
+      }
+    }
+
+    /*todo: should uri/path collation be case-insensitive?
+            should we drop starting/ending slashes?
+            should we support absolute URIs (currently we assume working with PATHs)?*/
 
     val matchedBuilds = builds.map(build => {
       (matchStr(build.analysisResult.webhook.req.uri, incoming.uri) |@|
        matchMap(build.analysisResult.webhook.req.headers, incoming.headers) |@|
-       matchMap(build.analysisResult.webhook.req.queryString, incoming.queryString))(_ |+| _ |+| _).
+       matchMap(build.analysisResult.webhook.req.queryString, incoming.queryString) |@|
+       matchBody(build.analysisResult.webhook.req.body, incoming.body) )(_ |+| _ |+| _ |+| _).
        map(variables => (build, variables))
     }).flatten
 

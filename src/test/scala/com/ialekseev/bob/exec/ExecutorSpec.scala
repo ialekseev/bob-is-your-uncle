@@ -4,6 +4,7 @@ import com.ialekseev.bob.analyzer.Analyzer._
 import com.ialekseev.bob._
 import com.ialekseev.bob.analyzer.Analyzer
 import com.ialekseev.bob.exec.Executor.{Run, Build}
+import org.json4s.JsonAST.{JString, JObject}
 import org.mockito.Mockito
 import scalaz._
 import Scalaz._
@@ -84,6 +85,69 @@ class ExecutorSpec extends BaseSpec  {
         val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "hi"), Webhook(HttpRequest("example/{$c}/{$d}", HttpMethod.GET, Map("header1" -> "{$h}", "header2" -> "head_{$header2}"), Map("query1" -> "{$q}_queryString", "query2" -> "{$query2}"), none[Body])), ScalaCode("do()"))
         Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
         Mockito.when(compiler.compile("do()", """var a = "1"; var b = "hi"; var c = ""; var d = ""; var h = ""; var header2 = ""; var q = ""; var query2 = """"")).thenReturn("abc".right)
+
+        //act
+        val result = executor.build("source").unsafePerformSync
+
+        //assert
+        result should be (Build(resultToBeReturned, "abc").right)
+      }
+    }
+
+    "analyzer succeeds & returns constants + bound variables in body (string) + scala-code" should {
+      "add variables & compile code with Scala compiler" in {
+        //arrange
+        val anal = mock[Analyzer]
+        val compiler = mock[ScalaCompiler]
+        val executor = new Executor {
+          val scalaCompiler = compiler
+          val analyzer = anal
+        }
+        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "hi"), Webhook(HttpRequest("example/1", HttpMethod.GET, Map.empty, Map.empty, some(StringLiteralBody("hello {$name}! You are {$s}, aren't you?")))), ScalaCode("do()"))
+        Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
+        Mockito.when(compiler.compile("do()", """var a = "1"; var b = "hi"; var name = ""; var s = """"")).thenReturn("abc".right)
+
+        //act
+        val result = executor.build("source").unsafePerformSync
+
+        //assert
+        result should be (Build(resultToBeReturned, "abc").right)
+      }
+    }
+
+    "analyzer succeeds & returns constants + bound variables in body (dictionary) + scala-code" should {
+      "add variables & compile code with Scala compiler" in {
+        //arrange
+        val anal = mock[Analyzer]
+        val compiler = mock[ScalaCompiler]
+        val executor = new Executor {
+          val scalaCompiler = compiler
+          val analyzer = anal
+        }
+        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "hi"), Webhook(HttpRequest("example/1", HttpMethod.GET, Map.empty, Map.empty, some(DictionaryBody(Map("hello"-> "{$name}!", "state" -> "{$s}, aren't you?"))))), ScalaCode("do()"))
+        Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
+        Mockito.when(compiler.compile("do()", """var a = "1"; var b = "hi"; var name = ""; var s = """"")).thenReturn("abc".right)
+
+        //act
+        val result = executor.build("source").unsafePerformSync
+
+        //assert
+        result should be (Build(resultToBeReturned, "abc").right)
+      }
+    }
+
+    "analyzer succeeds & returns constants + bound variables in body (json) + scala-code" should {
+      "add variables & compile code with Scala compiler" in {
+        //arrange
+        val anal = mock[Analyzer]
+        val compiler = mock[ScalaCompiler]
+        val executor = new Executor {
+          val scalaCompiler = compiler
+          val analyzer = anal
+        }
+        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "hi"), Webhook(HttpRequest("example/1", HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("hello_{$name}_!"-> JString("my {$s} friend")))))), ScalaCode("do()"))
+        Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
+        Mockito.when(compiler.compile("do()", """var a = "1"; var b = "hi"; var name = ""; var s = """"")).thenReturn("abc".right)
 
         //act
         val result = executor.build("source").unsafePerformSync
@@ -212,6 +276,48 @@ class ExecutorSpec extends BaseSpec  {
         val incoming = HttpRequest("example.com/", HttpMethod.POST, Map.empty, Map("q1" -> "start_john_end", "Q2" -> "smith", "Q3" -> "super"), none)
         val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest("example.com/", HttpMethod.POST, Map.empty, Map("Q1" -> "start_{$name}_end", "q2" -> "{$surname}", "Q3" -> "super"), none[Body])), ScalaCode("do()")), "abc"))
         Mockito.when(compiler.eval("abc", Seq("name" -> "john", "surname" -> "smith"))).thenReturn("1")
+
+        //act
+        val result = executor.run(incoming, builds).unsafePerformSync
+
+        //assert
+        result should be (Seq(Run(builds(0), "1")))
+      }
+    }
+
+    "there is a matching build (with matching 'uri' (with vars) and 'body (string)' (with vars))" should {
+      "run it" in {
+        //arrange
+        val anal = mock[Analyzer]
+        val compiler = mock[ScalaCompiler]
+        val executor = new Executor {
+          val scalaCompiler = compiler
+          val analyzer = anal
+        }
+        val incoming = HttpRequest("example.com/1/2/", HttpMethod.GET, Map.empty, Map.empty, some(StringLiteralBody("hello John! You are fine, aren't you?")))
+        val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest("example.com/{$a}/{$b}/", HttpMethod.GET, Map.empty, Map.empty, some(StringLiteralBody("hello {$name}! You are {$s}, aren't you?")))), ScalaCode("do()")), "abc"))
+        Mockito.when(compiler.eval("abc", Seq("a" -> "1", "b" -> "2", "name" -> "John", "s" -> "fine"))).thenReturn("1")
+
+        //act
+        val result = executor.run(incoming, builds).unsafePerformSync
+
+        //assert
+        result should be (Seq(Run(builds(0), "1")))
+      }
+    }
+
+    "there is a matching build (with matching 'uri' (without vars) and 'body (dictionary)' (with vars))" should {
+      "run it" in {
+        //arrange
+        val anal = mock[Analyzer]
+        val compiler = mock[ScalaCompiler]
+        val executor = new Executor {
+          val scalaCompiler = compiler
+          val analyzer = anal
+        }
+        val incoming = HttpRequest("example.com", HttpMethod.GET, Map.empty, Map.empty, some(DictionaryBody(Map("hello"-> "John", "state" -> "fine, aren't you?"))))
+        val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest("example.com", HttpMethod.GET, Map.empty, Map.empty, some(DictionaryBody(Map("hello"-> "{$name}", "state" -> "{$s}, aren't you?"))))), ScalaCode("do()")), "abc"))
+        Mockito.when(compiler.eval("abc", Seq("name" -> "John", "s" -> "fine"))).thenReturn("1")
 
         //act
         val result = executor.run(incoming, builds).unsafePerformSync
