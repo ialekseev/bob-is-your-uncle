@@ -4,6 +4,7 @@ import com.ialekseev.bob.exec.Executor.{Run, BuildFailed, Build}
 import com.ialekseev.bob.{HttpRequest, CompilationFailed, StageFailed, Body, StringLiteralBody, DictionaryBody, JsonBody}
 import com.ialekseev.bob.analyzer.{Analyzer}
 import com.ialekseev.bob.analyzer.Analyzer.{Webhook, AnalysisResult, ScalaCode}
+import org.json4s.JsonAST.JValue
 import scala.util.matching.Regex
 import scalaz._
 import Scalaz._
@@ -72,12 +73,21 @@ trait Executor {
       }
     }
 
-    //todo: add JsonBody matching (using 'diff' method of json4s probably)
+    def matchJson(buildJson: JValue, incomingMap: JValue): Option[List[(String, String)]] = {
+      //todo: add JsonBody matching (using 'diff' method of json4s probably)
+      import org.json4s._
+      import org.json4s.native.JsonMethods._
+      incomingMap.diff(buildJson) match {
+        case Diff(JNothing, JNothing, _) => some(List.empty)
+        case _ => sys.error("not yet supported json match!")
+      }
+    }
 
     def matchBody(buildBody: Option[Body], incomingBody: Option[Body]): Option[List[(String, String)]] = {
       (buildBody, incomingBody) match {
         case (Some(StringLiteralBody(bStr)), Some(StringLiteralBody(iStr))) => matchStr(bStr, iStr)
         case (Some(DictionaryBody(bDic)), Some(DictionaryBody(iDic))) => matchMap(bDic, iDic)
+        case (Some(JsonBody(bJson)), Some(JsonBody(iJson))) => matchJson(bJson, iJson)
         case (None, None) => some(List.empty)
         case m => sys.error(s"The match ($m) is not supported!")
       }
