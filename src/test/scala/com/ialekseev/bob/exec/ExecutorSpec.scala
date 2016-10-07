@@ -369,6 +369,28 @@ class ExecutorSpec extends BaseSpec  {
       }
     }
 
-    //todo: case with bound variables (use diff's 'changed')
+    //todo: fix
+    "there is a matching build (with matching 'uri' (without vars) and 'body (json)' (with vars & with excessive data))" should {
+      "run it" in {
+        //arrange
+        val anal = mock[Analyzer]
+        val compiler = mock[ScalaCompiler]
+        val executor = new Executor {
+          val scalaCompiler = compiler
+          val analyzer = anal
+        }
+        val incoming = HttpRequest("example.com", HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("a"-> JObject("a1" -> JString("1"), "a2" -> JString("before_hello_after")), "c" -> JString("2"), "b" -> JString("1")))))
+        val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest("example.com", HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("b" -> JString("$b"), "a"-> JObject("a2" -> JString("before_$hel_after"))))))), ScalaCode("do()")), "abc"))
+        Mockito.when(compiler.eval("abc", Seq("hel" -> "hello", "b" -> "1"))).thenReturn("1")
+
+        //act
+        val result = executor.run(incoming, builds).unsafePerformSync
+
+        //assert
+        result should be (Seq(Run(builds(0), "1")))
+      }
+    }
+
+    //todo: more cases with bound variables. What about the case when a value is of Int type?
   }
 }
