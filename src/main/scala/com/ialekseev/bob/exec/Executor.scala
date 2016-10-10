@@ -60,9 +60,9 @@ trait Executor {
 
     def matchStr(buildStr: String, incomingStr: String): Option[List[(String, String)]] = {
       val patternStr = """^\Q""" + variableRegexPattern.replaceAllIn(buildStr, """\\E(?<$1>.+)\\Q""") + """\E$"""
-       val groupNames = variableRegexPattern.findAllIn(buildStr).matchData.map(m => m.group(1)).toSeq
-       val pattern = new Regex(patternStr, groupNames: _*)
-       pattern.findFirstMatchIn(incomingStr).map(r => r.groupNames.map(n => (n, r.group(n))).toList)
+      val groupNames = variableRegexPattern.findAllIn(buildStr).matchData.map(m => m.group(1)).toSeq
+      val pattern = new Regex(patternStr, groupNames: _*)
+      pattern.findFirstMatchIn(incomingStr).map(r => r.groupNames.map(n => (n, r.group(n))).toList)
     }
 
     def matchMap(buildMap: Map[String, String], incomingMap: Map[String, String]): Option[List[(String, String)]] = {
@@ -74,7 +74,6 @@ trait Executor {
     }
 
     def matchJson(buildJson: JValue, incomingMap: JValue): Option[List[(String, String)]] = {
-      //todo: add JsonBody matching (using 'diff' method of json4s probably)
       import org.json4s._
       import org.json4s.native.JsonMethods._
       incomingMap.diff(buildJson) match {
