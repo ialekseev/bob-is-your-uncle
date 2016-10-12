@@ -80,8 +80,8 @@ trait Executor {
         case Diff(JNothing, JNothing, _) => some(List.empty)
         case Diff(changedBuild, JNothing, _) => {
           val changedIncoming = changedBuild.diff(incomingMap).changed
-          val changedBuildStr = compact(render(changedBuild))
-          val changedIncomingStr = compact(render(changedIncoming))
+          val changedBuildStr = compact(render(changedBuild)).replaceAll("\"", "")
+          val changedIncomingStr = compact(render(changedIncoming)).replaceAll("\"", "")
           matchStr(changedBuildStr, changedIncomingStr)
         }
         case _ => sys.error("not yet supported json match!")

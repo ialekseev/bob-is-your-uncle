@@ -4,7 +4,7 @@ import com.ialekseev.bob.analyzer.Analyzer._
 import com.ialekseev.bob._
 import com.ialekseev.bob.analyzer.Analyzer
 import com.ialekseev.bob.exec.Executor.{Run, Build}
-import org.json4s.JsonAST.{JInt, JString, JObject}
+import org.json4s.JsonAST.{JBool, JInt, JString, JObject}
 import org.mockito.Mockito
 import scalaz._
 import Scalaz._
@@ -348,7 +348,7 @@ class ExecutorSpec extends BaseSpec  {
       }
     }
 
-    "there is a matching build (with matching 'uri' (without vars) and 'body (json)' (without vars & with excessive data))" should {
+    "there is a matching build (with matching 'uri' (without vars) and 'body (json)' (without vars)) for incoming request with excessive body data" should {
       "run it" in {
         //arrange
         val anal = mock[Analyzer]
@@ -369,7 +369,7 @@ class ExecutorSpec extends BaseSpec  {
       }
     }
 
-    "there is a matching build (with matching 'uri' (without vars) and 'body (json)' (with vars & with excessive data))" should {
+    "there is a matching build (with matching 'uri' (without vars) and 'body (json)' (with vars)) for incoming request with excessive body data" should {
       "run it" in {
         //arrange
         val anal = mock[Analyzer]
@@ -390,6 +390,25 @@ class ExecutorSpec extends BaseSpec  {
       }
     }
 
-    //todo: more cases with bound variables. What about the case when a value is of Int type? Just remove quotes from "changedBuildStr" & "changedIncomingStr" before doing "matchStr"?
+    "there is a matching build (with matching 'uri' (without vars) and 'body (json)' (with standalone vars)) for incoming request with Int data for the matching vars" should {
+      "run it with all variables as Strings" in {
+        //arrange
+        val anal = mock[Analyzer]
+        val compiler = mock[ScalaCompiler]
+        val executor = new Executor {
+          val scalaCompiler = compiler
+          val analyzer = anal
+        }
+        val incoming = HttpRequest("example.com", HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("a"-> JObject("a1" -> JString("1"), "a2" -> JInt(2)), "c" -> JString("2"), "b" -> JBool(true)))))
+        val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest("example.com", HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("b" -> JString("{$b}"), "a"-> JObject("a2" -> JString("{$hel}"))))))), ScalaCode("do()")), "abc"))
+        Mockito.when(compiler.eval("abc", Seq("hel" -> "2", "b" -> "true"))).thenReturn("1")
+
+        //act
+        val result = executor.run(incoming, builds).unsafePerformSync
+
+        //assert
+        result should be (Seq(Run(builds(0), "1")))
+      }
+    }
   }
 }
