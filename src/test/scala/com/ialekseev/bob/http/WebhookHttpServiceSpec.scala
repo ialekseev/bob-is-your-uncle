@@ -24,10 +24,10 @@ class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with Scala
         val uri = "/example/1"
         val method = HttpMethod.GET
         val build = {
-          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2"), Webhook(HttpRequest(uri, method, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
+          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some(uri), method, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
           Build(analysisResult, "code")
         }
-        val request = HttpRequest(uri, method, Map.empty, Map.empty, none)
+        val request = HttpRequest(some(uri), method, Map.empty, Map.empty, none)
         when(exec.run(request, Seq(build))).thenReturn(Task.now(Seq(Run(build, "1"))))
 
         //act
@@ -47,10 +47,10 @@ class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with Scala
         val method = HttpMethod.POST
         val headers = Map("h1" -> "super", "head2" -> "cool")
         val build = {
-          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2"), Webhook(HttpRequest("/example/1", method, headers, Map.empty, none[Body])), ScalaCode("do()"))
+          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("/example/1"), method, headers, Map.empty, none[Body])), ScalaCode("do()"))
           Build(analysisResult, "code")
         }
-        val request = HttpRequest(uri, method, headers, Map.empty, none)
+        val request = HttpRequest(some(uri), method, headers, Map.empty, none)
         when(exec.run(request, Seq(build))).thenReturn(Task.now(Seq(Run(build, "1"))))
 
         //act
@@ -71,10 +71,10 @@ class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with Scala
         val method = HttpMethod.PUT
         val queryString = Map("q1" -> "super", "query2" -> "cool")
         val build = {
-          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2"), Webhook(HttpRequest("/example/1", method, Map.empty, queryString, none[Body])), ScalaCode("do()"))
+          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("/example/1"), method, Map.empty, queryString, none[Body])), ScalaCode("do()"))
           Build(analysisResult, "code")
         }
-        val request = HttpRequest(path, method, Map.empty, queryString, none)
+        val request = HttpRequest(some(path), method, Map.empty, queryString, none)
         when(exec.run(request, Seq(build))).thenReturn(Task.now(Seq(Run(build, "1"))))
 
         //act
@@ -93,10 +93,10 @@ class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with Scala
         val uri = "/example/1"
         val method = HttpMethod.GET
         val build = {
-          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2"), Webhook(HttpRequest("/example/2", method, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
+          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("/example/2"), method, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
           Build(analysisResult, "code")
         }
-        val request = HttpRequest(uri, method, Map.empty, Map.empty, none)
+        val request = HttpRequest(some(uri), method, Map.empty, Map.empty, none)
         when(exec.run(request, Seq(build))).thenReturn(Task.now(Seq.empty)) //NO matching builds
 
         //act

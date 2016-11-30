@@ -17,7 +17,10 @@ package object bob {
   case class SemanticAnalysisFailed(errors: Seq[SemanticError]) extends StageFailed
   case class CompilationFailed(errors: Seq[CompilationError]) extends StageFailed
 
-  case class HttpRequest(uri: String, method: HttpMethod.Value, headers: Map[String, String], queryString: Map[String, String], body: Option[Body])
+  case class HttpRequest(uri: Option[String], method: HttpMethod.Value, headers: Map[String, String], queryString: Map[String, String], body: Option[Body]){
+    require(uri.isEmpty || uri.isDefined && uri.get.nonEmpty, "Some(uri) can't be empty!")
+  }
+
   object HttpMethod extends Enumeration {
     val GET, POST, PUT, DELETE = Value
   }

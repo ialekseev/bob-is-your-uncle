@@ -62,23 +62,23 @@ trait Analyzer {
     }
 
     def extractWebhook: ValidationNel[SemanticError, Webhook] = {
-      val settings = parseTree.loc.find(_.getLabel == nonTerminal("WebhookSettings"))
-      val uri = (settings >>= (_.find(_.getLabel == nonTerminal("WebhookUriSetting"))) >>= (_.lastChild)).map(_.getLabel).map(stringLiteral).get
-      val specificSettings = ((settings >>= (_.find(_.getLabel == nonTerminal("WebhookSpecificSettings")))).map(_.tree.subForest) >>=
+      val webhook = parseTree.loc.find(_.getLabel == nonTerminal("Webhook"))
+      val settings = ((webhook >>= (_.find(_.getLabel == nonTerminal("WebhookSettings")))).map(_.tree.subForest) >>=
                               (_.map(s => (s.loc.firstChild |@| s.loc.lastChild)((_, _))).sequence)).getOrElse(Stream.empty)
 
       def extractMethod: ValidationNel[SemanticError, HttpMethod.Value]  = {
-        val method = specificSettings.map(s => (s._1.getLabel, s._2.getLabel)).collect { case (Terminal(LexerToken(Token.Keyword.`method`, _)), Terminal(LexerToken(Token.Type.StringLiteral(m), off))) => (m, off) }.headOption
+        val method = settings.map(s => (s._1.getLabel, s._2.getLabel)).collect { case (Terminal(LexerToken(Token.Keyword.`method`, _)), Terminal(LexerToken(Token.Type.StringLiteral(m), off))) => (m, off) }.headOption
         method match {
           case Some((m, offset)) => HttpMethod.values.find(_.toString.toUpperCase == m.toUpperCase).map(_.successNel[SemanticError]).getOrElse(SemanticError(offset + 1, offset + m.length, "Unexpected Http method").failureNel[HttpMethod.Value])
           case _ => HttpMethod.GET.successNel
         }
       }
 
-      val headers = specificSettings.map(s => (s._1.getLabel, s._2.getLabel)).collect { case (Terminal(LexerToken(Token.Keyword.`headers`, _)), Terminal(LexerToken(Token.Type.Dictionary(_, h), _))) => h }.headOption.getOrElse(Map.empty)
-      val queryString = specificSettings.map(s => (s._1.getLabel, s._2.getLabel)).collect { case (Terminal(LexerToken(Token.Keyword.`queryString`, _)), Terminal(LexerToken(Token.Type.Dictionary(_, q), _))) => q }.headOption.getOrElse(Map.empty)
-      val body: Option[Body] = ((specificSettings.map(s => (s._1.getLabel, s._2)).collect { case (Terminal(LexerToken(Token.Keyword.`body`, _)), b) => b }.headOption) >>=
-        (_.find(_.getLabel == nonTerminal("WebhookSpecificSettingBodyType"))) >>= (_.firstChild.map(_.getLabel))) collect {
+      val uri = settings.map(s => (s._1.getLabel, s._2.getLabel)).collect { case (Terminal(LexerToken(Token.Keyword.`uri`, _)), Terminal(LexerToken(Token.Type.StringLiteral(u), _))) => u }.headOption.filter(!_.isEmpty)
+      val headers = settings.map(s => (s._1.getLabel, s._2.getLabel)).collect { case (Terminal(LexerToken(Token.Keyword.`headers`, _)), Terminal(LexerToken(Token.Type.Dictionary(_, h), _))) => h }.headOption.getOrElse(Map.empty)
+      val queryString = settings.map(s => (s._1.getLabel, s._2.getLabel)).collect { case (Terminal(LexerToken(Token.Keyword.`queryString`, _)), Terminal(LexerToken(Token.Type.Dictionary(_, q), _))) => q }.headOption.getOrElse(Map.empty)
+      val body: Option[Body] = ((settings.map(s => (s._1.getLabel, s._2)).collect { case (Terminal(LexerToken(Token.Keyword.`body`, _)), b) => b }.headOption) >>=
+        (_.find(_.getLabel == nonTerminal("WebhookSettingBodyType"))) >>= (_.firstChild.map(_.getLabel))) collect {
           case Terminal(LexerToken(Token.Type.StringLiteral(s), _)) => StringLiteralBody(s)
           case Terminal(LexerToken(Token.Type.Dictionary(_, d), _)) => DictionaryBody(d)
           case Terminal(LexerToken(Token.Type.Json(_, j), _)) => JsonBody(j)

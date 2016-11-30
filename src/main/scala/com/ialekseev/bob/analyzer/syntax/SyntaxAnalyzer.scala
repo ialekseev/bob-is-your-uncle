@@ -38,19 +38,15 @@ import Scalaz._
     Constant ::= INDENT(1) variable : stringLiteral
     Constants ::= {Constant}
 
-    WebhookUriSetting ::= INDENT(2) 'uri' : stringLiteral
+    WebhookSettingBodyType ::= 'stringLiteral' | 'dictionary' | 'json'
 
-    WebhookSpecificSettingBodyType ::= 'stringLiteral' | 'dictionary' | 'json'
+    WebhookSetting ::= INDENT(2) 'uri' : stringLiteral |
+                       INDENT(2) 'method' : stringLiteral |
+                       INDENT(2) 'headers' : dictionary |
+                       INDENT(2) 'queryString' : dictionary |
+                       INDENT(2) 'body': WebhookSettingBodyType
 
-    WebhookSpecificSetting ::= INDENT(2) 'method' : stringLiteral |
-                               INDENT(2) 'headers' : dictionary |
-                               INDENT(2) 'queryString' : dictionary |
-                               INDENT(2) 'body': WebhookSpecificSettingBodyType
-
-    WebhookSpecificSettings ::= {WebhookSpecificSetting}
-
-    WebhookSettings ::= WebhookUriSetting
-                        WebhookSpecificSettings
+    WebhookSettings ::= {WebhookSetting}
 
     Webhook ::= INDENT(1) '@webhook'
                           WebhookSettings

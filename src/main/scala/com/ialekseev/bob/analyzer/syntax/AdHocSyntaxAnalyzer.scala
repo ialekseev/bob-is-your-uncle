@@ -66,31 +66,29 @@ class AdHocSyntaxAnalyzer extends SyntaxAnalyzer with SyntaxAnalysisState {
     repeat("Constants")(parseConstant)
   }
 
-  //WebhookUriSetting ::= INDENT(2) 'uri' : stringLiteral
-  private def parseWebhookUriSetting: Parsed[ParseTree] = rule("WebhookUriSetting") {
-    for {
-      _ <- parse[Token.INDENT](2)
-      keyword <- parse[Token.Keyword.`uri`.type]
-      colon <- parse[Token.Delimiter.`:`.type]
-      stringLiteral <- parse[Token.Type.StringLiteral]
-    } yield Seq(keyword, colon, stringLiteral)
-  }
-
-  //WebhookSpecificSettingBodyType ::= 'stringLiteral' | 'dictionary' | 'json'
-  private def parseWebhookSpecificSettingBodyType: Parsed[ParseTree] = {
-    or("WebhookSpecificSettingBodyType")("Expecting some valid Body type here")(
+  //WebhookSettingBodyType ::= 'stringLiteral' | 'dictionary' | 'json'
+  private def parseWebhookSettingBodyType: Parsed[ParseTree] = {
+    or("WebhookSettingBodyType")("Expecting some valid Body type here")(
       for(stringLiteral <- parse[Token.Type.StringLiteral]) yield Seq(stringLiteral),
       for(dictionary <- parse[Token.Type.Dictionary]) yield Seq(dictionary),
       for(json <- parse[Token.Type.Json]) yield Seq(json)
     )
   }
 
-  /*WebhookSpecificSetting ::= INDENT(2) 'method' : stringLiteral |
-                               INDENT(2) 'headers' : dictionary |
-                               INDENT(2) 'queryString' : dictionary |
-                               INDENT(2) 'body': WebhookSpecificSettingBodyType*/
-  private def parseWebhookSpecificSetting: Parsed[ParseTree] = {
-    or("WebhookSpecificSetting")("Expecting some valid Webhook setting here")(
+  /*WebhookSetting ::= INDENT(2) 'uri' : stringLiteral |
+                       INDENT(2) 'method' : stringLiteral |
+                       INDENT(2) 'headers' : dictionary |
+                       INDENT(2) 'queryString' : dictionary |
+                       INDENT(2) 'body': WebhookSettingBodyType*/
+  private def parseWebhookSetting: Parsed[ParseTree] = {
+    or("WebhookSetting")("Expecting some valid Webhook setting here")(
+      for {
+        _ <- parse[Token.INDENT](2)
+        uri <- parse[Token.Keyword.`uri`.type]
+        colon <- parse[Token.Delimiter.`:`.type]
+        stringLiteral <- parse[Token.Type.StringLiteral]
+      } yield Seq(uri, colon, stringLiteral),
+
       for {
         _ <- parse[Token.INDENT](2)
         method <- parse[Token.Keyword.`method`.type]
@@ -116,23 +114,14 @@ class AdHocSyntaxAnalyzer extends SyntaxAnalyzer with SyntaxAnalysisState {
         _ <- parse[Token.INDENT](2)
         body <- parse[Token.Keyword.`body`.type]
         colon <- parse[Token.Delimiter.`:`.type]
-        bodyType <- parseWebhookSpecificSettingBodyType
+        bodyType <- parseWebhookSettingBodyType
       } yield Seq(body, colon, bodyType)
     )
   }
 
-  //WebhookSpecificSettings ::= {WebhookSpecificSetting}
-  private def parseWebhookSpecificSettings: Parsed[Option[ParseTree]] = {
-    repeat("WebhookSpecificSettings")(parseWebhookSpecificSetting)
-  }
-
-  /*WebhookSettings ::= WebhookUriSetting
-                        {WebhookSpecificSetting}*/
-  private def parseWebhookSettings: Parsed[ParseTree] = rule("WebhookSettings") {
-    for {
-      uriSetting <- parseWebhookUriSetting
-      specificSettings <- parseWebhookSpecificSettings
-    } yield uriSetting +: specificSettings.toSeq
+  /*WebhookSettings ::= {WebhookSetting}*/
+  private def parseWebhookSettings: Parsed[Option[ParseTree]] =  {
+    repeat("WebhookSettings")(parseWebhookSetting)
   }
 
   /*Webhook ::= INDENT(1) '@webhook'
@@ -142,7 +131,7 @@ class AdHocSyntaxAnalyzer extends SyntaxAnalyzer with SyntaxAnalysisState {
       _ <- parse[Token.INDENT](1)
       webhookKeyword <- parse[Token.Keyword.`@webhook`.type]
       webhookSettings <- parseWebhookSettings
-    } yield Seq(webhookKeyword, webhookSettings)
+    } yield Seq(webhookKeyword) |+| webhookSettings.toSeq
   }
 
   //Block ::= INDENT(2) '<scala>...<end>'

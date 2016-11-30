@@ -30,10 +30,6 @@ class SyntaxAnalyzerSpec extends BaseSpec {
 
           LexerToken(Token.INDENT(3), 750),
           LexerToken(Token.Keyword.`@webhook`, 800),
-            LexerToken(Token.INDENT(5), 850),
-            LexerToken(Token.Keyword.`uri`, 900),
-            LexerToken(Token.Delimiter.`:`, 1000),
-            LexerToken(Token.Type.StringLiteral("/example"), 1100),
 
           LexerToken(Token.INDENT(3), 1150),
           LexerToken(Token.Keyword.`@process`, 1200),
@@ -62,14 +58,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
                 terminal(LexerToken(Token.Type.StringLiteral("hello"), 700)).leaf
               ),
               nonTerminal("Webhook").node(
-                terminal(LexerToken(Token.Keyword.`@webhook`, 800)).leaf,
-                nonTerminal("WebhookSettings").node(
-                  nonTerminal("WebhookUriSetting").node(
-                    terminal(LexerToken(Token.Keyword.`uri`, 900)).leaf,
-                    terminal(LexerToken(Token.Delimiter.`:`, 1000)).leaf,
-                    terminal(LexerToken(Token.Type.StringLiteral("/example"), 1100)).leaf
-                  )
-                )
+                terminal(LexerToken(Token.Keyword.`@webhook`, 800)).leaf
               ),
               nonTerminal("Process").node(
                 terminal(LexerToken(Token.Keyword.`@process`, 1200)).leaf,
@@ -185,34 +174,32 @@ class SyntaxAnalyzerSpec extends BaseSpec {
               nonTerminal("Webhook").node(
                 terminal(LexerToken(Token.Keyword.`@webhook`, 1600)).leaf,
                 nonTerminal("WebhookSettings").node(
-                  nonTerminal("WebhookUriSetting").node(
+                  nonTerminal("WebhookSetting").node(
                     terminal(LexerToken(Token.Keyword.`uri`, 1700)).leaf,
                     terminal(LexerToken(Token.Delimiter.`:`, 1800)).leaf,
                     terminal(LexerToken(Token.Type.StringLiteral("/example"), 1900)).leaf
                   ),
-                  nonTerminal("WebhookSpecificSettings").node(
-                    nonTerminal("WebhookSpecificSetting").node(
-                      terminal(LexerToken(Token.Keyword.`method`, 2000)).leaf,
-                      terminal(LexerToken(Token.Delimiter.`:`, 2100)).leaf,
-                      terminal(LexerToken(Token.Type.StringLiteral("get"), 2200)).leaf
-                    ),
-                    nonTerminal("WebhookSpecificSetting").node(
-                      terminal(LexerToken(Token.Keyword.`queryString`, 2300)).leaf,
-                      terminal(LexerToken(Token.Delimiter.`:`, 2400)).leaf,
-                      terminal(LexerToken(Token.Type.Dictionary("""["b":"18"]""", Map("b"->"18")), 2500)).leaf
-                    ),
-                    nonTerminal("WebhookSpecificSetting").node(
-                      terminal(LexerToken(Token.Keyword.`body`, 2600)).leaf,
-                      terminal(LexerToken(Token.Delimiter.`:`, 2700)).leaf,
-                      nonTerminal("WebhookSpecificSettingBodyType").node(
-                        terminal(LexerToken(Token.Type.Json("""~{"c":"19"}~""", JObject("c"-> JString("19"))), 2800)).leaf
-                      )
-                    ),
-                    nonTerminal("WebhookSpecificSetting").node(
-                      terminal(LexerToken(Token.Keyword.`headers`, 2900)).leaf,
-                      terminal(LexerToken(Token.Delimiter.`:`, 3000)).leaf,
-                      terminal(LexerToken(Token.Type.Dictionary("""["h1":"a"]""", Map("h1"->"a")), 3100)).leaf
+                  nonTerminal("WebhookSetting").node(
+                    terminal(LexerToken(Token.Keyword.`method`, 2000)).leaf,
+                    terminal(LexerToken(Token.Delimiter.`:`, 2100)).leaf,
+                    terminal(LexerToken(Token.Type.StringLiteral("get"), 2200)).leaf
+                  ),
+                  nonTerminal("WebhookSetting").node(
+                    terminal(LexerToken(Token.Keyword.`queryString`, 2300)).leaf,
+                    terminal(LexerToken(Token.Delimiter.`:`, 2400)).leaf,
+                    terminal(LexerToken(Token.Type.Dictionary("""["b":"18"]""", Map("b"->"18")), 2500)).leaf
+                  ),
+                  nonTerminal("WebhookSetting").node(
+                    terminal(LexerToken(Token.Keyword.`body`, 2600)).leaf,
+                    terminal(LexerToken(Token.Delimiter.`:`, 2700)).leaf,
+                    nonTerminal("WebhookSettingBodyType").node(
+                      terminal(LexerToken(Token.Type.Json("""~{"c":"19"}~""", JObject("c"-> JString("19"))), 2800)).leaf
                     )
+                  ),
+                  nonTerminal("WebhookSetting").node(
+                    terminal(LexerToken(Token.Keyword.`headers`, 2900)).leaf,
+                    terminal(LexerToken(Token.Delimiter.`:`, 3000)).leaf,
+                    terminal(LexerToken(Token.Type.Dictionary("""["h1":"a"]""", Map("h1"->"a")), 3100)).leaf
                   )
                 )
               ),
@@ -382,7 +369,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
       }
     }
 
-    "there is an error (an invalid keyword instead of mandatory 'uri' inside '@webhook')" should {
+    "there is an error (an invalid type in the 'uri' line inside '@webhook')" should {
       "fail" in {
         //arrange
         val tokens = Seq(
@@ -401,20 +388,20 @@ class SyntaxAnalyzerSpec extends BaseSpec {
           LexerToken(Token.Keyword.`@webhook`, 45),
 
           LexerToken(Token.INDENT(5), 50),
-          LexerToken(Token.Keyword.`method`, 55),
+          LexerToken(Token.Keyword.`uri`, 55),
           LexerToken(Token.Delimiter.`:`, 56),
-          LexerToken(Token.Type.StringLiteral("get"), 61)
+          LexerToken(Token.Type.Dictionary("a = 1", Map("a" -> "1")), 61)
         )
 
         //act
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(55, 60, 12, "Unexpected: 'method' (expecting: 'uri')")))
+        result.toEither.left.get.errors should be (Seq(SyntaxError(61, 65, 14, "Unexpected: 'Dictionary(a = 1,Map(a -> 1))' (expecting: 'string literal')")))
       }
     }
 
-    "there is an error (an invalid delimiter in the optional 'method' line inside '@webhook')" should {
+    "there is an error (an invalid delimiter in the 'method' line inside '@webhook')" should {
       "fail" in {
         //arrange
         val tokens = Seq(
@@ -451,7 +438,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
       }
     }
 
-    "there is an error (an invalid type in the optional 'queryString' line inside '@webhook')" should {
+    "there is an error (an invalid type in the 'queryString' line inside '@webhook')" should {
       "fail" in {
         //arrange
         val tokens = Seq(
@@ -493,7 +480,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
       }
     }
 
-    "there is an error (an invalid token in the optional 'body' line inside '@webhook')" should {
+    "there is an error (an invalid token in the 'body' line inside '@webhook')" should {
       "fail" in {
         //arrange
         val tokens = Seq(

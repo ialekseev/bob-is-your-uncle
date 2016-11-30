@@ -36,7 +36,7 @@ trait Executor {
 
     analyzer.analyze(source) match {
       case \/-(result@ AnalysisResult(_, _, constants,  Webhook(HttpRequest(uri, _, headers, queryString, body)), ScalaCode(scalaCode))) => {
-        val variables = constants.toList |+| extractBoundVariablesFromStr(uri) |+|
+        val variables = constants.toList |+| uri.map(extractBoundVariablesFromStr(_)).getOrElse(List.empty) |+|
           extractBoundVariablesFromMap(headers) |+| extractBoundVariablesFromMap(queryString) |+| extractBoundVariablesFromBody(body)
         val scalaVariables = variables.map(c => s"""var ${c._1} = "${c._2}"""").mkString("; ")
 
@@ -94,12 +94,17 @@ trait Executor {
         case (Some(DictionaryBody(bDic)), Some(DictionaryBody(iDic))) => matchMap(bDic, iDic)
         case (Some(JsonBody(bJson)), Some(JsonBody(iJson))) => matchJson(bJson, iJson)
         case (None, None) => some(List.empty)
-        case m => sys.error(s"The match ($m) is not supported!")
+        case _ => none
       }
     }
 
-    def matchUri(buildUri: String, incomingUri: String): Option[List[(String, String)]] = {
-      matchStr(buildUri.toLowerCase.trimSlashes, incomingUri.toLowerCase.trimSlashes)
+    //todo: prefix uris with namespace
+    def matchUri(buildUri: Option[String], incomingUri: Option[String]): Option[List[(String, String)]] = {
+      (buildUri, incomingUri) match {
+        case (Some(bUri), Some(iUri)) => matchStr(bUri.toLowerCase.trimSlashes, iUri.toLowerCase.trimSlashes)
+        case (None, None) => some(List.empty)
+        case _ => none
+      }
     }
 
     val matchedBuilds = builds.map(build => {
