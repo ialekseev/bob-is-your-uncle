@@ -8,9 +8,9 @@ package object exec {
 
   implicit class StringWrapper(str: String){
     def trimSlashes: String = {
-      val s = str.replace("^/*$", "")
+      val s = str.replaceFirst("^/*$", "")
       if (s.isEmpty) s
-      else trimSlashesPattern.findFirstMatchIn(s).map(m => m.group(1)).getOrElse(sys.error("Unexpected string for trimming slashes"))
+      else trimSlashesPattern.findFirstMatchIn(s).map(m => m.group(1)).getOrElse(sys.error("Unexpected string for trimming slashes: " + s))
     }
   }
 }

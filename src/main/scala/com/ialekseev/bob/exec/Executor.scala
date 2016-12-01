@@ -1,6 +1,6 @@
 package com.ialekseev.bob.exec
 
-import com.ialekseev.bob.exec.Executor.{Run, BuildFailed, Build}
+import com.ialekseev.bob.exec.Executor.{RunResult, Run, BuildFailed, Build}
 import com.ialekseev.bob.{HttpRequest, CompilationFailed, StageFailed, Body, StringLiteralBody, DictionaryBody, JsonBody}
 import com.ialekseev.bob.analyzer.{Analyzer}
 import com.ialekseev.bob.analyzer.Analyzer.{Webhook, AnalysisResult, ScalaCode}
@@ -21,7 +21,7 @@ trait Executor {
     }
 
     def extractBoundVariablesFromMap(map: Map[String, String]): List[(String, String)] = {
-      map.map(m => extractBoundVariablesFromStr(m._2)).toList.map(v => v.suml)
+      map.map(m => extractBoundVariablesFromStr(m._2)).toList.flatten
     }
 
     def extractBoundVariablesFromBody(body: Option[Body]): List[(String, String)] = {
@@ -56,7 +56,7 @@ trait Executor {
     }
   }
 
-  def run(incoming: HttpRequest, builds: Seq[Build]): Task[Seq[Run]] = {
+  def run(incoming: HttpRequest, builds: Seq[Build]): Task[RunResult] = {
 
     def matchStr(buildStr: String, incomingStr: String): Option[List[(String, String)]] = {
       val patternStr = """^\Q""" + variableRegexPattern.replaceAllIn(buildStr, """\\E(?<$1>.+)\\Q""") + """\E$"""
@@ -66,7 +66,7 @@ trait Executor {
     }
 
     def matchMap(buildMap: Map[String, String], incomingMap: Map[String, String]): Option[List[(String, String)]] = {
-      if (buildMap.size != incomingMap.size) none
+      if (buildMap.size > incomingMap.size) none
       else {
         val incomingMapWithUpperCaseKeys = incomingMap.mapKeys(_.toUpperCase)
         buildMap.toList.map(b => (incomingMapWithUpperCaseKeys.get(b._1.toUpperCase) >>= (in => matchStr(b._2, in)))).sequence.map(v => v.suml)
@@ -98,17 +98,8 @@ trait Executor {
       }
     }
 
-    //todo: prefix uris with namespace
-    def matchUri(buildUri: Option[String], incomingUri: Option[String]): Option[List[(String, String)]] = {
-      (buildUri, incomingUri) match {
-        case (Some(bUri), Some(iUri)) => matchStr(bUri.toLowerCase.trimSlashes, iUri.toLowerCase.trimSlashes)
-        case (None, None) => some(List.empty)
-        case _ => none
-      }
-    }
-
     val matchedBuilds = builds.map(build => {
-      (matchUri(build.analysisResult.webhook.req.uri, incoming.uri) |@|
+      (matchStr((s"${build.analysisResult.namespace.path}/${build.analysisResult.namespace.name}/${build.analysisResult.webhook.req.uri.map(_.trimSlashes).getOrElse("")}").trimSlashes.toLowerCase, incoming.uri.map(_.trimSlashes.toLowerCase).getOrElse("")) |@|
        matchMap(build.analysisResult.webhook.req.headers, incoming.headers) |@|
        matchMap(build.analysisResult.webhook.req.queryString, incoming.queryString) |@|
        matchBody(build.analysisResult.webhook.req.body, incoming.body) )(_ |+| _ |+| _ |+| _).
@@ -116,9 +107,11 @@ trait Executor {
     }).flatten
 
     Task {
-      matchedBuilds.map(b => {
-        Run(b._1, scalaCompiler.eval[Any](b._1.codeFileName, b._2))
-      })
+      RunResult {
+        matchedBuilds.map(b => {
+          Run(b._1, scalaCompiler.eval[Any](b._1.codeFileName, b._2))
+        })
+      }
     }
   }
 }
@@ -127,5 +120,6 @@ object Executor {
   type BuildFailed = StageFailed
   case class Build(analysisResult: AnalysisResult, codeFileName: String)
 
+  case class RunResult(runs: Seq[Run])
   case class Run(build: Build, result: Any)
 }

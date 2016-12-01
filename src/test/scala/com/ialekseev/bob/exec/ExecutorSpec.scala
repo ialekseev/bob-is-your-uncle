@@ -3,7 +3,7 @@ package com.ialekseev.bob.exec
 import com.ialekseev.bob.analyzer.Analyzer._
 import com.ialekseev.bob._
 import com.ialekseev.bob.analyzer.Analyzer
-import com.ialekseev.bob.exec.Executor.{Run, Build}
+import com.ialekseev.bob.exec.Executor.{RunResult, Run, Build}
 import org.json4s.JsonAST.{JBool, JInt, JString, JObject}
 import org.mockito.Mockito
 import scalaz._
@@ -169,14 +169,14 @@ class ExecutorSpec extends BaseSpec  {
           val scalaCompiler = compiler
           val analyzer = anal
         }
-        val incoming = HttpRequest(some("example1/1/2/"), HttpMethod.GET, Map.empty, Map.empty, none)
+        val incoming = HttpRequest(some("com/create/example1/1/2/"), HttpMethod.GET, Map.empty, Map.empty, none)
         val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest(some("example2/{$a}/2/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")),"super"))
 
         //act
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (Seq.empty)
+        result should be (RunResult(Seq.empty))
       }
     }
 
@@ -189,7 +189,7 @@ class ExecutorSpec extends BaseSpec  {
           val scalaCompiler = compiler
           val analyzer = anal
         }
-        val incoming = HttpRequest(some("example/"), HttpMethod.POST, Map.empty, Map.empty, none)
+        val incoming = HttpRequest(some("com/create/example/"), HttpMethod.POST, Map.empty, Map.empty, none)
         val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest(some("example/"), HttpMethod.POST, Map.empty, Map.empty, some(StringLiteralBody("hello {$name}! You are {$s}, aren't you?")))), ScalaCode("do()")), "abc"))
         Mockito.when(compiler.eval("abc", Seq.empty)).thenReturn("1")
 
@@ -197,7 +197,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (Seq.empty)
+        result should be (RunResult(Seq.empty))
       }
     }
 
@@ -210,7 +210,7 @@ class ExecutorSpec extends BaseSpec  {
           val scalaCompiler = compiler
           val analyzer = anal
         }
-        val incoming = HttpRequest(none, HttpMethod.GET, Map.empty, Map.empty, none)
+        val incoming = HttpRequest(some("com/create/"), HttpMethod.GET, Map.empty, Map.empty, none)
         val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest(none, HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")), "abc"))
         Mockito.when(compiler.eval("abc", Seq.empty)).thenReturn("1")
 
@@ -218,7 +218,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (Seq(Run(builds(0), "1")))
+        result should be (RunResult(Seq(Run(builds(0), "1"))))
       }
     }
 
@@ -231,7 +231,7 @@ class ExecutorSpec extends BaseSpec  {
           val scalaCompiler = compiler
           val analyzer = anal
         }
-        val incoming = HttpRequest(some("EXAMPLE/"), HttpMethod.GET, Map.empty, Map.empty, none)
+        val incoming = HttpRequest(some("COM/create/EXAMPLE/"), HttpMethod.GET, Map.empty, Map.empty, none)
         val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")), "abc"))
         Mockito.when(compiler.eval("abc", Seq.empty)).thenReturn("1")
 
@@ -239,7 +239,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (Seq(Run(builds(0), "1")))
+        result should be (RunResult(Seq(Run(builds(0), "1"))))
       }
     }
 
@@ -252,7 +252,7 @@ class ExecutorSpec extends BaseSpec  {
           val scalaCompiler = compiler
           val analyzer = anal
         }
-        val incoming = HttpRequest(some("EXAMPLE/"), HttpMethod.GET, Map.empty, Map.empty, none)
+        val incoming = HttpRequest(some("/com/create/EXAMPLE/"), HttpMethod.GET, Map.empty, Map.empty, none)
         val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest(some("/example"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")), "abc"))
         Mockito.when(compiler.eval("abc", Seq.empty)).thenReturn("1")
 
@@ -260,7 +260,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (Seq(Run(builds(0), "1")))
+        result should be (RunResult(Seq(Run(builds(0), "1"))))
       }
     }
 
@@ -273,7 +273,7 @@ class ExecutorSpec extends BaseSpec  {
           val scalaCompiler = compiler
           val analyzer = anal
         }
-        val incoming = HttpRequest(none, HttpMethod.GET, Map("header1" -> "secret", "header2" -> "xxx"), Map.empty, none)
+        val incoming = HttpRequest(some("com/create"), HttpMethod.GET, Map("header1" -> "secret", "header2" -> "xxx", "header3" -> "yyy"), Map.empty, none)
         val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest(none, HttpMethod.GET, Map("header1" -> "secret", "header2" -> "xxx"), Map.empty, none[Body])), ScalaCode("do()")), "abc"))
         Mockito.when(compiler.eval("abc", Seq.empty)).thenReturn("1")
 
@@ -281,7 +281,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (Seq(Run(builds(0), "1")))
+        result should be (RunResult(Seq(Run(builds(0), "1"))))
       }
     }
 
@@ -294,7 +294,7 @@ class ExecutorSpec extends BaseSpec  {
           val scalaCompiler = compiler
           val analyzer = anal
         }
-        val incoming = HttpRequest(none, HttpMethod.GET, Map("header1" -> "secret", "header2" -> "app_xxx"), Map.empty, none)
+        val incoming = HttpRequest(some("com/create"), HttpMethod.GET, Map("header1" -> "secret", "header2" -> "app_xxx"), Map.empty, none)
         val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest(none, HttpMethod.GET, Map("header1" -> "{$h1}", "header2" -> "app_{$h2}"), Map.empty, none[Body])), ScalaCode("do()")), "abc"))
         Mockito.when(compiler.eval("abc", Seq("h1" -> "secret", "h2" -> "xxx"))).thenReturn("1")
 
@@ -302,7 +302,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (Seq(Run(builds(0), "1")))
+        result should be (RunResult(Seq(Run(builds(0), "1"))))
       }
     }
 
@@ -315,7 +315,7 @@ class ExecutorSpec extends BaseSpec  {
           val scalaCompiler = compiler
           val analyzer = anal
         }
-        val incoming = HttpRequest(some("example/1/2/"), HttpMethod.GET, Map.empty, Map.empty, none)
+        val incoming = HttpRequest(some("com/create/example/1/2/"), HttpMethod.GET, Map.empty, Map.empty, none)
         val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest(some("example/{$a}/{$b}/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")), "abc"))
         Mockito.when(compiler.eval("abc", Seq("a" -> "1", "b" -> "2"))).thenReturn("1")
 
@@ -323,7 +323,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (Seq(Run(builds(0), "1")))
+        result should be (RunResult(Seq(Run(builds(0), "1"))))
       }
     }
 
@@ -336,7 +336,7 @@ class ExecutorSpec extends BaseSpec  {
           val scalaCompiler = compiler
           val analyzer = anal
         }
-        val incoming = HttpRequest(some("example/"), HttpMethod.POST, Map.empty, Map("q1" -> "start_john_end", "Q2" -> "smith", "Q3" -> "super"), none)
+        val incoming = HttpRequest(some("com/create/example/"), HttpMethod.POST, Map.empty, Map("q1" -> "start_john_end", "Q2" -> "smith", "Q3" -> "super"), none)
         val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest(some("example/"), HttpMethod.POST, Map.empty, Map("Q1" -> "start_{$name}_end", "q2" -> "{$surname}", "Q3" -> "super"), none[Body])), ScalaCode("do()")), "abc"))
         Mockito.when(compiler.eval("abc", Seq("name" -> "john", "surname" -> "smith"))).thenReturn("1")
 
@@ -344,7 +344,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (Seq(Run(builds(0), "1")))
+        result should be (RunResult(Seq(Run(builds(0), "1"))))
       }
     }
 
@@ -357,7 +357,7 @@ class ExecutorSpec extends BaseSpec  {
           val scalaCompiler = compiler
           val analyzer = anal
         }
-        val incoming = HttpRequest(some("example/1/2/"), HttpMethod.GET, Map.empty, Map.empty, some(StringLiteralBody("hello John! You are fine, aren't you?")))
+        val incoming = HttpRequest(some("com/create/example/1/2/"), HttpMethod.GET, Map.empty, Map.empty, some(StringLiteralBody("hello John! You are fine, aren't you?")))
         val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest(some("example/{$a}/{$b}/"), HttpMethod.GET, Map.empty, Map.empty, some(StringLiteralBody("hello {$name}! You are {$s}, aren't you?")))), ScalaCode("do()")), "abc"))
         Mockito.when(compiler.eval("abc", Seq("a" -> "1", "b" -> "2", "name" -> "John", "s" -> "fine"))).thenReturn("1")
 
@@ -365,7 +365,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (Seq(Run(builds(0), "1")))
+        result should be (RunResult(Seq(Run(builds(0), "1"))))
       }
     }
 
@@ -378,7 +378,7 @@ class ExecutorSpec extends BaseSpec  {
           val scalaCompiler = compiler
           val analyzer = anal
         }
-        val incoming = HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, some(DictionaryBody(Map("hello"-> "John", "state" -> "fine, aren't you?"))))
+        val incoming = HttpRequest(some("com/create/example/"), HttpMethod.GET, Map.empty, Map.empty, some(DictionaryBody(Map("hello"-> "John", "state" -> "fine, aren't you?"))))
         val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, some(DictionaryBody(Map("hello"-> "{$name}", "state" -> "{$s}, aren't you?"))))), ScalaCode("do()")), "abc"))
         Mockito.when(compiler.eval("abc", Seq("name" -> "John", "s" -> "fine"))).thenReturn("1")
 
@@ -386,7 +386,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (Seq(Run(builds(0), "1")))
+        result should be (RunResult(Seq(Run(builds(0), "1"))))
       }
     }
 
@@ -399,7 +399,7 @@ class ExecutorSpec extends BaseSpec  {
           val scalaCompiler = compiler
           val analyzer = anal
         }
-        val incoming = HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("a"-> JString("1"), "b" -> JInt(1)))))
+        val incoming = HttpRequest(some("com/create/example/"), HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("a"-> JString("1"), "b" -> JInt(1)))))
         val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("b" -> JInt(1), "a"-> JString("1")))))), ScalaCode("do()")), "abc"))
         Mockito.when(compiler.eval("abc", Seq.empty)).thenReturn("1")
 
@@ -407,7 +407,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (Seq(Run(builds(0), "1")))
+        result should be (RunResult(Seq(Run(builds(0), "1"))))
       }
     }
 
@@ -420,7 +420,7 @@ class ExecutorSpec extends BaseSpec  {
           val scalaCompiler = compiler
           val analyzer = anal
         }
-        val incoming = HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("a"-> JObject("a1" -> JString("1"), "a2" -> JInt(2)), "c" -> JString("2"), "b" -> JInt(1)))))
+        val incoming = HttpRequest(some("com/create/example/"), HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("a"-> JObject("a1" -> JString("1"), "a2" -> JInt(2)), "c" -> JString("2"), "b" -> JInt(1)))))
         val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("b" -> JInt(1), "a"-> JObject("a2" -> JInt(2))))))), ScalaCode("do()")), "abc"))
         Mockito.when(compiler.eval("abc", Seq.empty)).thenReturn("1")
 
@@ -428,7 +428,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (Seq(Run(builds(0), "1")))
+        result should be (RunResult(Seq(Run(builds(0), "1"))))
       }
     }
 
@@ -441,7 +441,7 @@ class ExecutorSpec extends BaseSpec  {
           val scalaCompiler = compiler
           val analyzer = anal
         }
-        val incoming = HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("a"-> JObject("a1" -> JString("1"), "a2" -> JString("before_hello_after")), "c" -> JString("2"), "b" -> JString("1")))))
+        val incoming = HttpRequest(some("com/create/example/"), HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("a"-> JObject("a1" -> JString("1"), "a2" -> JString("before_hello_after")), "c" -> JString("2"), "b" -> JString("1")))))
         val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("b" -> JString("{$b}"), "a"-> JObject("a2" -> JString("before_{$hel}_after"))))))), ScalaCode("do()")), "abc"))
         Mockito.when(compiler.eval("abc", Seq("hel" -> "hello", "b" -> "1"))).thenReturn("1")
 
@@ -449,7 +449,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (Seq(Run(builds(0), "1")))
+        result should be (RunResult(Seq(Run(builds(0), "1"))))
       }
     }
 
@@ -462,7 +462,7 @@ class ExecutorSpec extends BaseSpec  {
           val scalaCompiler = compiler
           val analyzer = anal
         }
-        val incoming = HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("a"-> JObject("a1" -> JString("1"), "a2" -> JInt(2)), "c" -> JString("2"), "b" -> JBool(true)))))
+        val incoming = HttpRequest(some("com/create/example/"), HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("a"-> JObject("a1" -> JString("1"), "a2" -> JInt(2)), "c" -> JString("2"), "b" -> JBool(true)))))
         val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("b" -> JString("{$b}"), "a"-> JObject("a2" -> JString("{$hel}"))))))), ScalaCode("do()")), "abc"))
         Mockito.when(compiler.eval("abc", Seq("hel" -> "2", "b" -> "true"))).thenReturn("1")
 
@@ -470,7 +470,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (Seq(Run(builds(0), "1")))
+        result should be (RunResult(Seq(Run(builds(0), "1"))))
       }
     }
   }
