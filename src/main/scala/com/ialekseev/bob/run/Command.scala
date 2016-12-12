@@ -5,6 +5,7 @@ import com.ialekseev.bob.{CompilationFailed, SemanticAnalysisFailed, SyntaxAnaly
 import com.ialekseev.bob.analyzer.DefaultAnalyzer
 import com.ialekseev.bob.exec.Executor.{BuildFailed, Build}
 import com.ialekseev.bob.exec.{ScalaCompiler, Executor}
+import scala.io.{Codec, Source, StdIn}
 import scala.util.Try
 import scalaz.Scalaz._
 import scalaz.{-\/, \/-, \/}
@@ -12,13 +13,37 @@ import scalaz.{-\/, \/-, \/}
 trait Command {
   val exec = new Executor {
     val analyzer = DefaultAnalyzer
-    val scalaCompiler = new ScalaCompiler
+    val scalaCompiler = compiler
+    override val scalaImports = imports
   }
 
-  def show(message: String = ""): Unit
-  def read(message: String = ""): String
-  def readSource(filename: String): Try[String]
-  def readSources(dir: String): Try[List[(String, String)]]
+  def imports: Seq[String]
+  def compiler: ScalaCompiler
+
+  val defaultBuildsLocation = "playground"
+  val fileExtension = ".bob"
+
+  def readSource(filename: String): Try[String] = {
+    def normalizeSource(source: String): String = {
+      source.replaceAll("\r\n", "\n")
+    }
+    Try {
+      val fileToCheck = Source.fromFile(filename)(Codec.UTF8)
+      val source = normalizeSource(fileToCheck.mkString)
+      fileToCheck.close()
+      source
+    }
+  }
+
+  def readSources(dir: String): Try[List[(String, String)]] = {
+    for {
+      sourceFiles <- Try(new java.io.File(defaultBuildsLocation).listFiles.filter(_.getName.endsWith(fileExtension)))
+      sources <- Try(sourceFiles.map(file => (file.getPath, readSource(file.getPath).get)).toList)
+    } yield sources
+  }
+
+  def show(message: String = "") = println(message)
+  def read(message: String = "") = StdIn.readLine(message)
 
   def showResult(filename: String, source: String, result: BuildFailed \/ Build) = {
     require(!filename.isEmpty)

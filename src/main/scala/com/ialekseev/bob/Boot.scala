@@ -1,34 +1,13 @@
 package com.ialekseev.bob
 
+import java.io.File
+import com.ialekseev.bob.exec.ScalaCompiler
 import com.ialekseev.bob.run.commands.{Service, Shell, Check}
 import com.ialekseev.bob.run.{Command}
-import scala.io.{Codec, StdIn}
-import scala.io.Source
-import scala.util.Try
 
 object Boot extends App with Command with Check with Shell with Service {
-
-  def show(message: String = "") = println(message)
-  def read(message: String = ""): String = StdIn.readLine(message)
-
-  def readSource(filename: String): Try[String] = {
-    def normalizeSource(source: String): String = {
-      source.replaceAll("\r\n", "\n")
-    }
-    Try {
-      val fileToCheck = Source.fromFile(filename)(Codec.UTF8)
-      val source = normalizeSource(fileToCheck.mkString)
-      fileToCheck.close()
-      source
-    }
-  }
-
-  def readSources(dir: String): Try[List[(String, String)]] = {
-    for {
-      sourceFiles <- Try(new java.io.File(defaultBuildsLocation).listFiles.filter(_.getName.endsWith(fileExtension)))
-      sources <- Try(sourceFiles.map(file => (file.getPath, readSource(file.getPath).get)).toList)
-    } yield sources
-  }
+  def imports = List("com.ialekseev.bob.dsl._")
+  def compiler = new ScalaCompiler(List("org.scala-lang/scala-library/jars/scala-library-2.11.8.jar"), new File(".").getAbsolutePath() + "\\target\\scala-2.11\\classes\\")
 
   case class Config(check: String = "", shell: Boolean = false, service: Boolean = false)
   val parser = new scopt.OptionParser[Config]("bob") {

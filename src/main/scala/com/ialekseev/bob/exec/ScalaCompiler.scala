@@ -8,14 +8,14 @@ import scala.util.{Random}
 import scalaz._
 import Scalaz._
 
-class ScalaCompiler {
-  val compiler = new Compiler(None, ListBuffer.empty)
+class ScalaCompiler(dependencies: List[String], projectDir: String) {
+  val compiler = new Compiler(dependencies, projectDir, ListBuffer.empty)
 
-  def compile(code: String, fields: String = ""): CompilationFailed \/ String = {
+  def compile(code: String, fields: String = "", imports: String = ""): CompilationFailed \/ String = {
     require(!code.isEmpty)
 
     synchronized {
-      val className = compiler.compile(code, fields)
+      val className = compiler.compile(code, fields, imports)
       if (compiler.reportedErrors.length == 0) className.right
       else CompilationFailed(compiler.reportedErrors).left
     }
@@ -31,24 +31,17 @@ class ScalaCompiler {
 //https://eknet.org/main/dev/runtimecompilescala.html tuned for our needs + custom reporter (todo: this is a thread-unsafe head-on implementation)
 import scala.tools.nsc.{Global, Settings}
 import scala.reflect.internal.util.{AbstractFileClassLoader, BatchSourceFile}
-import tools.nsc.io.{VirtualDirectory, AbstractFile}
+import tools.nsc.io.{VirtualDirectory}
 import java.io.File
 
-private[exec] class Compiler(targetDir: Option[File], val reportedErrors: ListBuffer[CompilationError]) {
+private[exec] class Compiler(dependencies: List[String], projectDir: String, val reportedErrors: ListBuffer[CompilationError]) {
 
-  val target = targetDir match {
-    case Some(dir) => AbstractFile.getDirectory(dir)
-    case None => new VirtualDirectory("(memory)", None)
-  }
+  val target = new VirtualDirectory("(memory)", None)
 
   val customSettings = {
-    val dependencies = List(
-      "org.scala-lang/scala-library/jars/scala-library-2.11.8.jar"
-    )
+    val classPath = projectDir :: dependencies.map(System.getProperty("user.home") + "\\.ivy2\\cache\\" + _)
     val s = new Settings()
     s.outputDirs.setSingleOutput(target)
-    val homePath = System.getProperty("user.home")
-    val classPath = dependencies.map(homePath + "\\.ivy2\\cache\\" + _)
     s.classpath.value = classPath.mkString(File.pathSeparator)
     s
   }
@@ -68,11 +61,11 @@ private[exec] class Compiler(targetDir: Option[File], val reportedErrors: ListBu
   private val global = new Global(customSettings, reporter)
   val classLoader = new AbstractFileClassLoader(target, this.getClass.getClassLoader)
 
-  def compile(code: String, fields: String): String = {
+  def compile(code: String, fields: String, imports: String): String = {
     reporter.reset()
     val run = new global.Run
     val className = "bob" + Random.alphanumeric.take(40).mkString
-    val sourceFiles = List(new BatchSourceFile("(inline)", wrapCodeInClass(className, code, fields)))
+    val sourceFiles = List(new BatchSourceFile("(inline)", wrapCodeInClass(className, code, fields, imports)))
     run.compileSources(sourceFiles)
     className
   }
@@ -86,10 +79,12 @@ private[exec] class Compiler(targetDir: Option[File], val reportedErrors: ListBu
     instance.asInstanceOf[() => Any].apply().asInstanceOf[T]
   }
 
-  private def wrapCodeInClass(className: String, code: String, fields: String) = {
-    val fieldsLine = if (fields.nonEmpty) fields + "\n" else fields
+  private def wrapCodeInClass(className: String, code: String, fields: String, imports: String) = {
+    //val fieldsLine = if (fields.nonEmpty) fields + "\n" else fields
+    //val importsLine = imports + "\n"
     "class " + className + " extends (() => Any) {\n" +
-      fieldsLine +
+      fields + "\n" +
+      imports + "\n" +
       "  def apply() = {\n" +
       code + "\n" +
       "  }\n" +

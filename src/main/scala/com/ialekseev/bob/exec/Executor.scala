@@ -13,6 +13,7 @@ import scalaz.concurrent.Task
 trait Executor {
   val analyzer: Analyzer
   val scalaCompiler: ScalaCompiler
+  def scalaImports: Seq[String] = Seq.empty
   private val variableRegexPattern = """\{\$([a-zA-Z]+[a-zA-Z0-9]*)\}""".r
 
   def build(source: String): Task[BuildFailed \/ Build] = {
@@ -39,15 +40,16 @@ trait Executor {
         val variables = constants.toList |+| uri.map(extractBoundVariablesFromStr(_)).getOrElse(List.empty) |+|
           extractBoundVariablesFromMap(headers) |+| extractBoundVariablesFromMap(queryString) |+| extractBoundVariablesFromBody(body)
         val scalaVariables = variables.map(c => s"""var ${c._1} = "${c._2}"""").mkString("; ")
+        val scalaImport = if (scalaImports.nonEmpty) "import " + scalaImports.mkString(",") else ""
 
         def amend(pos: Int) = {
           val compilerPositionAmendment = 90
           val start = source.indexOf("<scala>") + 7
-          start + pos - compilerPositionAmendment - scalaVariables.length - 1
+          start + pos - compilerPositionAmendment - scalaVariables.length - scalaImport.length - 2
         }
 
         Task {
-          scalaCompiler.compile(scalaCode, scalaVariables).
+          scalaCompiler.compile(scalaCode, scalaVariables, scalaImport).
             leftMap(f => CompilationFailed(f.errors.map(e => e.copy(startOffset = amend(e.startOffset), pointOffset = amend(e.pointOffset), endOffset = amend(e.endOffset))))).
             map(Build(result, _))
         }

@@ -1,37 +1,33 @@
 package com.ialekseev.bob.exec
 
-import com.ialekseev.bob.BaseSpec
+import com.ialekseev.bob.{Boot, BaseSpec}
 import scalaz._
 import Scalaz._
 
 class ScalaCompilerSpec extends BaseSpec {
+  val compiler = Boot.compiler
+
   "Compiling" when {
 
     "code has an error" should {
       "fail" in {
-        //arrange
-        val compiler = new ScalaCompiler()
-
         //act
-        val result = compiler.compile("vak = 3", "")
+        val result = compiler.compile("vak = 3")
 
         //assert
-        (result.toEither.left.get.errors.head |> (a => (a.startOffset, a.pointOffset, a.endOffset))) should be (90,90,90)
+        (result.toEither.left.get.errors.head |> (a => (a.startOffset, a.pointOffset, a.endOffset))) should be (92,92,92)
       }
     }
 
     "code has several errors" should {
       "fail" in {
-        //arrange
-        val compiler = new ScalaCompiler()
-
         //act
         val result = compiler.compile("a.call()", "vak = 3;")
 
         //assert
         result.toEither.left.get.errors.length should be (2)
         (result.toEither.left.get.errors(0) |> (a => (a.startOffset, a.pointOffset, a.endOffset))) should be (72,72,72)
-        (result.toEither.left.get.errors(1) |> (a => (a.startOffset, a.pointOffset, a.endOffset))) should be (99,99,99)
+        (result.toEither.left.get.errors(1) |> (a => (a.startOffset, a.pointOffset, a.endOffset))) should be (100,100,100)
       }
     }
   }
@@ -41,7 +37,6 @@ class ScalaCompilerSpec extends BaseSpec {
     "there are NO passed in variables" should {
       "succeed" in {
         //arrange
-        val compiler = new ScalaCompiler()
         val className = compiler.compile("1 + 1").toEither.right.get
 
         //act
@@ -55,7 +50,6 @@ class ScalaCompilerSpec extends BaseSpec {
     "there ARE passed in variables" should {
       "succeed" in {
         //arrange
-        val compiler = new ScalaCompiler()
         val className = compiler.compile("a + b", """var a = ""; var b = """"").toEither.right.get
 
         //act

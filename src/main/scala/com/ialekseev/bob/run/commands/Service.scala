@@ -15,10 +15,6 @@ import Scalaz._
 trait Service extends WebhookHttpService {
   this: Command =>
 
-  //todo: move to the config
-  val defaultBuildsLocation = "playground"
-  val fileExtension = ".bob"
-
   def serviceCommand() = {
     readSources(defaultBuildsLocation) match {
       case scala.util.Success(sources) => {
