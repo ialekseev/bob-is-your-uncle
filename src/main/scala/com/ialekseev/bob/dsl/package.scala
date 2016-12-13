@@ -1,7 +1,9 @@
 package com.ialekseev.bob
 
+import com.ialekseev.bob.analyzer.Analyzer.Namespace
+
 package object dsl {
-  object Console {
-    def write(obj: Any) = println(obj)
+  def console(obj: Any)(implicit namespace: Namespace) = {
+    println(Console.MAGENTA + s"${namespace.path}#${namespace.name}: $obj" + Console.RESET)
   }
 }

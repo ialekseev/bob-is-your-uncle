@@ -14,10 +14,8 @@ trait Command {
   val exec = new Executor {
     val analyzer = DefaultAnalyzer
     val scalaCompiler = compiler
-    override val scalaImports = imports
   }
 
-  def imports: Seq[String]
   def compiler: ScalaCompiler
 
   val defaultBuildsLocation = "playground"

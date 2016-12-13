@@ -42,29 +42,7 @@ class ExecutorSpec extends BaseSpec  {
         }
         val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
         Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
-        Mockito.when(compiler.compile("do()", """var a = "1"; var b = "2"""", "")).thenReturn("abc".right)
-
-        //act
-        val result = executor.build("source").unsafePerformSync
-
-        //assert
-        result should be (Build(resultToBeReturned, "abc").right)
-      }
-    }
-
-    "executor has imports, analyzer succeeds & returns constants + scala-code" should {
-      "add variables & imports & compile code with Scala compiler" in {
-        //arrange
-        val anal = mock[Analyzer]
-        val compiler = mock[ScalaCompiler]
-        val executor = new Executor {
-          val scalaCompiler = compiler
-          override val scalaImports = Seq("com.ialekseev.bob.super1._", "com.ialekseev.bob.super2")
-          val analyzer = anal
-        }
-        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
-        Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
-        Mockito.when(compiler.compile("do()", """var a = "1"; var b = "2"""", "import com.ialekseev.bob.super1._,com.ialekseev.bob.super2")).thenReturn("abc".right)
+        Mockito.when(compiler.compile("do()", "import com.ialekseev.bob.dsl._,com.ialekseev.bob.analyzer.Analyzer.Namespace", """var a = "1"; var b = "2"""", """implicit val _namespace = Namespace("com", "create")""")).thenReturn("abc".right)
 
         //act
         val result = executor.build("source").unsafePerformSync
@@ -85,7 +63,7 @@ class ExecutorSpec extends BaseSpec  {
         }
         val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "hi"), Webhook(HttpRequest(some("example/{$c}/{$d}"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
         Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
-        Mockito.when(compiler.compile("do()", """var a = "1"; var b = "hi"; var c = ""; var d = """"", "")).thenReturn("abc".right)
+        Mockito.when(compiler.compile("do()", "import com.ialekseev.bob.dsl._,com.ialekseev.bob.analyzer.Analyzer.Namespace", """var a = "1"; var b = "hi"; var c = ""; var d = """"", """implicit val _namespace = Namespace("com", "create")""")).thenReturn("abc".right)
 
         //act
         val result = executor.build("source").unsafePerformSync
@@ -106,7 +84,7 @@ class ExecutorSpec extends BaseSpec  {
         }
         val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "hi"), Webhook(HttpRequest(some("example/{$c}/{$d}"), HttpMethod.GET, Map("header1" -> "{$h}", "header2" -> "head_{$header2}"), Map("query1" -> "{$q}_queryString", "query2" -> "{$query2}"), none[Body])), ScalaCode("do()"))
         Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
-        Mockito.when(compiler.compile("do()", """var a = "1"; var b = "hi"; var c = ""; var d = ""; var h = ""; var header2 = ""; var q = ""; var query2 = """"", "")).thenReturn("abc".right)
+        Mockito.when(compiler.compile("do()", "import com.ialekseev.bob.dsl._,com.ialekseev.bob.analyzer.Analyzer.Namespace", """var a = "1"; var b = "hi"; var c = ""; var d = ""; var h = ""; var header2 = ""; var q = ""; var query2 = """"", """implicit val _namespace = Namespace("com", "create")""")).thenReturn("abc".right)
 
         //act
         val result = executor.build("source").unsafePerformSync
@@ -127,7 +105,7 @@ class ExecutorSpec extends BaseSpec  {
         }
         val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "hi"), Webhook(HttpRequest(some("example/1"), HttpMethod.GET, Map.empty, Map.empty, some(StringLiteralBody("hello {$name}! You are {$s}, aren't you?")))), ScalaCode("do()"))
         Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
-        Mockito.when(compiler.compile("do()", """var a = "1"; var b = "hi"; var name = ""; var s = """"", "")).thenReturn("abc".right)
+        Mockito.when(compiler.compile("do()", "import com.ialekseev.bob.dsl._,com.ialekseev.bob.analyzer.Analyzer.Namespace", """var a = "1"; var b = "hi"; var name = ""; var s = """"", """implicit val _namespace = Namespace("com", "create")""")).thenReturn("abc".right)
 
         //act
         val result = executor.build("source").unsafePerformSync
@@ -148,7 +126,7 @@ class ExecutorSpec extends BaseSpec  {
         }
         val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "hi"), Webhook(HttpRequest(some("example/1"), HttpMethod.GET, Map.empty, Map.empty, some(DictionaryBody(Map("hello"-> "{$name}!", "state" -> "{$s}, aren't you?"))))), ScalaCode("do()"))
         Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
-        Mockito.when(compiler.compile("do()", """var a = "1"; var b = "hi"; var name = ""; var s = """"", "")).thenReturn("abc".right)
+        Mockito.when(compiler.compile("do()", "import com.ialekseev.bob.dsl._,com.ialekseev.bob.analyzer.Analyzer.Namespace", """var a = "1"; var b = "hi"; var name = ""; var s = """"", """implicit val _namespace = Namespace("com", "create")""")).thenReturn("abc".right)
 
         //act
         val result = executor.build("source").unsafePerformSync
@@ -169,7 +147,7 @@ class ExecutorSpec extends BaseSpec  {
         }
         val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "hi"), Webhook(HttpRequest(some("example/1"), HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("hello_{$name}_!"-> JString("my {$s} friend")))))), ScalaCode("do()"))
         Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
-        Mockito.when(compiler.compile("do()", """var a = "1"; var b = "hi"; var name = ""; var s = """"", "")).thenReturn("abc".right)
+        Mockito.when(compiler.compile("do()", "import com.ialekseev.bob.dsl._,com.ialekseev.bob.analyzer.Analyzer.Namespace", """var a = "1"; var b = "hi"; var name = ""; var s = """"", """implicit val _namespace = Namespace("com", "create")""")).thenReturn("abc".right)
 
         //act
         val result = executor.build("source").unsafePerformSync

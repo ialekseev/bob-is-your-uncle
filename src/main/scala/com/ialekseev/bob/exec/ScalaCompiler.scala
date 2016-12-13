@@ -11,11 +11,11 @@ import Scalaz._
 class ScalaCompiler(dependencies: List[String], projectDir: String) {
   val compiler = new Compiler(dependencies, projectDir, ListBuffer.empty)
 
-  def compile(code: String, fields: String = "", imports: String = ""): CompilationFailed \/ String = {
+  def compile(code: String, imports: String = "", fields: String = "", implicits: String = ""): CompilationFailed \/ String = {
     require(!code.isEmpty)
 
     synchronized {
-      val className = compiler.compile(code, fields, imports)
+      val className = compiler.compile(code, imports, fields, implicits)
       if (compiler.reportedErrors.length == 0) className.right
       else CompilationFailed(compiler.reportedErrors).left
     }
@@ -61,11 +61,11 @@ private[exec] class Compiler(dependencies: List[String], projectDir: String, val
   private val global = new Global(customSettings, reporter)
   val classLoader = new AbstractFileClassLoader(target, this.getClass.getClassLoader)
 
-  def compile(code: String, fields: String, imports: String): String = {
+  def compile(code: String, imports: String, fields: String, implicits: String): String = {
     reporter.reset()
     val run = new global.Run
     val className = "bob" + Random.alphanumeric.take(40).mkString
-    val sourceFiles = List(new BatchSourceFile("(inline)", wrapCodeInClass(className, code, fields, imports)))
+    val sourceFiles = List(new BatchSourceFile("(inline)", wrapCodeInClass(className, code, imports, fields, implicits)))
     run.compileSources(sourceFiles)
     className
   }
@@ -79,12 +79,11 @@ private[exec] class Compiler(dependencies: List[String], projectDir: String, val
     instance.asInstanceOf[() => Any].apply().asInstanceOf[T]
   }
 
-  private def wrapCodeInClass(className: String, code: String, fields: String, imports: String) = {
-    //val fieldsLine = if (fields.nonEmpty) fields + "\n" else fields
-    //val importsLine = imports + "\n"
+  private def wrapCodeInClass(className: String, code: String, imports: String, fields: String, implicits: String) = {
     "class " + className + " extends (() => Any) {\n" +
-      fields + "\n" +
       imports + "\n" +
+      fields + "\n" +
+      implicits + "\n" +
       "  def apply() = {\n" +
       code + "\n" +
       "  }\n" +

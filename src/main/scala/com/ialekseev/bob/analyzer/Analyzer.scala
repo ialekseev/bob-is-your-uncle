@@ -5,7 +5,6 @@ import com.ialekseev.bob.analyzer.Analyzer._
 import com.ialekseev.bob.analyzer.lexical.{AdHocLexicalAnalyzer, LexicalAnalyzer}
 import com.ialekseev.bob.analyzer.syntax.SyntaxAnalyzer._
 import com.ialekseev.bob.analyzer.syntax.{AdHocSyntaxAnalyzer, SyntaxAnalyzer}
-import org.json4s.JsonAST.{JValue}
 import scalaz._
 import Scalaz._
 

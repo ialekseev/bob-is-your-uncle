@@ -27,7 +27,12 @@ trait WebhookHttpService extends Json4sSupport {
     val headers = ctx.request.headers.map(h => (h.name, h.value)).toMap
     val queryString = ctx.request.uri.query().toMap
     val request = HttpRequest(some(uri), method, headers, queryString, none)
-    val task = exec.run(request, builds).map(res => HttpResponse(request, res.runs.map(run => HttpResponseRun(run.build.analysisResult.namespace, run.result))))
+    val task = exec.run(request, builds).map(res => HttpResponse(request, res.runs.map(run => {
+      println(Console.GREEN + s"[Done] ${run.build.analysisResult.namespace.path}#${run.build.analysisResult.namespace.name}: ${run.result}" + Console.RESET)
+      HttpResponseRun(run.build.analysisResult.namespace, run.result)
+    })))
+
+
     val future = unsafeToScala(task)
     ctx.complete(future)
   }

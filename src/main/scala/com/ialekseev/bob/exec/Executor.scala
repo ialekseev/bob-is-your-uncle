@@ -13,7 +13,7 @@ import scalaz.concurrent.Task
 trait Executor {
   val analyzer: Analyzer
   val scalaCompiler: ScalaCompiler
-  def scalaImports: Seq[String] = Seq.empty
+
   private val variableRegexPattern = """\{\$([a-zA-Z]+[a-zA-Z0-9]*)\}""".r
 
   def build(source: String): Task[BuildFailed \/ Build] = {
@@ -36,20 +36,28 @@ trait Executor {
     }
 
     analyzer.analyze(source) match {
-      case \/-(result@ AnalysisResult(_, _, constants,  Webhook(HttpRequest(uri, _, headers, queryString, body)), ScalaCode(scalaCode))) => {
-        val variables = constants.toList |+| uri.map(extractBoundVariablesFromStr(_)).getOrElse(List.empty) |+|
-          extractBoundVariablesFromMap(headers) |+| extractBoundVariablesFromMap(queryString) |+| extractBoundVariablesFromBody(body)
-        val scalaVariables = variables.map(c => s"""var ${c._1} = "${c._2}"""").mkString("; ")
-        val scalaImport = if (scalaImports.nonEmpty) "import " + scalaImports.mkString(",") else ""
+      case \/-(result@ AnalysisResult(namespace, _, constants,  Webhook(HttpRequest(uri, _, headers, queryString, body)), ScalaCode(scalaCode))) => {
+        val scalaImport = {
+          import com.ialekseev.bob.dsl._,com.ialekseev.bob.analyzer.Analyzer.Namespace //workaround to typecheck the string, although using some macros would be better
+          "import com.ialekseev.bob.dsl._,com.ialekseev.bob.analyzer.Analyzer.Namespace"
+        }
+
+        val scalaVariables = { //todo: add request object itself as a variable
+          val variables = constants.toList |+| uri.map(extractBoundVariablesFromStr(_)).getOrElse(List.empty) |+|
+            extractBoundVariablesFromMap(headers) |+| extractBoundVariablesFromMap(queryString) |+| extractBoundVariablesFromBody(body)
+          variables.map(c => s"""var ${c._1} = "${c._2}"""").mkString("; ")
+        }
+
+        val scalaImplicits = s"""implicit val _namespace = Namespace("${namespace.path}", "${namespace.name}")"""
 
         def amend(pos: Int) = {
-          val compilerPositionAmendment = 90
+          val compilerPositionAmendment = 93
           val start = source.indexOf("<scala>") + 7
-          start + pos - compilerPositionAmendment - scalaVariables.length - scalaImport.length - 2
+          start + pos - compilerPositionAmendment - scalaVariables.length - scalaImport.length - scalaImplicits.length
         }
 
         Task {
-          scalaCompiler.compile(scalaCode, scalaVariables, scalaImport).
+          scalaCompiler.compile(scalaCode, scalaImport, scalaVariables, scalaImplicits).
             leftMap(f => CompilationFailed(f.errors.map(e => e.copy(startOffset = amend(e.startOffset), pointOffset = amend(e.pointOffset), endOffset = amend(e.endOffset))))).
             map(Build(result, _))
         }

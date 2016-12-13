@@ -1,6 +1,7 @@
 package com.ialekseev.bob.exec
 
-import com.ialekseev.bob.{Boot, BaseSpec}
+import com.ialekseev.bob.BaseSpec
+import com.ialekseev.bob.run.Boot
 import scalaz._
 import Scalaz._
 
@@ -15,19 +16,19 @@ class ScalaCompilerSpec extends BaseSpec {
         val result = compiler.compile("vak = 3")
 
         //assert
-        (result.toEither.left.get.errors.head |> (a => (a.startOffset, a.pointOffset, a.endOffset))) should be (92,92,92)
+        (result.toEither.left.get.errors.head |> (a => (a.startOffset, a.pointOffset, a.endOffset))) should be (93,93,93)
       }
     }
 
     "code has several errors" should {
       "fail" in {
         //act
-        val result = compiler.compile("a.call()", "vak = 3;")
+        val result = compiler.compile("a.call()", fields = "vak = 3;")
 
         //assert
         result.toEither.left.get.errors.length should be (2)
-        (result.toEither.left.get.errors(0) |> (a => (a.startOffset, a.pointOffset, a.endOffset))) should be (72,72,72)
-        (result.toEither.left.get.errors(1) |> (a => (a.startOffset, a.pointOffset, a.endOffset))) should be (100,100,100)
+        (result.toEither.left.get.errors(0) |> (a => (a.startOffset, a.pointOffset, a.endOffset))) should be (73,73,73)
+        (result.toEither.left.get.errors(1) |> (a => (a.startOffset, a.pointOffset, a.endOffset))) should be (101,101,101)
       }
     }
   }
@@ -50,7 +51,7 @@ class ScalaCompilerSpec extends BaseSpec {
     "there ARE passed in variables" should {
       "succeed" in {
         //arrange
-        val className = compiler.compile("a + b", """var a = ""; var b = """"").toEither.right.get
+        val className = compiler.compile("a + b", fields = """var a = ""; var b = """"").toEither.right.get
 
         //act
         val result = compiler.eval[String](className, Seq("a" -> "1", "b" -> "hi"))
