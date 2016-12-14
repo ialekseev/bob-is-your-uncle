@@ -21,9 +21,9 @@ class ScalaCompiler(dependencies: List[String], projectDir: String) {
     }
   }
 
-  def eval[T](className: String, variables: Seq[(String, String)]): T = {
+  def eval[T](className: String, variables: Seq[(String, AnyRef)]): T = {
     synchronized {
-      compiler.eval(className, variables)
+      compiler.eval[T](className, variables)
     }
   }
 }
@@ -65,12 +65,13 @@ private[exec] class Compiler(dependencies: List[String], projectDir: String, val
     reporter.reset()
     val run = new global.Run
     val className = "bob" + Random.alphanumeric.take(40).mkString
-    val sourceFiles = List(new BatchSourceFile("(inline)", wrapCodeInClass(className, code, imports, fields, implicits)))
+    val wrappedCodeInClass = wrapCodeInClass(className, code, imports, fields, implicits)
+    val sourceFiles = List(new BatchSourceFile("(inline)", wrappedCodeInClass))
     run.compileSources(sourceFiles)
     className
   }
 
-  def eval[T](className: String, variables: Seq[(String, String)]): T = {
+  def eval[T](className: String, variables: Seq[(String, AnyRef)]): T = {
     val cls = classLoader.loadClass(className)
     val instance = cls.getConstructor().newInstance()
     variables.foreach(v => {

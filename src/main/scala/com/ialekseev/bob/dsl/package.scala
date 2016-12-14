@@ -1,9 +1,10 @@
 package com.ialekseev.bob
 
-import com.ialekseev.bob.analyzer.Analyzer.Namespace
-
 package object dsl {
+  case class Namespace(path: String, name: String)
+  case class HttpRequest(uri: String, method: String, headers: Map[String, String], queryString: Map[String, String])
+
   def console(obj: Any)(implicit namespace: Namespace) = {
-    println(Console.MAGENTA + s"${namespace.path}#${namespace.name}: $obj" + Console.RESET)
+    println(Console.CYAN + s"${namespace.path}#${namespace.name}:" + Console.RESET + " " + obj)
   }
 }

@@ -38,17 +38,27 @@ trait Executor {
     analyzer.analyze(source) match {
       case \/-(result@ AnalysisResult(namespace, _, constants,  Webhook(HttpRequest(uri, _, headers, queryString, body)), ScalaCode(scalaCode))) => {
         val scalaImport = {
-          import com.ialekseev.bob.dsl._,com.ialekseev.bob.analyzer.Analyzer.Namespace //workaround to typecheck the string, although using some macros would be better
-          "import com.ialekseev.bob.dsl._,com.ialekseev.bob.analyzer.Analyzer.Namespace"
+          "import com.ialekseev.bob.dsl._" ensuring {
+            import com.ialekseev.bob.dsl._
+            true
+          }
         }
 
-        val scalaVariables = { //todo: add request object itself as a variable
+        val scalaVariables = {
           val variables = constants.toList |+| uri.map(extractBoundVariablesFromStr(_)).getOrElse(List.empty) |+|
             extractBoundVariablesFromMap(headers) |+| extractBoundVariablesFromMap(queryString) |+| extractBoundVariablesFromBody(body)
-          variables.map(c => s"""var ${c._1} = "${c._2}"""").mkString("; ")
+
+          """var request: HttpRequest = null; """ + variables.map(c => s"""var ${c._1} = "${c._2}"""").mkString("; ") ensuring {
+            import com.ialekseev.bob.dsl.HttpRequest
+            true
+          }
         }
 
-        val scalaImplicits = s"""implicit val _namespace = Namespace("${namespace.path}", "${namespace.name}")"""
+        val scalaImplicits = {
+          s"""implicit val namespace = Namespace("${namespace.path}", "${namespace.name}")""" ensuring {
+            com.ialekseev.bob.dsl.Namespace("???", "???") != null
+          }
+        }
 
         def amend(pos: Int) = {
           val compilerPositionAmendment = 93
@@ -108,11 +118,12 @@ trait Executor {
       }
     }
 
-    val matchedBuilds = builds.map(build => {
-      (matchStr((s"${build.analysisResult.namespace.path}/${build.analysisResult.namespace.name}/${build.analysisResult.webhook.req.uri.map(_.trimSlashes).getOrElse("")}").trimSlashes.toLowerCase, incoming.uri.map(_.trimSlashes.toLowerCase).getOrElse("")) |@|
+    val matchedBuilds: Seq[(Build, List[(String, AnyRef)])] = builds.map(build => {
+      (some(List(("request", com.ialekseev.bob.dsl.HttpRequest(incoming.uri.getOrElse(""), incoming.method.toString, incoming.headers, incoming.queryString).asInstanceOf[AnyRef]))) |@|
+       matchStr((s"${build.analysisResult.namespace.path}/${build.analysisResult.namespace.name}/${build.analysisResult.webhook.req.uri.map(_.trimSlashes).getOrElse("")}").trimSlashes.toLowerCase, incoming.uri.map(_.trimSlashes.toLowerCase).getOrElse("")) |@|
        matchMap(build.analysisResult.webhook.req.headers, incoming.headers) |@|
        matchMap(build.analysisResult.webhook.req.queryString, incoming.queryString) |@|
-       matchBody(build.analysisResult.webhook.req.body, incoming.body) )(_ |+| _ |+| _ |+| _).
+       matchBody(build.analysisResult.webhook.req.body, incoming.body) )(_ |+| _ |+| _ |+| _ |+| _).
        map(variables => (build, variables))
     }).flatten
 
