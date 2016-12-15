@@ -36,7 +36,7 @@ trait Executor {
     }
 
     analyzer.analyze(source) match {
-      case \/-(result@ AnalysisResult(namespace, _, constants,  Webhook(HttpRequest(uri, _, headers, queryString, body)), ScalaCode(scalaCode))) => {
+      case \/-(result@ AnalysisResult(namespace, description, constants,  Webhook(HttpRequest(uri, _, headers, queryString, body)), ScalaCode(scalaCode))) => {
         val scalaImport = {
           "import com.ialekseev.bob.dsl._" ensuring {
             import com.ialekseev.bob.dsl._
@@ -55,8 +55,9 @@ trait Executor {
         }
 
         val scalaImplicits = {
-          s"""implicit val namespace = Namespace("${namespace.path}", "${namespace.name}")""" ensuring {
-            com.ialekseev.bob.dsl.Namespace("???", "???") != null
+          s"""implicit val namespace = Namespace("${namespace.path}", "${namespace.name}"); """ +
+          s"""implicit val description = Description("$description")""" ensuring {
+             com.ialekseev.bob.dsl.Namespace("???", "???") != null && com.ialekseev.bob.dsl.Description("???") != null
           }
         }
 
@@ -119,7 +120,7 @@ trait Executor {
     }
 
     val matchedBuilds: Seq[(Build, List[(String, AnyRef)])] = builds.map(build => {
-      (some(List(("request", com.ialekseev.bob.dsl.HttpRequest(incoming.uri.getOrElse(""), incoming.method.toString, incoming.headers, incoming.queryString).asInstanceOf[AnyRef]))) |@|
+      (some(List(("request", com.ialekseev.bob.dsl.HttpRequest(incoming.uri.getOrElse(""), incoming.method.toString, incoming.headers, incoming.queryString, incoming.body).asInstanceOf[AnyRef]))) |@|
        matchStr((s"${build.analysisResult.namespace.path}/${build.analysisResult.namespace.name}/${build.analysisResult.webhook.req.uri.map(_.trimSlashes).getOrElse("")}").trimSlashes.toLowerCase, incoming.uri.map(_.trimSlashes.toLowerCase).getOrElse("")) |@|
        matchMap(build.analysisResult.webhook.req.headers, incoming.headers) |@|
        matchMap(build.analysisResult.webhook.req.queryString, incoming.queryString) |@|

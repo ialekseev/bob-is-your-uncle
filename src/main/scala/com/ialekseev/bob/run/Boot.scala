@@ -5,7 +5,7 @@ import com.ialekseev.bob.exec.ScalaCompiler
 import com.ialekseev.bob.run.commands.{Check, Service, Shell}
 
 object Boot extends App with Command with Check with Shell with Service {
-  def compiler = new ScalaCompiler(List("org.scala-lang/scala-library/jars/scala-library-2.11.8.jar"), new File(".").getAbsolutePath() + "\\target\\scala-2.11\\classes\\") //todo: utilize build.sbt's data
+  def compiler = new ScalaCompiler(List(s"org.scala-lang/scala-library/jars/scala-library-${util.Properties.versionNumberString}.jar"), new File(".").getAbsolutePath() + "\\target\\scala-2.11\\classes\\")
 
   case class Config(check: String = "", shell: Boolean = false, service: Boolean = false)
   val parser = new scopt.OptionParser[Config]("bob") {
