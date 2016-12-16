@@ -3,7 +3,7 @@ package com.ialekseev.bob.http
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{StatusCodes}
 import com.ialekseev.bob.analyzer.Analyzer.{ScalaCode, Webhook, Namespace, AnalysisResult}
-import com.ialekseev.bob.exec.Executor.{RunResult, Run, Build}
+import com.ialekseev.bob.exec.Executor.{SuccessfulRun, RunResult, Build}
 import com.ialekseev.bob.http.WebhookHttpService.{HttpResponseRun, HttpResponse}
 import com.ialekseev.bob.{Body, HttpMethod, HttpRequest, BaseSpec}
 import akka.http.scaladsl.testkit.ScalatestRouteTest
@@ -29,14 +29,14 @@ class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with Scala
           Build(analysisResult, "code")
         }
         val request = HttpRequest(some(uri), method, Map.empty, Map.empty, none)
-        when(exec.run(request, Seq(build))).thenReturn(Task.now(RunResult(Seq(Run(build, "1")))))
+        when(exec.run(request, Seq(build))).thenReturn(Task.now(RunResult(Seq(SuccessfulRun(build, "1")))))
 
         //act
         Get(uri) ~> createRoute(Seq(build)) ~> check {
 
           //assert
           response.status should be (StatusCodes.OK)
-          responseAs[HttpResponse] should be (HttpResponse(request, Seq(HttpResponseRun(Namespace("com", "create"), "1"))))
+          responseAs[HttpResponse] should be (HttpResponse(request, Seq(HttpResponseRun(Namespace("com", "create"), some("1"), none))))
         }
       }
     }
@@ -52,14 +52,14 @@ class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with Scala
           Build(analysisResult, "code")
         }
         val request = HttpRequest(some(uri), method, headers, Map.empty, none)
-        when(exec.run(request, Seq(build))).thenReturn(Task.now(RunResult(Seq(Run(build, "1")))))
+        when(exec.run(request, Seq(build))).thenReturn(Task.now(RunResult(Seq(SuccessfulRun(build, "1")))))
 
         //act
         Post(uri).withHeaders(RawHeader("h1", "super"), RawHeader("head2", "cool")) ~> createRoute(Seq(build)) ~> check {
 
           //assert
           response.status should be (StatusCodes.OK)
-          responseAs[HttpResponse] should be (HttpResponse(request, Seq(HttpResponseRun(Namespace("com", "create"), "1"))))
+          responseAs[HttpResponse] should be (HttpResponse(request, Seq(HttpResponseRun(Namespace("com", "create"), some("1"), none))))
         }
       }
     }
@@ -76,14 +76,14 @@ class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with Scala
           Build(analysisResult, "code")
         }
         val request = HttpRequest(some(path), method, Map.empty, queryString, none)
-        when(exec.run(request, Seq(build))).thenReturn(Task.now(RunResult(Seq(Run(build, "1")))))
+        when(exec.run(request, Seq(build))).thenReturn(Task.now(RunResult(Seq(SuccessfulRun(build, "1")))))
 
         //act
         Put(uri) ~> createRoute(Seq(build)) ~> check {
 
           //assert
           response.status should be (StatusCodes.OK)
-          responseAs[HttpResponse] should be (HttpResponse(request, Seq(HttpResponseRun(Namespace("com", "create"), "1"))))
+          responseAs[HttpResponse] should be (HttpResponse(request, Seq(HttpResponseRun(Namespace("com", "create"), some("1"), none))))
         }
       }
     }
@@ -109,5 +109,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with Scala
         }
       }
     }
+
+    //todo: cover FailedRun cases
   }
 }

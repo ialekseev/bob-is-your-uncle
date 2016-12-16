@@ -1,11 +1,12 @@
 package com.ialekseev.bob.exec
 
-import com.ialekseev.bob.exec.Executor.{RunResult, Run, BuildFailed, Build}
+import com.ialekseev.bob.exec.Executor._
 import com.ialekseev.bob.{HttpRequest, CompilationFailed, StageFailed, Body, StringLiteralBody, DictionaryBody, JsonBody}
 import com.ialekseev.bob.analyzer.{Analyzer}
 import com.ialekseev.bob.analyzer.Analyzer.{Webhook, AnalysisResult, ScalaCode}
 import org.json4s.JsonAST.JValue
 import scala.util.matching.Regex
+import scala.util.Try
 import scalaz._
 import Scalaz._
 import scalaz.concurrent.Task
@@ -131,7 +132,9 @@ trait Executor {
     Task {
       RunResult {
         matchedBuilds.map(b => {
-          Run(b._1, scalaCompiler.eval[Any](b._1.codeFileName, b._2))
+          Try(scalaCompiler.eval[Any](b._1.codeFileName, b._2)).map(res => SuccessfulRun(b._1, res)).recover {
+            case error => FailedRun(b._1, error)
+          }.get
         })
       }
     }
@@ -142,6 +145,8 @@ object Executor {
   type BuildFailed = StageFailed
   case class Build(analysisResult: AnalysisResult, codeFileName: String)
 
+  sealed trait Run
+  case class SuccessfulRun(build: Build, result: Any) extends Run
+  case class FailedRun(build: Build, error: Throwable) extends Run
   case class RunResult(runs: Seq[Run])
-  case class Run(build: Build, result: Any)
 }

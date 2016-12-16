@@ -3,7 +3,7 @@ package com.ialekseev.bob.exec
 import com.ialekseev.bob.analyzer.Analyzer._
 import com.ialekseev.bob._
 import com.ialekseev.bob.analyzer.Analyzer
-import com.ialekseev.bob.exec.Executor.{RunResult, Run, Build}
+import com.ialekseev.bob.exec.Executor.{SuccessfulRun, RunResult, Run, Build}
 import org.json4s.JsonAST.{JBool, JInt, JString, JObject}
 import org.mockito.Mockito
 import scalaz._
@@ -219,7 +219,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (RunResult(Seq(Run(builds(0), "1"))))
+        result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
       }
     }
 
@@ -240,7 +240,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (RunResult(Seq(Run(builds(0), "1"))))
+        result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
       }
     }
 
@@ -261,7 +261,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (RunResult(Seq(Run(builds(0), "1"))))
+        result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
       }
     }
 
@@ -282,7 +282,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (RunResult(Seq(Run(builds(0), "1"))))
+        result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
       }
     }
 
@@ -303,7 +303,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (RunResult(Seq(Run(builds(0), "1"))))
+        result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
       }
     }
 
@@ -324,7 +324,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (RunResult(Seq(Run(builds(0), "1"))))
+        result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
       }
     }
 
@@ -345,7 +345,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (RunResult(Seq(Run(builds(0), "1"))))
+        result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
       }
     }
 
@@ -367,7 +367,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (RunResult(Seq(Run(builds(0), "1"))))
+        result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
       }
     }
 
@@ -389,7 +389,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (RunResult(Seq(Run(builds(0), "1"))))
+        result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
       }
     }
 
@@ -411,7 +411,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (RunResult(Seq(Run(builds(0), "1"))))
+        result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
       }
     }
 
@@ -433,7 +433,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (RunResult(Seq(Run(builds(0), "1"))))
+        result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
       }
     }
 
@@ -455,7 +455,7 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (RunResult(Seq(Run(builds(0), "1"))))
+        result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
       }
     }
 
@@ -477,8 +477,10 @@ class ExecutorSpec extends BaseSpec  {
         val result = executor.run(incoming, builds).unsafePerformSync
 
         //assert
-        result should be (RunResult(Seq(Run(builds(0), "1"))))
+        result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
       }
     }
+
+    //todo: cover FailedRun cases
   }
 }
