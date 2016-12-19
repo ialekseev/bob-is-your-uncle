@@ -3,7 +3,7 @@ package com.ialekseev.bob.http
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{StatusCodes}
 import com.ialekseev.bob.analyzer.Analyzer.{ScalaCode, Webhook, Namespace, AnalysisResult}
-import com.ialekseev.bob.exec.Executor.{SuccessfulRun, RunResult, Build}
+import com.ialekseev.bob.exec.Executor.{FailedRun, SuccessfulRun, RunResult, Build}
 import com.ialekseev.bob.http.WebhookHttpService.{HttpResponseRun, HttpResponse}
 import com.ialekseev.bob.{Body, HttpMethod, HttpRequest, BaseSpec}
 import akka.http.scaladsl.testkit.ScalatestRouteTest
@@ -110,6 +110,28 @@ class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with Scala
       }
     }
 
-    //todo: cover FailedRun cases
+    "PUT request has uri & queryString AND there IS a matching build (but run failed)" should {
+      "return failure for that run" in {
+        //arrange
+        val path = "/example/1"
+        val uri = path + "?q1=super&query2=cool"
+        val method = HttpMethod.PUT
+        val queryString = Map("q1" -> "super", "query2" -> "cool")
+        val build = {
+          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("/example/1"), method, Map.empty, queryString, none[Body])), ScalaCode("do()"))
+          Build(analysisResult, "code")
+        }
+        val request = HttpRequest(some(path), method, Map.empty, queryString, none)
+        when(exec.run(request, Seq(build))).thenReturn(Task.now(RunResult(Seq(FailedRun(build, new NullPointerException("bang!"))))))
+
+        //act
+        Put(uri) ~> createRoute(Seq(build)) ~> check {
+
+          //assert
+          response.status should be (StatusCodes.OK)
+          responseAs[HttpResponse] should be (HttpResponse(request, Seq(HttpResponseRun(Namespace("com", "create"), none, some("bang!")))))
+        }
+      }
+    }
   }
 }

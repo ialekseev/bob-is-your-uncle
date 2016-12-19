@@ -3,7 +3,7 @@ package com.ialekseev.bob.exec
 import com.ialekseev.bob.analyzer.Analyzer._
 import com.ialekseev.bob._
 import com.ialekseev.bob.analyzer.Analyzer
-import com.ialekseev.bob.exec.Executor.{SuccessfulRun, RunResult, Run, Build}
+import com.ialekseev.bob.exec.Executor._
 import org.json4s.JsonAST.{JBool, JInt, JString, JObject}
 import org.mockito.Mockito
 import scalaz._
@@ -481,6 +481,27 @@ class ExecutorSpec extends BaseSpec  {
       }
     }
 
-    //todo: cover FailedRun cases
+    "there is a failed run (compiler throws an exception)" should {
+      "return a failure for that run" in {
+        //arrange
+        val anal = mock[Analyzer]
+        val compiler = mock[ScalaCompiler]
+        val executor = new Executor {
+          val scalaCompiler = compiler
+          val analyzer = anal
+        }
+        val body = some(JsonBody(JObject("a"-> JObject("a1" -> JString("1"), "a2" -> JInt(2)), "c" -> JString("2"), "b" -> JBool(true))))
+        val incoming = HttpRequest(some("com/create/example/"), HttpMethod.GET, Map.empty, Map.empty, body)
+        val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("b" -> JString("{$b}"), "a"-> JObject("a2" -> JString("{$hel}"))))))), ScalaCode("do()")), "abc"))
+        Mockito.when(compiler.eval("abc", Seq("request" -> HttpRequestEx("com/create/example/", "GET", Map.empty, Map.empty, body), "hel" -> "2", "b" -> "true"))).thenThrow(new NullPointerException("bang!"))
+
+        //act
+        val result = executor.run(incoming, builds).unsafePerformSync
+
+        //assert
+        result.runs(0).asInstanceOf[FailedRun].error shouldBe a [NullPointerException]
+        result.runs(0).asInstanceOf[FailedRun].error.getMessage should be ("bang!")
+      }
+    }
   }
 }
