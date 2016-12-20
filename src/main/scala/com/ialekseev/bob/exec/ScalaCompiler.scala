@@ -1,5 +1,7 @@
 package com.ialekseev.bob.exec
 
+import java.net.URLClassLoader
+import java.nio.file.Paths
 import com.ialekseev.bob.{CompilationFailed, CompilationError}
 import scala.collection.mutable.ListBuffer
 import scala.reflect.internal.util.Position
@@ -8,8 +10,8 @@ import scala.util.{Random}
 import scalaz._
 import Scalaz._
 
-class ScalaCompiler(dependencies: List[String], projectDir: String) {
-  val compiler = new Compiler(dependencies, projectDir, ListBuffer.empty)
+class ScalaCompiler {
+  val compiler = new Compiler(ListBuffer.empty)
 
   def compile(code: String, imports: String = "", fields: String = "", implicits: String = ""): CompilationFailed \/ String = {
     require(!code.isEmpty)
@@ -34,12 +36,12 @@ import scala.reflect.internal.util.{AbstractFileClassLoader, BatchSourceFile}
 import tools.nsc.io.{VirtualDirectory}
 import java.io.File
 
-private[exec] class Compiler(dependencies: List[String], projectDir: String, val reportedErrors: ListBuffer[CompilationError]) {
+private[exec] class Compiler(val reportedErrors: ListBuffer[CompilationError]) {
 
   val target = new VirtualDirectory("(memory)", None)
 
   val customSettings = {
-    val classPath = projectDir :: dependencies.map(System.getProperty("user.home") + "\\.ivy2\\cache\\" + _)
+    val classPath =  this.getClass.getClassLoader.asInstanceOf[URLClassLoader].getURLs.toList.map(f => Paths.get(f.toURI()).toFile().getPath)
     val s = new Settings()
     s.outputDirs.setSingleOutput(target)
     s.classpath.value = classPath.mkString(File.pathSeparator)

@@ -18,10 +18,10 @@ package object dsl {
       case _ => none
     }
 
-    /*val bodyJson: Option[JValue] = body match { //todo: now not gonna work without import & adding lib to the classpath
+    val bodyJson: Option[JValue] = body match {
       case Some(JsonBody(json)) => some(json)
       case _ => none
-    }*/
+    }
   }
 
   object console {
