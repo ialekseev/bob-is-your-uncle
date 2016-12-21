@@ -22,6 +22,9 @@ trait WebhookHttpService extends Json4sSupport {
   def createRoute(builds: Seq[Build]): Route = ctx => {
     require(builds.nonEmpty)
 
+    //todo: potential blocks might happen here (when there are blocks in bob-files, like when using scalaj-http).
+    //Probably we'd better not block the default dispatcher, and instead configure special "blocking dispatcher. see: http://stackoverflow.com/questions/34641861/akka-http-blocking-in-a-future-blocks-the-server"
+
     val uri = ctx.request.uri.path.toString()
     val method = HttpMethod.withName(ctx.request.method.value)
     val headers = ctx.request.headers.map(h => (h.name, h.value)).toMap
@@ -33,7 +36,7 @@ trait WebhookHttpService extends Json4sSupport {
         HttpResponseRun(build.analysisResult.namespace, some(result), none)
       }
       case FailedRun(build, error) => {
-        println(Console.RED + s"[Error] ${build.analysisResult.namespace.path}#${build.analysisResult.namespace.name}:" + Console.RESET + " " + error.getMessage)
+        println(Console.RED + s"[Error] ${build.analysisResult.namespace.path}#${build.analysisResult.namespace.name}:" + Console.RESET + " " + error.toString)
         HttpResponseRun(build.analysisResult.namespace, none, some(error.getMessage))
       }
     }))

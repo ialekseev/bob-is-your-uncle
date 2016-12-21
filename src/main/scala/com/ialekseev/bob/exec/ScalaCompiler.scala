@@ -24,9 +24,7 @@ class ScalaCompiler {
   }
 
   def eval[T](className: String, variables: Seq[(String, AnyRef)]): T = {
-    synchronized {
-      compiler.eval[T](className, variables)
-    }
+    compiler.eval[T](className, variables)
   }
 }
 
