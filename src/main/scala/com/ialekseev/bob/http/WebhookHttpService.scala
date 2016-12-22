@@ -9,14 +9,14 @@ import com.ialekseev.bob.{HttpRequest, HttpMethod}
 import com.ialekseev.bob.exec.Executor
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import org.json4s.ext.EnumSerializer
-import org.json4s.{FieldSerializer, DefaultFormats, native}
+import org.json4s.{DefaultFormats, native}
 import scalaz._
 import Scalaz._
 
 trait WebhookHttpService extends Json4sSupport {
   val exec: Executor
 
-  implicit val formats = DefaultFormats + new EnumSerializer(HttpMethod) + FieldSerializer[HttpResponseRun]()
+  implicit val formats = DefaultFormats + new EnumSerializer(HttpMethod)
   implicit val serialization = native.Serialization
 
   def createRoute(builds: Seq[Build]): Route = ctx => {
@@ -25,7 +25,7 @@ trait WebhookHttpService extends Json4sSupport {
     //todo: potential blocks might happen here (when there are blocks in bob-files, like when using scalaj-http).
     //Probably we'd better not block the default dispatcher, and instead configure special "blocking dispatcher. see: http://stackoverflow.com/questions/34641861/akka-http-blocking-in-a-future-blocks-the-server"
 
-    val uri = ctx.request.uri.path.toString()
+    val uri = ctx.request.uri.path.toString
     val method = HttpMethod.withName(ctx.request.method.value)
     val headers = ctx.request.headers.map(h => (h.name, h.value)).toMap
     val queryString = ctx.request.uri.query().toMap
@@ -33,11 +33,11 @@ trait WebhookHttpService extends Json4sSupport {
     val task = exec.run(request, builds).map(res => HttpResponse(request, res.runs.map {
       case SuccessfulRun(build, result) => {
         println(Console.GREEN + s"[Done] ${build.analysisResult.namespace.path}#${build.analysisResult.namespace.name}" + Console.RESET)
-        HttpResponseRun(build.analysisResult.namespace, some(result), none)
+        HttpResponseRun(build.analysisResult.namespace, true, none)
       }
       case FailedRun(build, error) => {
         println(Console.RED + s"[Error] ${build.analysisResult.namespace.path}#${build.analysisResult.namespace.name}:" + Console.RESET + " " + error.toString)
-        HttpResponseRun(build.analysisResult.namespace, none, some(error.getMessage))
+        HttpResponseRun(build.analysisResult.namespace, false, some(error.getMessage))
       }
     }))
 
@@ -48,7 +48,5 @@ trait WebhookHttpService extends Json4sSupport {
 
 object WebhookHttpService {
   case class HttpResponse(incoming: HttpRequest, runs: Seq[HttpResponseRun])
-  case class HttpResponseRun(namespace: Namespace, result: Option[Any], message: Option[String]) {
-    val succeed = result.isDefined
-  }
+  case class HttpResponseRun(namespace: Namespace, succeed: Boolean, message: Option[String])
 }

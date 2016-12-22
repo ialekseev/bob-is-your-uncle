@@ -36,7 +36,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with Scala
 
           //assert
           response.status should be (StatusCodes.OK)
-          responseAs[HttpResponse] should be (HttpResponse(request, Seq(HttpResponseRun(Namespace("com", "create"), some("1"), none))))
+          responseAs[HttpResponse] should be (HttpResponse(request, Seq(HttpResponseRun(Namespace("com", "create"), true, none))))
         }
       }
     }
@@ -59,7 +59,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with Scala
 
           //assert
           response.status should be (StatusCodes.OK)
-          responseAs[HttpResponse] should be (HttpResponse(request, Seq(HttpResponseRun(Namespace("com", "create"), some("1"), none))))
+          responseAs[HttpResponse] should be (HttpResponse(request, Seq(HttpResponseRun(Namespace("com", "create"), true, none))))
         }
       }
     }
@@ -83,7 +83,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with Scala
 
           //assert
           response.status should be (StatusCodes.OK)
-          responseAs[HttpResponse] should be (HttpResponse(request, Seq(HttpResponseRun(Namespace("com", "create"), some("1"), none))))
+          responseAs[HttpResponse] should be (HttpResponse(request, Seq(HttpResponseRun(Namespace("com", "create"), true, none))))
         }
       }
     }
@@ -129,7 +129,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with Scala
 
           //assert
           response.status should be (StatusCodes.OK)
-          responseAs[HttpResponse] should be (HttpResponse(request, Seq(HttpResponseRun(Namespace("com", "create"), none, some("bang!")))))
+          responseAs[HttpResponse] should be (HttpResponse(request, Seq(HttpResponseRun(Namespace("com", "create"), false, some("bang!")))))
         }
       }
     }

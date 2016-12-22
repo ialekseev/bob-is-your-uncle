@@ -18,6 +18,8 @@ resolvers ++= Seq(
   "Maven central http" at "http://repo1.maven.org/maven2"
 )
 
+//todo: extend build.sbt with another git-ignored file for user-specific settings (like for adding custom dependencies)
+
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-http-experimental" % "2.4.9",
   "de.heikoseeberger" %% "akka-http-json4s" % "1.5.3",

@@ -19,6 +19,7 @@ trait Service extends WebhookHttpService {
     readSources(defaultBuildsLocation) match {
       case scala.util.Success(sources) => {
 
+        //todo: what if there are several files with the same namespace?
         val built: List[BuildFailed \/ Build] = sources.map(source => {
          val build = exec.build(source._2).unsafePerformSync
          showResult(source._1, source._2, build)

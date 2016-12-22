@@ -59,7 +59,7 @@ trait Command {
     result match {
       case \/-(built) => showSuccess(filename, built.analysisResult)
       case -\/(error) => error match {
-        case LexicalAnalysisFailed(first +: _) => showError(filename, source, first.startOffset, first.endOffset, "Unexpected token")
+        case LexicalAnalysisFailed(first +: _) => showError(filename, source, first.startOffset, first.endOffset, "Unexpected token or block")
         case SyntaxAnalysisFailed(first +: _) => showError(filename, source, first.startOffset, first.endOffset, first.message)
         case SemanticAnalysisFailed(first +: _) => showError(filename, source, first.startOffset, first.endOffset, first.message)
         case CompilationFailed(first +: _) => showError(filename, source, first.startOffset, first.endOffset, first.message)
