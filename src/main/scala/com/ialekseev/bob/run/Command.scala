@@ -1,16 +1,21 @@
 package com.ialekseev.bob.run
 
+import java.io.File
 import com.ialekseev.bob.analyzer.Analyzer.AnalysisResult
-import com.ialekseev.bob.{CompilationFailed, SemanticAnalysisFailed, SyntaxAnalysisFailed, LexicalAnalysisFailed}
 import com.ialekseev.bob.analyzer.DefaultAnalyzer
-import com.ialekseev.bob.exec.Executor.{BuildFailed, Build}
-import com.ialekseev.bob.exec.{ScalaCompiler, Executor}
+import com.ialekseev.bob.exec.Executor.{Build, BuildFailed}
+import com.ialekseev.bob.exec.{Executor, ScalaCompiler}
+import com.ialekseev.bob.{CompilationFailed, LexicalAnalysisFailed, SemanticAnalysisFailed, SyntaxAnalysisFailed}
 import scala.io.{Codec, Source, StdIn}
 import scala.util.Try
 import scalaz.Scalaz._
-import scalaz.{-\/, \/-, \/}
+import scalaz._
+import scalaz.effect.IO._
+import scalaz.effect._
 
 trait Command {
+  case class InputSource(path: String, content: String)
+
   val exec = new Executor {
     val analyzer = DefaultAnalyzer
     val scalaCompiler = compiler
@@ -21,39 +26,49 @@ trait Command {
   val defaultBuildsLocation = "playground"
   val fileExtension = ".bob"
 
-  def readSource(filename: String): Try[String] = {
+  def readSource(filename: String): EitherT[IO, Throwable, String] = {
     def normalizeSource(source: String): String = {
       source.replaceAll("\r\n", "\n")
     }
-    Try {
-      val fileToCheck = Source.fromFile(filename)(Codec.UTF8)
-      val source = normalizeSource(fileToCheck.mkString)
-      fileToCheck.close()
-      source
+    EitherT.eitherT[IO, Throwable, String] {
+      IO {
+        Try {
+          val fileToCheck = Source.fromFile(filename)(Codec.UTF8)
+          val source = normalizeSource(fileToCheck.mkString)
+          fileToCheck.close()
+          source
+        }.toDisjunction
+      }
     }
   }
 
-  def readSources(dir: String): Try[List[(String, String)]] = {
+  def readSources(dir: String): EitherT[IO, List[Throwable], List[InputSource]] = {
     for {
-      sourceFiles <- Try(new java.io.File(defaultBuildsLocation).listFiles.filter(_.getName.endsWith(fileExtension)))
-      sources <- Try(sourceFiles.map(file => (file.getPath, readSource(file.getPath).get)).toList)
+      sourceFiles: List[File] <- EitherT.eitherT[IO, List[Throwable], List[File]] {
+        IO(Try(new java.io.File(defaultBuildsLocation).listFiles.filter(_.getName.endsWith(fileExtension)).toList).toDisjunction.leftMap(List(_)))
+      }
+      sources: List[InputSource] <- sourceFiles.map(file => {
+        readSource(file.getPath).map(l => InputSource(file.getPath, l)).leftMap(List(_))
+      }).sequenceU
     } yield sources
   }
 
-  def show(message: String = "") = println(message)
-  def read(message: String = "") = StdIn.readLine(message)
+  def show(message: String = ""): IO[Unit] = putStrLn(message)
+  def read(message: String = ""): IO[String] = IO { StdIn.readLine(message)}
 
-  def showResult(filename: String, source: String, result: BuildFailed \/ Build) = {
+  def showResult(filename: String, source: String, result: BuildFailed \/ Build): IO[Unit] = {
     require(!filename.isEmpty)
     require(!source.isEmpty)
 
-    def showSuccess(filename: String, r: AnalysisResult) = {
-      show()
-      showFileName(filename)
-      show(Console.WHITE + "namespace: " + r.namespace.path + "#" + r.namespace.name + Console.RESET)
-      show(Console.WHITE + "description: "+ r.description + Console.RESET)
-      show(Console.WHITE + "result: " + Console.GREEN + s"OK" + Console.RESET)
-      show()
+    def showSuccess(filename: String, r: AnalysisResult): IO[Unit] = {
+      for {
+        _ <- show()
+        _ <- showFileName(filename)
+        _ <- show(Console.WHITE + "namespace: " + r.namespace.path + "#" + r.namespace.name + Console.RESET)
+        _ <- show(Console.WHITE + "description: "+ r.description + Console.RESET)
+        _ <- show(Console.WHITE + "result: " + Console.GREEN + s"OK" + Console.RESET)
+        _ <- show()
+      } yield ()
     }
 
     result match {
@@ -67,13 +82,13 @@ trait Command {
     }
   }
 
-  def showError(filename: String, source: String, startOffset: Int, endOffset: Int, message: String) = {
+  def showError(filename: String, source: String, startOffset: Int, endOffset: Int, message: String): IO[Unit] = {
     require(!filename.isEmpty)
     require(!source.isEmpty)
     require(startOffset >= 0)
     require(endOffset >= 0)
 
-    def showErrorContext(source: String, startOffset: Int, endOffset: Int) = {
+    def showErrorContext(source: String, startOffset: Int, endOffset: Int): IO[Unit] = {
       val before = source.substring(0, startOffset)
       val error = {
         val err = source.substring(startOffset, endOffset + 1)
@@ -83,9 +98,11 @@ trait Command {
       val after = if (endOffset + 1 < source.length - 1) some(source.substring(endOffset + 1)) else none
 
       val context = (before, error, after)
-      show(Console.RED + "[" + Console.RESET)
-      show(Console.WHITE + context._1 + Console.RED + context._2 + Console.WHITE + context._3.getOrElse("") + Console.RESET)
-      show(Console.RED + "]" + Console.RESET)
+      for {
+        _ <- show(Console.RED + "[" + Console.RESET)
+        _ <- show(Console.WHITE + context._1 + Console.RED + context._2 + Console.WHITE + context._3.getOrElse("") + Console.RESET)
+        _ <- show(Console.RED + "]" + Console.RESET)
+      } yield ()
     }
 
     def errorCoordinate(source: String, offset: Int): (Int, Int) = {
@@ -102,21 +119,29 @@ trait Command {
       }
     }
 
-    show()
-    showFileName(filename)
-    show(Console.RED + s"Error position: ${errorCoordinate(source, startOffset)}" + Console.RESET)
-    show(Console.RED + s"Message: $message" + Console.RESET)
-    showErrorContext(source, startOffset, endOffset)
-    show()
+    for {
+      _ <- show()
+      _ <- showFileName(filename)
+      _ <- show(Console.RED + s"Error position: ${errorCoordinate(source, startOffset)}" + Console.RESET)
+      _ <- show(Console.RED + s"Message: $message" + Console.RESET)
+      _ <- showErrorContext(source, startOffset, endOffset)
+      _ <- show()
+    } yield ()
   }
 
-  def showError(message: String, e: Throwable) = {
-    show()
-    show(Console.RED + s"$message. Internal error: $e" + Console.RESET)
-    show()
+  def showError(message: String, e: Throwable): IO[Unit] = {
+    showError(s"$message. Internal error: $e")
   }
 
-  def showFileName(filename: String) = {
+  def showError(message: String): IO[Unit] = {
+    for {
+      _ <- show()
+      _ <- show(Console.RED + message + Console.RESET)
+      _ <- show()
+    } yield ()
+  }
+
+  def showFileName(filename: String): IO[Unit] = {
     require(!filename.isEmpty)
 
     show(Console.CYAN + "[" + filename + "]" + Console.RESET)

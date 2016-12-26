@@ -3,14 +3,12 @@ package com.ialekseev.bob.run.commands
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
-import com.ialekseev.bob.exec.Executor.{BuildFailed, Build}
+import com.ialekseev.bob.exec.Executor.{Build, BuildFailed}
 import com.ialekseev.bob.http.WebhookHttpService
 import com.ialekseev.bob.run.Command
-import scala.io.{Codec, StdIn}
-import scala.util.Try
-import scala.io.Source
+
+import scalaz.Scalaz._
 import scalaz._
-import Scalaz._
 
 trait Service extends WebhookHttpService {
   this: Command =>
@@ -19,10 +17,11 @@ trait Service extends WebhookHttpService {
     readSources(defaultBuildsLocation) match {
       case scala.util.Success(sources) => {
 
-        //todo: what if there are several files with the same namespace?
+        //todo: what if there are several files with the same namespace? Fire error right away!
+
         val built: List[BuildFailed \/ Build] = sources.map(source => {
-         val build = exec.build(source._2).unsafePerformSync
-         showResult(source._1, source._2, build)
+         val build = exec.build(source.content).unsafePerformSync
+         showResult(source.path, source.content, build)
          build
        })
 
