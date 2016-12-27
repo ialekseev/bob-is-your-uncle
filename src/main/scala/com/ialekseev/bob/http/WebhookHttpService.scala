@@ -1,17 +1,17 @@
 package com.ialekseev.bob.http
 
 import akka.http.scaladsl.server.Route
-import com.ialekseev.bob._
 import com.ialekseev.bob.analyzer.Analyzer.Namespace
-import com.ialekseev.bob.exec.Executor.{FailedRun, SuccessfulRun, Build}
-import com.ialekseev.bob.http.WebhookHttpService.{HttpResponseRun, HttpResponse}
-import com.ialekseev.bob.{HttpRequest, HttpMethod}
 import com.ialekseev.bob.exec.Executor
+import com.ialekseev.bob.exec.Executor.{Build, FailedRun, SuccessfulRun}
+import com.ialekseev.bob.http.WebhookHttpService.{HttpResponse, HttpResponseRun}
+import com.ialekseev.bob.{HttpMethod, HttpRequest, _}
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import org.json4s.ext.EnumSerializer
 import org.json4s.{DefaultFormats, native}
+
+import scalaz.Scalaz._
 import scalaz._
-import Scalaz._
 
 trait WebhookHttpService extends Json4sSupport {
   val exec: Executor

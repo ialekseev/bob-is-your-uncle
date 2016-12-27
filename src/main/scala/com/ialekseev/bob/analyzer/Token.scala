@@ -1,6 +1,7 @@
 package com.ialekseev.bob.analyzer
 
 import org.json4s.JsonAST.JValue
+
 import scalaz.Show
 
 trait Token {

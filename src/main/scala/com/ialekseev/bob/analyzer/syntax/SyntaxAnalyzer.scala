@@ -2,9 +2,10 @@ package com.ialekseev.bob.analyzer.syntax
 
 import com.ialekseev.bob.SyntaxAnalysisFailed
 import com.ialekseev.bob.analyzer.LexerToken
-import com.ialekseev.bob.analyzer.syntax.SyntaxAnalyzer.{ParseTree}
+import com.ialekseev.bob.analyzer.syntax.SyntaxAnalyzer.ParseTree
+
+import scalaz.Scalaz._
 import scalaz._
-import Scalaz._
 
 /*[Example]
   namespace com.ialekseev.core#create

@@ -1,12 +1,11 @@
 package com.ialekseev.bob.analyzer.lexical
 
-import com.ialekseev.bob.{LexicalError, LexicalAnalysisFailed}
-import com.ialekseev.bob.analyzer._
-import com.ialekseev.bob.analyzer.{LexerToken, Token}
-import scala.annotation.tailrec
+import com.ialekseev.bob.LexicalAnalysisFailed
+import com.ialekseev.bob.analyzer.{LexerToken, Token, _}
+
 import scalaz.Free.Trampoline
+import scalaz.Scalaz._
 import scalaz._
-import Scalaz._
 
 //Simple Ad hoc lexical analyzer without Regular Expressions and Finite Automata
 final class AdHocLexicalAnalyzer extends LexicalAnalyzer with LexicalAnalysisState {

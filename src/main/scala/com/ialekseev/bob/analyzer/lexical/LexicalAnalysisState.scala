@@ -1,10 +1,10 @@
 package com.ialekseev.bob.analyzer.lexical
 
 import com.ialekseev.bob.LexicalError
-import com.ialekseev.bob.analyzer._
-import com.ialekseev.bob.analyzer.{LexerToken, Token}
+import com.ialekseev.bob.analyzer.{LexerToken, Token, _}
+
+import scalaz.Scalaz._
 import scalaz._
-import Scalaz._
 
 private[lexical] trait LexicalAnalysisState {
   type LexerState[A] =  State[LexerStateInternal, A]

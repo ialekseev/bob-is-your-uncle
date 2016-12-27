@@ -5,8 +5,9 @@ import com.ialekseev.bob.analyzer.Analyzer._
 import com.ialekseev.bob.analyzer.lexical.{AdHocLexicalAnalyzer, LexicalAnalyzer}
 import com.ialekseev.bob.analyzer.syntax.SyntaxAnalyzer._
 import com.ialekseev.bob.analyzer.syntax.{AdHocSyntaxAnalyzer, SyntaxAnalyzer}
+
+import scalaz.Scalaz._
 import scalaz._
-import Scalaz._
 
 trait Analyzer {
   val lexicalAnalyzer: LexicalAnalyzer

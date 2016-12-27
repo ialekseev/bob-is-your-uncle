@@ -1,9 +1,10 @@
 package com.ialekseev.bob.analyzer
 
-import Token._
+import com.ialekseev.bob.analyzer.Token._
+
 import scala.util.Try
+import scalaz.Scalaz._
 import scalaz._
-import Scalaz._
 
 package object lexical {
   def isLetter(char: Char): Boolean = char.isLetter && char <= 'z'

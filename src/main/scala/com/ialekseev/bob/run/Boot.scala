@@ -13,10 +13,10 @@ object Boot extends App with Command with Check with Shell with Service {
     opt[Unit]("service").action((_, c) => c.copy(service = true)).text("service - run the http service")
   }
 
-  parser.parse(args, Config()) match {
+  (parser.parse(args, Config()) match {
     case Some(Config(path, _, _)) if path.nonEmpty => checkCommand(path)
     case Some(Config(_, true, _)) => shellCommand()
     case Some(Config(_, _, true)) => serviceCommand()
-    case None =>
-  }
+    case None => show("Unknown command")
+  }).unsafePerformIO()
 }

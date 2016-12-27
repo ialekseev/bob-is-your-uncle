@@ -1,11 +1,10 @@
 package com.ialekseev.bob.analyzer.syntax
 
 import com.ialekseev.bob.SyntaxError
-import com.ialekseev.bob.analyzer.{TokenTag, LexerToken, Token}
 import com.ialekseev.bob.analyzer.syntax.SyntaxAnalyzer._
-import scala.collection.generic.SeqFactory
+import com.ialekseev.bob.analyzer.{LexerToken, Token, TokenTag}
+
 import scala.reflect.ClassTag
-import scala.reflect._
 import scalaz.Scalaz._
 import scalaz._
 
@@ -149,6 +148,7 @@ private[syntax] trait SyntaxAnalysisState {
     } yield nonTerminal
   }
 
+  //todo: use seqMonoid everywhere instead of List's ?
   implicit def seqMonoid[T]: Monoid[Seq[T]] = new Monoid[Seq[T]] {
     override def zero: Seq[T] = Seq.empty[T]
     override def append(f1: Seq[T], f2: => Seq[T]): Seq[T] = f1 ++: f2

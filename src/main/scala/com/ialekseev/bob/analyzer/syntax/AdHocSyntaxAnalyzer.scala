@@ -1,10 +1,11 @@
 package com.ialekseev.bob.analyzer.syntax
 
-import com.ialekseev.bob.{SyntaxError, SyntaxAnalysisFailed}
-import com.ialekseev.bob.analyzer.{LexerToken, Token}
+import com.ialekseev.bob.SyntaxAnalysisFailed
 import com.ialekseev.bob.analyzer.syntax.SyntaxAnalyzer._
+import com.ialekseev.bob.analyzer.{LexerToken, Token}
+
+import scalaz.Scalaz._
 import scalaz._
-import Scalaz._
 
 //Top-Down Predictive Parsing for LL grammar (Recursive Descent technique)
 class AdHocSyntaxAnalyzer extends SyntaxAnalyzer with SyntaxAnalysisState {

@@ -1,13 +1,14 @@
 package com.ialekseev.bob.exec
 
-import com.ialekseev.bob.analyzer.Analyzer._
 import com.ialekseev.bob._
 import com.ialekseev.bob.analyzer.Analyzer
+import com.ialekseev.bob.analyzer.Analyzer._
 import com.ialekseev.bob.exec.Executor._
-import org.json4s.JsonAST.{JBool, JInt, JString, JObject}
+import org.json4s.JsonAST.{JBool, JInt, JObject, JString}
 import org.mockito.Mockito
+
+import scalaz.Scalaz._
 import scalaz._
-import Scalaz._
 
 class ExecutorSpec extends BaseSpec  {
 

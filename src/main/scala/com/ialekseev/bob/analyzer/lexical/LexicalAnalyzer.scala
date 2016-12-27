@@ -2,6 +2,7 @@ package com.ialekseev.bob.analyzer.lexical
 
 import com.ialekseev.bob.LexicalAnalysisFailed
 import com.ialekseev.bob.analyzer.LexerToken
+
 import scalaz._
 
 /*[Lexical Syntax in EBNF form]

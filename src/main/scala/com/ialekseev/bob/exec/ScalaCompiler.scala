@@ -2,13 +2,15 @@ package com.ialekseev.bob.exec
 
 import java.net.URLClassLoader
 import java.nio.file.Paths
-import com.ialekseev.bob.{CompilationFailed, CompilationError}
+
+import com.ialekseev.bob.{CompilationError, CompilationFailed}
+
 import scala.collection.mutable.ListBuffer
 import scala.reflect.internal.util.Position
 import scala.tools.nsc.reporters.AbstractReporter
-import scala.util.{Random}
+import scala.util.Random
+import scalaz.Scalaz._
 import scalaz._
-import Scalaz._
 
 class ScalaCompiler {
   val compiler = new Compiler(ListBuffer.empty)
@@ -29,10 +31,11 @@ class ScalaCompiler {
 }
 
 //https://eknet.org/main/dev/runtimecompilescala.html tuned for our needs + custom reporter (todo: this is a thread-unsafe head-on implementation)
-import scala.tools.nsc.{Global, Settings}
-import scala.reflect.internal.util.{AbstractFileClassLoader, BatchSourceFile}
-import tools.nsc.io.{VirtualDirectory}
 import java.io.File
+
+import scala.reflect.internal.util.{AbstractFileClassLoader, BatchSourceFile}
+import scala.tools.nsc.io.VirtualDirectory
+import scala.tools.nsc.{Global, Settings}
 
 private[exec] class Compiler(val reportedErrors: ListBuffer[CompilationError]) {
 

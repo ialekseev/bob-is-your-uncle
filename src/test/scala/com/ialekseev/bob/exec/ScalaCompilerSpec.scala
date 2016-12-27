@@ -2,8 +2,9 @@ package com.ialekseev.bob.exec
 
 import com.ialekseev.bob.BaseSpec
 import com.ialekseev.bob.run.Boot
+
+import scalaz.Scalaz._
 import scalaz._
-import Scalaz._
 
 class ScalaCompilerSpec extends BaseSpec {
   val compiler = Boot.compiler

@@ -1,8 +1,7 @@
 package com.ialekseev.bob.analyzer.lexical
 
-import com.ialekseev.bob.LexicalError
+import com.ialekseev.bob.{BaseSpec, LexicalError}
 import com.ialekseev.bob.analyzer.{LexerToken, Token}
-import com.ialekseev.bob.BaseSpec
 import org.json4s.JsonDSL._
 
 class LexicalAnalyzerSpec extends BaseSpec {

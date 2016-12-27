@@ -1,11 +1,13 @@
 package com.ialekseev.bob.run
 
 import java.io.File
+
 import com.ialekseev.bob.analyzer.Analyzer.AnalysisResult
 import com.ialekseev.bob.analyzer.DefaultAnalyzer
 import com.ialekseev.bob.exec.Executor.{Build, BuildFailed}
 import com.ialekseev.bob.exec.{Executor, ScalaCompiler}
 import com.ialekseev.bob.{CompilationFailed, LexicalAnalysisFailed, SemanticAnalysisFailed, SyntaxAnalysisFailed}
+
 import scala.io.{Codec, Source, StdIn}
 import scala.util.Try
 import scalaz.Scalaz._
@@ -129,8 +131,8 @@ trait Command {
     } yield ()
   }
 
-  def showError(message: String, e: Throwable): IO[Unit] = {
-    showError(s"$message. Internal error: $e")
+  def showError(message: String, errors: Throwable*): IO[Unit] = {
+    errors.toList.map(e => showError(s"$message. Internal error: $e")).sequenceU.map(_ => (): Unit) //todo: do I have some helper around for ()-map ?
   }
 
   def showError(message: String): IO[Unit] = {
