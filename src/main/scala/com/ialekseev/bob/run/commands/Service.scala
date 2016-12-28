@@ -5,7 +5,6 @@ import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
 import com.ialekseev.bob.http.WebhookHttpService
 import com.ialekseev.bob.run.Command
-
 import scalaz.Scalaz._
 import scalaz._
 import scalaz.effect.IO

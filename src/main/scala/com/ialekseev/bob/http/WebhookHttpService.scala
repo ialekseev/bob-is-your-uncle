@@ -9,9 +9,7 @@ import com.ialekseev.bob.{HttpMethod, HttpRequest, _}
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import org.json4s.ext.EnumSerializer
 import org.json4s.{DefaultFormats, native}
-
 import scalaz.Scalaz._
-import scalaz._
 
 trait WebhookHttpService extends Json4sSupport {
   val exec: Executor

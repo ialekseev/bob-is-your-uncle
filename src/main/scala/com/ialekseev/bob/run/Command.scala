@@ -1,13 +1,11 @@
 package com.ialekseev.bob.run
 
 import java.io.File
-
 import com.ialekseev.bob.analyzer.Analyzer.AnalysisResult
 import com.ialekseev.bob.analyzer.DefaultAnalyzer
 import com.ialekseev.bob.exec.Executor.{Build, BuildFailed}
 import com.ialekseev.bob.exec.{Executor, ScalaCompiler}
 import com.ialekseev.bob.{CompilationFailed, LexicalAnalysisFailed, SemanticAnalysisFailed, SyntaxAnalysisFailed}
-
 import scala.io.{Codec, Source, StdIn}
 import scala.util.Try
 import scalaz.Scalaz._

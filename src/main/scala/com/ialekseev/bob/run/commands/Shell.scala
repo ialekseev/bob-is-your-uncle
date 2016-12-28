@@ -1,7 +1,6 @@
 package com.ialekseev.bob.run.commands
 
 import com.ialekseev.bob.run.Command
-
 import scalaz.effect.IO
 
 trait Shell {
@@ -11,7 +10,7 @@ trait Shell {
 
   def shellCommand(): IO[Unit] = {
 
-    def shell(): IO[Unit] = { //todo: trampoline?
+    def shell(): IO[Unit] = {
       for {
        str <- read(color + "bob> ")
        _ <- str.split(" +").toSeq match {
