@@ -64,7 +64,7 @@ trait Command {
       for {
         _ <- show()
         _ <- showFileName(filename)
-        _ <- show(Console.WHITE + "namespace: " + r.namespace.path + "#" + r.namespace.name + Console.RESET)
+        _ <- show(Console.WHITE + "namespace: " + r.namespace + Console.RESET)
         _ <- show(Console.WHITE + "description: "+ r.description + Console.RESET)
         _ <- show(Console.WHITE + "result: " + Console.GREEN + s"OK" + Console.RESET)
         _ <- show()
@@ -130,7 +130,7 @@ trait Command {
   }
 
   def showError(message: String, errors: Throwable*): IO[Unit] = {
-    errors.toList.map(e => showError(s"$message. Internal error: $e")).sequenceU.map(_ => (): Unit) //todo: do I have some helper around for ()-map ?
+    errors.toList.map(e => showError(s"$message. Internal error: $e")).sequenceU.map(_ => ())
   }
 
   def showError(message: String): IO[Unit] = {

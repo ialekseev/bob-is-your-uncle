@@ -1,7 +1,6 @@
 package com.ialekseev
 
 import org.json4s.JsonAST.JValue
-
 import scala.concurrent.{Future, Promise}
 import scalaz.concurrent.Task
 import scalaz.{-\/, \/-}

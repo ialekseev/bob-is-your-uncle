@@ -98,7 +98,9 @@ trait Analyzer {
 
 object Analyzer {
   case class AnalysisResult(namespace: Namespace, description: String, constants: Seq[(String, String)], webhook: Webhook, code: Code)
-  case class Namespace(path: String, name: String)
+  case class Namespace(path: String, name: String) {
+    override def toString: String = path + "#" + name
+  }
   case class Webhook(req: HttpRequest)
 
   sealed trait Code

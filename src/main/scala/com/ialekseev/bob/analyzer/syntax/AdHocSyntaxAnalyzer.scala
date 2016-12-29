@@ -3,7 +3,6 @@ package com.ialekseev.bob.analyzer.syntax
 import com.ialekseev.bob.SyntaxAnalysisFailed
 import com.ialekseev.bob.analyzer.syntax.SyntaxAnalyzer._
 import com.ialekseev.bob.analyzer.{LexerToken, Token}
-
 import scalaz.Scalaz._
 import scalaz._
 
@@ -15,7 +14,7 @@ class AdHocSyntaxAnalyzer extends SyntaxAnalyzer with SyntaxAnalysisState {
     for {
       dot <- parse[Token.Delimiter.`.`.type]
       identifier <- parse[Token.Identifier]
-    } yield Seq(dot, identifier)
+    } yield List(dot, identifier)
   }
 
   //NamespacePathParts ::= {NamespacePathPart}
@@ -28,7 +27,7 @@ class AdHocSyntaxAnalyzer extends SyntaxAnalyzer with SyntaxAnalysisState {
     for {
       identifier <- parse[Token.Identifier]
       dotPath <- parseNamespacePathParts
-    } yield identifier +: dotPath.toSeq
+    } yield identifier +: dotPath.toList
   }
 
   //Namespace ::= INDENT(0) 'namespace' NamespacePath # identifier
@@ -39,7 +38,7 @@ class AdHocSyntaxAnalyzer extends SyntaxAnalyzer with SyntaxAnalysisState {
       namespacePath <- parseNamespacePath
       pound <- parse[Token.Delimiter.`#`.type]
       identifier <- parse[Token.Identifier]
-    } yield Seq(namespaceKeyword, namespacePath, pound, identifier)
+    } yield List(namespaceKeyword, namespacePath, pound, identifier)
   }
 
   //Description ::= INDENT(1) 'description' : stringLiteral
@@ -49,7 +48,7 @@ class AdHocSyntaxAnalyzer extends SyntaxAnalyzer with SyntaxAnalysisState {
       descriptionKeyword <- parse[Token.Keyword.`description`.type]
       colon <- parse[Token.Delimiter.`:`.type]
       stringLiteral <- parse[Token.Type.StringLiteral]
-    } yield Seq(descriptionKeyword, colon, stringLiteral)
+    } yield List(descriptionKeyword, colon, stringLiteral)
   }
 
   //Constant ::= INDENT(1) variable : stringLiteral
@@ -59,7 +58,7 @@ class AdHocSyntaxAnalyzer extends SyntaxAnalyzer with SyntaxAnalysisState {
       variable <- parse[Token.Variable]
       colon <- parse[Token.Delimiter.`:`.type]
       stringLiteral <- parse[Token.Type.StringLiteral]
-    } yield Seq(variable, colon, stringLiteral)
+    } yield List(variable, colon, stringLiteral)
   }
 
   //Constants ::= {Constant}
@@ -70,9 +69,9 @@ class AdHocSyntaxAnalyzer extends SyntaxAnalyzer with SyntaxAnalysisState {
   //WebhookSettingBodyType ::= 'stringLiteral' | 'dictionary' | 'json'
   private def parseWebhookSettingBodyType: Parsed[ParseTree] = {
     or("WebhookSettingBodyType")("Expecting some valid Body type here")(
-      for(stringLiteral <- parse[Token.Type.StringLiteral]) yield Seq(stringLiteral),
-      for(dictionary <- parse[Token.Type.Dictionary]) yield Seq(dictionary),
-      for(json <- parse[Token.Type.Json]) yield Seq(json)
+      for(stringLiteral <- parse[Token.Type.StringLiteral]) yield List(stringLiteral),
+      for(dictionary <- parse[Token.Type.Dictionary]) yield List(dictionary),
+      for(json <- parse[Token.Type.Json]) yield List(json)
     )
   }
 
@@ -88,35 +87,35 @@ class AdHocSyntaxAnalyzer extends SyntaxAnalyzer with SyntaxAnalysisState {
         uri <- parse[Token.Keyword.`uri`.type]
         colon <- parse[Token.Delimiter.`:`.type]
         stringLiteral <- parse[Token.Type.StringLiteral]
-      } yield Seq(uri, colon, stringLiteral),
+      } yield List(uri, colon, stringLiteral),
 
       for {
         _ <- parse[Token.INDENT](2)
         method <- parse[Token.Keyword.`method`.type]
         colon <- parse[Token.Delimiter.`:`.type]
         stringLiteral <- parse[Token.Type.StringLiteral]
-      } yield Seq(method, colon, stringLiteral),
+      } yield List(method, colon, stringLiteral),
 
       for {
         _ <- parse[Token.INDENT](2)
         queryString <- parse[Token.Keyword.`queryString`.type]
         colon <- parse[Token.Delimiter.`:`.type]
         dictionary <- parse[Token.Type.Dictionary]
-      } yield Seq(queryString, colon, dictionary),
+      } yield List(queryString, colon, dictionary),
 
       for {
         _ <- parse[Token.INDENT](2)
         headers <- parse[Token.Keyword.`headers`.type]
         colon <- parse[Token.Delimiter.`:`.type]
         dictionary <- parse[Token.Type.Dictionary]
-      } yield Seq(headers, colon, dictionary),
+      } yield List(headers, colon, dictionary),
 
       for {
         _ <- parse[Token.INDENT](2)
         body <- parse[Token.Keyword.`body`.type]
         colon <- parse[Token.Delimiter.`:`.type]
         bodyType <- parseWebhookSettingBodyType
-      } yield Seq(body, colon, bodyType)
+      } yield List(body, colon, bodyType)
     )
   }
 
@@ -132,7 +131,7 @@ class AdHocSyntaxAnalyzer extends SyntaxAnalyzer with SyntaxAnalysisState {
       _ <- parse[Token.INDENT](1)
       webhookKeyword <- parse[Token.Keyword.`@webhook`.type]
       webhookSettings <- parseWebhookSettings
-    } yield Seq(webhookKeyword) |+| webhookSettings.toSeq
+    } yield List(webhookKeyword) |+| webhookSettings.toList
   }
 
   //Block ::= INDENT(2) '<scala>...<end>'
@@ -140,7 +139,7 @@ class AdHocSyntaxAnalyzer extends SyntaxAnalyzer with SyntaxAnalysisState {
     for {
       _ <- parse[Token.INDENT](2)
       scala <- parse[Token.Block.`<scala>`]
-    } yield Seq(scala)
+    } yield List(scala)
   }
 
   /*Process ::= INDENT(1) '@process'
@@ -150,7 +149,7 @@ class AdHocSyntaxAnalyzer extends SyntaxAnalyzer with SyntaxAnalysisState {
       _ <- parse[Token.INDENT](1)
       process <- parse[Token.Keyword.`@process`.type]
       block <- parseBlock
-    } yield Seq(process, block)
+    } yield List(process, block)
   }
 
   /*Rule ::= Description
@@ -163,7 +162,7 @@ class AdHocSyntaxAnalyzer extends SyntaxAnalyzer with SyntaxAnalysisState {
       constants <- parseConstants
       webhook <- parseWebhook
       process <- parseProcess
-    } yield Seq(description) |+| constants.toSeq |+| Seq(webhook) |+| Seq(process)
+    } yield List(description) |+| constants.toList |+| List(webhook) |+| List(process)
   }
 
   /*TopStat ::= Namespace
@@ -172,7 +171,7 @@ class AdHocSyntaxAnalyzer extends SyntaxAnalyzer with SyntaxAnalysisState {
     for {
       namespace <- parseNamespace
       rule <- parseRule
-    } yield Seq(namespace, rule)
+    } yield List(namespace, rule)
   }
 
   def parse(tokens: Seq[LexerToken]): SyntaxAnalysisFailed \/ ParseTree = {
