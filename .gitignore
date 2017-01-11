@@ -11,5 +11,5 @@
 .DS_Store
 
 #Project specific
-/playground/
+/bobs/
 custom.sbt

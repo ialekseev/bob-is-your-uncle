@@ -23,7 +23,7 @@ trait Command {
 
   def compiler: ScalaCompiler
 
-  val defaultBuildsLocation = "playground"
+  val defaultBuildsLocation = "bobs"
   val fileExtension = ".bob"
 
   def readSource(filename: String): EitherT[IO, Throwable, String] = {
@@ -45,7 +45,7 @@ trait Command {
   def readSources(dir: String): EitherT[IO, List[Throwable], List[InputSource]] = {
     for {
       sourceFiles: List[File] <- EitherT.eitherT[IO, List[Throwable], List[File]] {
-        IO(Try(new java.io.File(defaultBuildsLocation).listFiles.filter(_.getName.endsWith(fileExtension)).toList).toDisjunction.leftMap(List(_)))
+        IO(Try(new java.io.File(dir).listFiles.filter(_.getName.endsWith(fileExtension)).toList).toDisjunction.leftMap(List(_)))
       }
       sources: List[InputSource] <- sourceFiles.map(file => {
         readSource(file.getPath).map(l => InputSource(file.getPath, l)).leftMap(List(_))

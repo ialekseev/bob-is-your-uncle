@@ -15,7 +15,8 @@ import scalaz.effect.IO
 trait Service extends WebhookHttpService {
   this: Command =>
 
-  def serviceCommand(): IO[Unit] = {
+  //todo: use additional provided 'dirs'
+  def serviceCommand(dirs: Seq[String] = Seq.empty): IO[Unit] = {
 
     def build(sources: List[InputSource]): IO[List[StageFailed \/ Build]] = {
       sources.map(source => {
