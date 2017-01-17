@@ -8,15 +8,14 @@ import com.ialekseev.bob.http.WebhookHttpService
 import com.ialekseev.bob.run.Command
 import com.ialekseev.bob.StageFailed
 import com.ialekseev.bob.exec.Executor.Build
-import scalaz.Scalaz._
 import scalaz._
+import Scalaz._
 import scalaz.effect.IO
 
 trait Service extends WebhookHttpService {
   this: Command =>
 
-  //todo: use additional provided 'dirs'
-  def serviceCommand(dirs: Seq[String] = Seq.empty): IO[Unit] = {
+  def serviceCommand(dirs: List[String] = List.empty): IO[Unit] = {
 
     def build(sources: List[InputSource]): IO[List[StageFailed \/ Build]] = {
       sources.map(source => {
@@ -43,8 +42,7 @@ trait Service extends WebhookHttpService {
       } yield ()
     }
 
-
-    readSources(defaultBuildsLocation).run.flatMap {
+    readSources(defaultBuildsLocation :: dirs).run.flatMap {
         case \/-(sources) => {
           for {
             _ <- show("building...")

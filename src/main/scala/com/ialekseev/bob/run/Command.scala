@@ -42,10 +42,14 @@ trait Command {
     }
   }
 
-  def readSources(dir: String): EitherT[IO, List[Throwable], List[InputSource]] = {
+  def readSources(dirs: List[String]): EitherT[IO, List[Throwable], List[InputSource]] = {
     for {
       sourceFiles: List[File] <- EitherT.eitherT[IO, List[Throwable], List[File]] {
-        IO(Try(new java.io.File(dir).listFiles.filter(_.getName.endsWith(fileExtension)).toList).toDisjunction.leftMap(List(_)))
+        IO {
+          dirs.map(dir => {
+            Try(new java.io.File(dir).listFiles.filter(_.getName.endsWith(fileExtension)).toList).toDisjunction.leftMap(List(_))
+          }).sequenceU.map(_.flatten)
+        }
       }
       sources: List[InputSource] <- sourceFiles.map(file => {
         readSource(file.getPath).map(l => InputSource(file.getPath, l)).leftMap(List(_))
