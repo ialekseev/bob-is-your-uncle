@@ -14,7 +14,7 @@ import scalaz.effect.IO._
 import scalaz.effect._
 
 trait Command {
-  case class InputSource(path: String, content: String)
+  case class InputSource(path: String, content: String, vars: List[(String, String)])
 
   val exec = new Executor {
     val analyzer = DefaultAnalyzer
@@ -24,6 +24,7 @@ trait Command {
   def compiler: ScalaCompiler
 
   val defaultBuildsLocation = "bobs"
+  val varsFileName = "_vars.json"
   val fileExtension = ".bob"
 
   def readSource(filename: String): EitherT[IO, Throwable, String] = {
@@ -42,6 +43,7 @@ trait Command {
     }
   }
 
+  //todo: read "_vars.json" variables from each directory and return them inside 'InputSource'
   def readSources(dirs: List[String]): EitherT[IO, List[Throwable], List[InputSource]] = {
     for {
       sourceFiles: List[File] <- EitherT.eitherT[IO, List[Throwable], List[File]] {
@@ -52,7 +54,7 @@ trait Command {
         }
       }
       sources: List[InputSource] <- sourceFiles.map(file => {
-        readSource(file.getPath).map(l => InputSource(file.getPath, l)).leftMap(List(_))
+        readSource(file.getPath).map(l => InputSource(file.getPath, l, List.empty)).leftMap(List(_))
       }).sequenceU
     } yield sources
   }

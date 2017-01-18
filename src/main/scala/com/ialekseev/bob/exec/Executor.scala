@@ -5,7 +5,6 @@ import com.ialekseev.bob.analyzer.Analyzer.{AnalysisResult, ScalaCode, Webhook}
 import com.ialekseev.bob.exec.Executor._
 import com.ialekseev.bob.{Body, CompilationFailed, DictionaryBody, HttpRequest, JsonBody, StageFailed, StringLiteralBody}
 import org.json4s.JsonAST.JValue
-
 import scala.util.Try
 import scala.util.matching.Regex
 import scalaz.Scalaz._
@@ -18,7 +17,7 @@ trait Executor {
 
   private val variableRegexPattern = """\{\$([a-zA-Z]+[a-zA-Z0-9]*)\}""".r
 
-  def build(source: String): Task[BuildFailed \/ Build] = {
+  def build(source: String, externalVariables: List[(String, String)] = List.empty): Task[BuildFailed \/ Build] = {
     def extractBoundVariablesFromStr(str: String): List[(String, String)] = {
       variableRegexPattern.findAllIn(str).matchData.map(m => (m.group(1), "")).toList
     }
@@ -46,7 +45,7 @@ trait Executor {
         }
 
         val scalaVariables = {
-          val variables = constants.toList |+| uri.map(extractBoundVariablesFromStr(_)).getOrElse(List.empty) |+|
+          val variables = externalVariables |+| constants.toList |+| uri.map(extractBoundVariablesFromStr(_)).getOrElse(List.empty) |+|
             extractBoundVariablesFromMap(headers) |+| extractBoundVariablesFromMap(queryString) |+| extractBoundVariablesFromBody(body)
 
           """var request: HttpRequest = null; """ + variables.map(c => s"""var ${c._1} = "${c._2}"""").mkString("; ") ensuring {

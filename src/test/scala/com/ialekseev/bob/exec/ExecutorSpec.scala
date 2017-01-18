@@ -6,9 +6,7 @@ import com.ialekseev.bob.analyzer.Analyzer._
 import com.ialekseev.bob.exec.Executor._
 import org.json4s.JsonAST.{JBool, JInt, JObject, JString}
 import org.mockito.Mockito
-
 import scalaz.Scalaz._
-import scalaz._
 
 class ExecutorSpec extends BaseSpec  {
 
@@ -32,6 +30,27 @@ class ExecutorSpec extends BaseSpec  {
       }
     }
 
+    "analyzer succeeds & returns constants + scala-code with errors" should {
+      "return error with amended offsets" in {
+        //arrange
+        val anal = mock[Analyzer]
+        val compiler = mock[ScalaCompiler]
+        val executor = new Executor {
+          val scalaCompiler = compiler
+          val analyzer = anal
+        }
+        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
+        Mockito.when(anal.analyze("<scala>do()<end>")).thenReturn(resultToBeReturned.right)
+        Mockito.when(compiler.compile("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var a = "1"; var b = "2"""", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""")).thenReturn(CompilationFailed(Seq(CompilationError(400,400,400, "bad!"))).left)
+
+        //act
+        val result = executor.build("<scala>do()<end>").unsafePerformSync
+
+        //assert
+        result should be  (CompilationFailed(Seq(CompilationError(128,128,128, "bad!"))).left)
+      }
+    }
+
     "analyzer succeeds & returns constants + scala-code" should {
       "add variables & compile code with Scala compiler" in {
         //arrange
@@ -47,6 +66,27 @@ class ExecutorSpec extends BaseSpec  {
 
         //act
         val result = executor.build("source").unsafePerformSync
+
+        //assert
+        result should be (Build(resultToBeReturned, "abc").right)
+      }
+    }
+
+    "there are external variables, analyzer succeeds & returns constants + scala-code" should {
+      "add variables & compile code with Scala compiler" in {
+        //arrange
+        val anal = mock[Analyzer]
+        val compiler = mock[ScalaCompiler]
+        val executor = new Executor {
+          val scalaCompiler = compiler
+          val analyzer = anal
+        }
+        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
+        Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
+        Mockito.when(compiler.compile("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var ext1 = "1"; var ext2 = "str2"; var a = "1"; var b = "2"""", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""")).thenReturn("abc".right)
+
+        //act
+        val result = executor.build("source", List("ext1" -> "1", "ext2" -> "str2")).unsafePerformSync
 
         //assert
         result should be (Build(resultToBeReturned, "abc").right)
