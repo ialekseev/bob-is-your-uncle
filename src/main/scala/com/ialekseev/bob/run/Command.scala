@@ -7,11 +7,13 @@ import com.ialekseev.bob.exec.Executor.{Build, BuildFailed}
 import com.ialekseev.bob.exec.{Executor, ScalaCompiler}
 import com.ialekseev.bob.{CompilationFailed, LexicalAnalysisFailed, SemanticAnalysisFailed, SyntaxAnalysisFailed}
 import scala.io.{Codec, Source, StdIn}
-import scala.util.Try
+import scala.util.{Try, Success}
 import scalaz.Scalaz._
 import scalaz._
 import scalaz.effect.IO._
 import scalaz.effect._
+
+//todo: check if everything is OK here with all this EitherT refactoring
 
 trait Command {
   case class InputSource(path: String, content: String, vars: List[(String, String)])
@@ -27,35 +29,81 @@ trait Command {
   val varsFileName = "_vars.json"
   val fileExtension = ".bob"
 
-  def readSource(filename: String): EitherT[IO, Throwable, String] = {
-    def normalizeSource(source: String): String = {
-      source.replaceAll("\r\n", "\n")
-    }
-    EitherT.eitherT[IO, Throwable, String] {
+  type IoTry[T] =  EitherT[IO, List[Throwable], T]
+  def IoTry[T](v: List[Throwable] \/ T): EitherT[IO, List[Throwable], T] = EitherT.eitherT[IO, List[Throwable], T](IO(v))
+
+  def readFile(filename: String): IoTry[String] = {
+    require(filename.nonEmpty)
+
+    EitherT.eitherT[IO, List[Throwable], String] {
       IO {
         Try {
-          val fileToCheck = Source.fromFile(filename)(Codec.UTF8)
-          val source = normalizeSource(fileToCheck.mkString)
-          fileToCheck.close()
-          source
-        }.toDisjunction
+          val bufferedSource = Source.fromFile(filename)(Codec.UTF8)
+          val content = bufferedSource.mkString
+          bufferedSource.close()
+          content
+        }.toDisjunction.leftMap(List(_))
       }
     }
   }
 
-  //todo: read "_vars.json" variables from each directory and return them inside 'InputSource'
-  def readSources(dirs: List[String]): EitherT[IO, List[Throwable], List[InputSource]] = {
+  def readSource(filename: String): IoTry[String] = {
+    require(filename.nonEmpty)
+
+    def normalizeSource(source: String): String = {
+      source.replaceAll("\r\n", "\n")
+    }
+
+    readFile(filename).map(normalizeSource(_))
+  }
+
+  def extractVarsFromVarsFile(filename: String): IoTry[List[(String, String)]] = {
+    require(filename.nonEmpty)
+
+    import org.json4s._, org.json4s.native.JsonMethods._
+    implicit val formats = org.json4s.DefaultFormats
+
     for {
-      sourceFiles: List[File] <- EitherT.eitherT[IO, List[Throwable], List[File]] {
-        IO {
-          dirs.map(dir => {
-            Try(new java.io.File(dir).listFiles.filter(_.getName.endsWith(fileExtension)).toList).toDisjunction.leftMap(List(_))
-          }).sequenceU.map(_.flatten)
-        }
+      text: String <- readFile(filename)
+      vars: List[(String, String)] <- IoTry(Try(parse(text).extract[Map[String, String]].toList).toDisjunction.leftMap(List(_)))
+    } yield vars
+  }
+
+  def extractVarsFromDir(dir: String): IoTry[List[(String, String)]] = {
+    require(dir.nonEmpty)
+
+    for {
+      varsFile: Option[File] <- IoTry(new java.io.File(dir).listFiles.find(_.getName == varsFileName).right)
+      vars: List[(String, String)] <- varsFile match {
+        case Some(f) => extractVarsFromVarsFile(f.getPath)
+        case None => IoTry(List.empty.right)
       }
-      sources: List[InputSource] <- sourceFiles.map(file => {
-        readSource(file.getPath).map(l => InputSource(file.getPath, l, List.empty)).leftMap(List(_))
+    } yield vars
+  }
+
+  def readSources(dirs: List[String]): IoTry[List[InputSource]] = {
+    require(dirs.nonEmpty)
+
+    case class FileWithVars(file: File, vars: List[(String, String)])
+
+    def getFilesWithVars: IoTry[List[FileWithVars]] = {
+      dirs.map(dir => {
+        for {
+          sourceFiles: List[File] <- IoTry(Try(new java.io.File(dir).listFiles.filter(_.getName.endsWith(fileExtension)).toList).toDisjunction.leftMap(List(_)))
+          vars <- extractVarsFromDir(dir)
+        } yield sourceFiles.map(f => FileWithVars(f, vars))
+      }).sequenceU.map(_.flatten)
+    }
+
+    def mapToInputSources(files: List[FileWithVars]): IoTry[List[InputSource]] = {
+      files.map(file => {
+        readSource(file.file.getPath).map(l => InputSource(file.file.getPath, l, file.vars))
       }).sequenceU
+    }
+
+    for {
+      sourceFiles: List[FileWithVars] <- getFilesWithVars
+      sources: List[InputSource] <- mapToInputSources(sourceFiles)
     } yield sources
   }
 
@@ -140,6 +188,8 @@ trait Command {
   }
 
   def showError(message: String): IO[Unit] = {
+    require(message.nonEmpty)
+
     for {
       _ <- show()
       _ <- show(Console.RED + message + Console.RESET)
@@ -148,8 +198,9 @@ trait Command {
   }
 
   def showFileName(filename: String): IO[Unit] = {
-    require(!filename.isEmpty)
+    require(filename.nonEmpty)
 
     show(Console.CYAN + "[" + filename + "]" + Console.RESET)
   }
 }
+

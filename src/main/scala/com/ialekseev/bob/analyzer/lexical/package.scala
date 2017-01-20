@@ -53,8 +53,7 @@ package object lexical {
     if (str.length > 1) {
       val (head, content, last) = str.dismantle3
       if (isJsonStartChar(head) && isJsonEndChar(last)) {
-        import org.json4s._
-        import org.json4s.native.JsonMethods._
+        import org.json4s._, org.json4s.native.JsonMethods._
         implicit val formats = org.json4s.DefaultFormats
         Try(parse(content)).toOption.map(Type.Json(str, _))
       } else None
