@@ -45,8 +45,12 @@ trait Executor {
         }
 
         val scalaVariables = {
-          val variables = externalVariables |+| constants.toList |+| uri.map(extractBoundVariablesFromStr(_)).getOrElse(List.empty) |+|
+          val localVariables = constants.toList |+| uri.map(extractBoundVariablesFromStr(_)).getOrElse(List.empty) |+|
             extractBoundVariablesFromMap(headers) |+| extractBoundVariablesFromMap(queryString) |+| extractBoundVariablesFromBody(body)
+
+          val externalVariablesWithoutOvershadowedOnes = externalVariables.filter(v => !localVariables.exists(_._1 == v._1))
+
+          val variables = externalVariablesWithoutOvershadowedOnes |+| localVariables
 
           """var request: HttpRequest = null; """ + variables.map(c => s"""var ${c._1} = "${c._2}"""").mkString("; ") ensuring {
             true

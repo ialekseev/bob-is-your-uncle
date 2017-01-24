@@ -13,8 +13,6 @@ import scalaz._
 import scalaz.effect.IO._
 import scalaz.effect._
 
-//todo: check if everything is OK here with all this EitherT refactoring
-
 trait Command {
   case class InputSource(path: String, content: String, vars: List[(String, String)])
 

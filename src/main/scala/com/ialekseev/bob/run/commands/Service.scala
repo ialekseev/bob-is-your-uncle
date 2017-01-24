@@ -42,7 +42,9 @@ trait Service extends WebhookHttpService {
       } yield ()
     }
 
-    readSources(defaultBuildsLocation :: dirs).run.flatMap {
+    val targetDirectories = if (dirs.nonEmpty) dirs else List(defaultBuildsLocation)
+
+    readSources(targetDirectories).run.flatMap {
         case \/-(sources) => {
           for {
             _ <- show("building...")

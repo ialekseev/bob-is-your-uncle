@@ -93,6 +93,27 @@ class ExecutorSpec extends BaseSpec  {
       }
     }
 
+    "there are external variables (duplicated by local ones), analyzer succeeds & returns constants + scala-code" should {
+      "add variables (local variables overshadow external ones with the same name) & compile code with Scala compiler" in {
+        //arrange
+        val anal = mock[Analyzer]
+        val compiler = mock[ScalaCompiler]
+        val executor = new Executor {
+          val scalaCompiler = compiler
+          val analyzer = anal
+        }
+        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2", "c" -> "3"), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
+        Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
+        Mockito.when(compiler.compile("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var d = "ext4"; var a = "1"; var b = "2"; var c = "3"""", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""")).thenReturn("abc".right)
+
+        //act
+        val result = executor.build("source", List("a" -> "ext1", "b" -> "ext2", "d" -> "ext4")).unsafePerformSync
+
+        //assert
+        result should be (Build(resultToBeReturned, "abc").right)
+      }
+    }
+
     "analyzer succeeds & returns constants + bound variables in uri + scala-code" should {
       "add variables & compile code with Scala compiler" in {
         //arrange

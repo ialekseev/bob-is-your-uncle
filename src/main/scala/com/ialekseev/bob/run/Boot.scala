@@ -7,9 +7,9 @@ object Boot extends App with Command with Check with Shell with Service {
   def compiler = new ScalaCompiler
 
   (parser.parse(args, Config()) match {
-    case Some(Config(path, _, _, _, _, _)) if path.nonEmpty => checkCommand(path)
-    case Some(Config(_, _, _, true, _, _)) => shellCommand()
-    case Some(Config(_, true, path, _, _, _)) => serviceCommand(path.toList)
+    case Some(Config(true, _, _, _, _, _)) => shellCommand()
+    case Some(Config(_, true, _, _, _, Arguments(Some(path)))) if path.nonEmpty => checkCommand(path)
+    case Some(Config(_, _ , true, _, _, Arguments(path))) => serviceCommand(path.toList)
     case _ => showHelp()
   }).unsafePerformIO()
 }
