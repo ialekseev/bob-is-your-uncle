@@ -1,9 +1,7 @@
 package com.ialekseev.bob
 
 import org.json4s.JsonAST.JValue
-
 import scalaz.Scalaz._
-import scalaz._
 
 package object dsl {
   case class Namespace(path: String, name: String)

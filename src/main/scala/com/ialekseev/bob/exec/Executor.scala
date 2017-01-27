@@ -40,7 +40,7 @@ trait Executor {
       case \/-(result@ AnalysisResult(namespace, description, constants,  Webhook(HttpRequest(uri, _, headers, queryString, body)), ScalaCode(scalaCode))) => {
         val scalaImport = {
           "import com.ialekseev.bob.dsl._" ensuring {
-            true
+             com.ialekseev.bob.dsl.Namespace != null
           }
         }
 
@@ -53,7 +53,7 @@ trait Executor {
           val variables = externalVariablesWithoutOvershadowedOnes |+| localVariables
 
           """var request: HttpRequest = null; """ + variables.map(c => s"""var ${c._1} = "${c._2}"""").mkString("; ") ensuring {
-            true
+            com.ialekseev.bob.dsl.HttpRequest != null
           }
         }
 
