@@ -18,7 +18,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with Scala
   val exec = mock[Executor]
   override def beforeEach(): Unit = { reset(exec); super.beforeEach()}
 
-  "Routing" when {
+  "Webhook routing" when {
 
     "GET request has just uri AND there IS a matching build" should {
       "succeed with the build" in {

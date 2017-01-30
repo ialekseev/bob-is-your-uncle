@@ -8,6 +8,7 @@ import com.ialekseev.bob.http.WebhookHttpService
 import com.ialekseev.bob.run.Command
 import com.ialekseev.bob.StageFailed
 import com.ialekseev.bob.exec.Executor.Build
+import com.ialekseev.bob.InputSource
 import scalaz._
 import Scalaz._
 import scalaz.effect.IO
@@ -26,12 +27,12 @@ trait Service extends WebhookHttpService {
     def runService(builds: Seq[Build]): IO[Unit] = {
       for {
         context <- IO {
-          implicit val system = ActorSystem("my-system")
+          implicit val system = ActorSystem()
           implicit val materializer = ActorMaterializer()
           implicit val executionContext = system.dispatcher
           (system, executionContext, Http().bindAndHandle(createRoute(builds), "localhost", 8080))
         }
-        _ <- show(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
+        _ <- show(s"The Service is online at http://localhost:8080/\nPress RETURN to stop...")
         _ <- read()
         _ <- IO {
           val system = context._1
@@ -56,7 +57,7 @@ trait Service extends WebhookHttpService {
                     if (duplicateNamespaces.length > 0) showError("Please use different names for the duplicate namespaces: " + duplicateNamespaces)
                     else runService(builds)
                   }
-                  case -\/(failed) => showError("Please fix the failed sources before: " + failed)
+                  case -\/(_) => showError("Please fix the failed sources before starting the service")
                 }
               })
             }

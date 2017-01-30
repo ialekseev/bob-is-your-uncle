@@ -5,7 +5,7 @@ import com.ialekseev.bob.analyzer.Analyzer.AnalysisResult
 import com.ialekseev.bob.analyzer.DefaultAnalyzer
 import com.ialekseev.bob.exec.Executor.{Build, BuildFailed}
 import com.ialekseev.bob.exec.{Executor, ScalaCompiler}
-import com.ialekseev.bob.{CompilationFailed, LexicalAnalysisFailed, SemanticAnalysisFailed, SyntaxAnalysisFailed}
+import com.ialekseev.bob.{CompilationFailed, LexicalAnalysisFailed, SemanticAnalysisFailed, SyntaxAnalysisFailed, InputSource}
 import scala.io.{Codec, Source, StdIn}
 import scala.util.{Try, Success}
 import scalaz.Scalaz._
@@ -14,8 +14,6 @@ import scalaz.effect.IO._
 import scalaz.effect._
 
 trait Command {
-  case class InputSource(path: String, content: String, vars: List[(String, String)])
-
   val exec = new Executor {
     val analyzer = DefaultAnalyzer
     val scalaCompiler = compiler

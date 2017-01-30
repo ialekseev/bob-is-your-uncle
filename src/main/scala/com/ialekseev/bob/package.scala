@@ -30,6 +30,8 @@ package object bob {
   case class DictionaryBody(dic: Map[String, String]) extends Body
   case class JsonBody(j: JValue) extends Body
 
+  case class InputSource(path: String, content: String, vars: List[(String, String)])
+
   def unsafeToScala[A](task: Task[A]): Future[A] = {
     val p = Promise[A]
     task.unsafePerformAsync {
