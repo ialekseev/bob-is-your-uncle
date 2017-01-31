@@ -1,11 +1,12 @@
 package com.ialekseev.bob.http
 
 import akka.http.scaladsl.server.Route
+import com.ialekseev.bob._
 import com.ialekseev.bob.analyzer.Analyzer.Namespace
 import com.ialekseev.bob.exec.Executor
 import com.ialekseev.bob.exec.Executor.{Build, FailedRun, SuccessfulRun}
 import com.ialekseev.bob.http.WebhookHttpService.{HttpResponse, HttpResponseRun}
-import com.ialekseev.bob.{HttpMethod, HttpRequest, _}
+import com.ialekseev.bob.Models.{HttpMethod, HttpRequest, _}
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import org.json4s.ext.EnumSerializer
 import org.json4s.{DefaultFormats, native}

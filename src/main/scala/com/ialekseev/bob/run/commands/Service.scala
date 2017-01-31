@@ -5,10 +5,8 @@ import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
 import com.ialekseev.bob.exec.Executor.Build
 import com.ialekseev.bob.http.WebhookHttpService
-import com.ialekseev.bob.run.Command
-import com.ialekseev.bob.StageFailed
+import com.ialekseev.bob.Models.{StageFailed, InputSource}
 import com.ialekseev.bob.exec.Executor.Build
-import com.ialekseev.bob.InputSource
 import scalaz._
 import Scalaz._
 import scalaz.effect.IO
@@ -43,7 +41,7 @@ trait Service extends WebhookHttpService {
       } yield ()
     }
 
-    val targetDirectories = if (dirs.nonEmpty) dirs else List(defaultBuildsLocation)
+    val targetDirectories = if (dirs.nonEmpty) dirs else List(defaultSourcesLocation)
 
     readSources(targetDirectories).run.flatMap {
         case \/-(sources) => {

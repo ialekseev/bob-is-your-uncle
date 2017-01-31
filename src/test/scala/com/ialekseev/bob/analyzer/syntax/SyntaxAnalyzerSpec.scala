@@ -1,10 +1,10 @@
 package com.ialekseev.bob.analyzer.syntax
 
-import com.ialekseev.bob.{BaseSpec, SyntaxError}
+import com.ialekseev.bob.Models._
+import com.ialekseev.bob.BaseSpec
 import com.ialekseev.bob.analyzer.syntax.SyntaxAnalyzer._
 import com.ialekseev.bob.analyzer.{LexerToken, Token}
 import org.json4s.JsonAST.{JObject, JString}
-
 import scalaz.Scalaz._
 import scalaz._
 

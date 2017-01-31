@@ -7,9 +7,9 @@ import com.ialekseev.bob.analyzer.Analyzer.{AnalysisResult, Namespace, ScalaCode
 import com.ialekseev.bob.exec.Executor
 import com.ialekseev.bob.exec.Executor.{Build, FailedRun, RunResult, SuccessfulRun}
 import com.ialekseev.bob.http.WebhookHttpService.{HttpResponse, HttpResponseRun}
-import com.ialekseev.bob.{BaseSpec, Body, HttpMethod, HttpRequest}
+import com.ialekseev.bob.Models._
+import com.ialekseev.bob.BaseSpec
 import org.mockito.Mockito._
-
 import scalaz.concurrent.Task
 import scalaz.std.option._
 

@@ -3,7 +3,7 @@ package com.ialekseev.bob.exec
 import com.ialekseev.bob.analyzer.Analyzer
 import com.ialekseev.bob.analyzer.Analyzer.{AnalysisResult, ScalaCode, Webhook}
 import com.ialekseev.bob.exec.Executor._
-import com.ialekseev.bob.{Body, CompilationFailed, DictionaryBody, HttpRequest, JsonBody, StageFailed, StringLiteralBody}
+import com.ialekseev.bob.Models.{Body, CompilationFailed, DictionaryBody, HttpRequest, JsonBody, StageFailed, StringLiteralBody}
 import org.json4s.JsonAST.JValue
 import scala.util.Try
 import scala.util.matching.Regex

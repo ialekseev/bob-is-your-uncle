@@ -1,33 +1,41 @@
-package com.ialekseev.bob.run
+package com.ialekseev.bob
 
 import java.io.File
+import com.ialekseev.bob.Models._
 import com.ialekseev.bob.analyzer.Analyzer.AnalysisResult
-import com.ialekseev.bob.analyzer.DefaultAnalyzer
-import com.ialekseev.bob.exec.Executor.{Build, BuildFailed}
-import com.ialekseev.bob.exec.{Executor, ScalaCompiler}
-import com.ialekseev.bob.{CompilationFailed, LexicalAnalysisFailed, SemanticAnalysisFailed, SyntaxAnalysisFailed, InputSource}
-import scala.io.{Codec, Source, StdIn}
-import scala.util.{Try, Success}
+import com.ialekseev.bob.exec.Executor._
+import scala.io.{StdIn, Codec, Source}
+import scala.util.Try
+import scalaz.{-\/, \/-, \/, EitherT}
+import scalaz.effect.IO
 import scalaz.Scalaz._
-import scalaz._
 import scalaz.effect.IO._
-import scalaz.effect._
 
-trait Command {
-  val exec = new Executor {
-    val analyzer = DefaultAnalyzer
-    val scalaCompiler = compiler
-  }
+trait IoShared {
 
-  def compiler: ScalaCompiler
-
-  val defaultBuildsLocation = "bobs"
+  val defaultSourcesLocation = "bobs"
   val varsFileName = "_vars.json"
   val fileExtension = ".bob"
 
   type IoTry[T] =  EitherT[IO, List[Throwable], T]
   def IoTry[T](v: List[Throwable] \/ T): EitherT[IO, List[Throwable], T] = EitherT.eitherT[IO, List[Throwable], T](IO(v))
 
+  def listFiles(dir: String): IoTry[List[File]] = IoTry(new java.io.File(dir).listFiles.toList.right)
+
+  def listSourceFiles(dir: String): IoTry[List[File]] = {
+    for {
+      files: List[File] <- listFiles(dir)
+      sourceFiles: List[File] <- IoTry(files.filter(_.getName.endsWith(fileExtension)).right)
+    } yield sourceFiles
+  }
+
+  def findVarFile(dir: String): IoTry[Option[File]] = {
+    for {
+      files: List[File] <- listFiles(dir)
+      varsFile: Option[File] <- IoTry(files.find(_.getName == varsFileName).right)
+    } yield varsFile
+  }
+  
   def readFile(filename: String): IoTry[String] = {
     require(filename.nonEmpty)
 
@@ -69,7 +77,7 @@ trait Command {
     require(dir.nonEmpty)
 
     for {
-      varsFile: Option[File] <- IoTry(new java.io.File(dir).listFiles.find(_.getName == varsFileName).right)
+      varsFile: Option[File] <- findVarFile(dir)
       vars: List[(String, String)] <- varsFile match {
         case Some(f) => extractVarsFromVarsFile(f.getPath)
         case None => IoTry(List.empty.right)
@@ -85,7 +93,7 @@ trait Command {
     def getFilesWithVars: IoTry[List[FileWithVars]] = {
       dirs.map(dir => {
         for {
-          sourceFiles: List[File] <- IoTry(Try(new java.io.File(dir).listFiles.filter(_.getName.endsWith(fileExtension)).toList).toDisjunction.leftMap(List(_)))
+          sourceFiles: List[File] <- listSourceFiles(dir)
           vars <- extractVarsFromDir(dir)
         } yield sourceFiles.map(f => FileWithVars(f, vars))
       }).sequenceU.map(_.flatten)
@@ -199,4 +207,3 @@ trait Command {
     show(Console.CYAN + "[" + filename + "]" + Console.RESET)
   }
 }
-

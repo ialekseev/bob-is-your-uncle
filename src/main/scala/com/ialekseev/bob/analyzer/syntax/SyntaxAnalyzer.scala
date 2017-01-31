@@ -1,6 +1,6 @@
 package com.ialekseev.bob.analyzer.syntax
 
-import com.ialekseev.bob.SyntaxAnalysisFailed
+import com.ialekseev.bob.Models.SyntaxAnalysisFailed
 import com.ialekseev.bob.analyzer.LexerToken
 import com.ialekseev.bob.analyzer.syntax.SyntaxAnalyzer.ParseTree
 

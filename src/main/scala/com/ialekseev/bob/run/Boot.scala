@@ -1,7 +1,7 @@
 package com.ialekseev.bob.run
 
 import com.ialekseev.bob.exec.ScalaCompiler
-import com.ialekseev.bob.run.commands.{Check, Service, Shell}
+import com.ialekseev.bob.run.commands.{Command, Check, Service, Shell}
 
 object Boot extends App with Command with Check with Shell with Service {
   def compiler = new ScalaCompiler

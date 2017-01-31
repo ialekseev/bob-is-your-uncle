@@ -1,6 +1,7 @@
 package com.ialekseev.bob.analyzer
 
-import com.ialekseev.bob.{BaseSpec, _}
+import com.ialekseev.bob.Models._
+import com.ialekseev.bob.BaseSpec
 import com.ialekseev.bob.analyzer.Analyzer._
 import com.ialekseev.bob.analyzer.lexical.LexicalAnalyzer
 import com.ialekseev.bob.analyzer.syntax.SyntaxAnalyzer
@@ -8,7 +9,6 @@ import com.ialekseev.bob.analyzer.syntax.SyntaxAnalyzer._
 import org.json4s.JsonAST.{JObject, JString}
 import org.mockito.Mockito
 import org.mockito.Mockito._
-
 import scalaz.Scalaz._
 import scalaz.\/
 

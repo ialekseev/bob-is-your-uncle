@@ -1,6 +1,5 @@
 package com.ialekseev.bob.run.commands
 
-import com.ialekseev.bob.run.Command
 import scalaz._
 import Scalaz._
 import scalaz.effect.IO

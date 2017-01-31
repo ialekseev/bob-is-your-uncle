@@ -1,6 +1,7 @@
 package com.ialekseev.bob.analyzer.lexical
 
-import com.ialekseev.bob.{BaseSpec, LexicalError}
+import com.ialekseev.bob.Models._
+import com.ialekseev.bob.BaseSpec
 import com.ialekseev.bob.analyzer.{LexerToken, Token}
 import org.json4s.JsonDSL._
 

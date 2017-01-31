@@ -2,9 +2,7 @@ package com.ialekseev.bob.exec
 
 import java.net.URLClassLoader
 import java.nio.file.Paths
-
-import com.ialekseev.bob.{CompilationError, CompilationFailed}
-
+import com.ialekseev.bob.Models.{CompilationError, CompilationFailed}
 import scala.collection.mutable.ListBuffer
 import scala.reflect.internal.util.Position
 import scala.tools.nsc.reporters.AbstractReporter

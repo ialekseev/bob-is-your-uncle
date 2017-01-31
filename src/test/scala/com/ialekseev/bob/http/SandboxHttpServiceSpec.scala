@@ -1,21 +1,51 @@
 package com.ialekseev.bob.http
 
+import java.io.{FileNotFoundException, File}
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import com.ialekseev.bob.{InputSource, BaseSpec}
+import com.ialekseev.bob.BaseSpec
+import scalaz._
+import Scalaz._
 
 class SandboxHttpServiceSpec extends SandboxHttpService with BaseSpec with ScalatestRouteTest {
+  var listFilesFunc: PartialFunction[String, IoTry[List[File]]] = {
+    case _ => IoTry(List.empty.right)
+  }
 
-  "Sandbox routing" when {
+  override def listFiles(dir: String): IoTry[List[File]] = listFilesFunc(dir)
 
-    "GET request to the root is being sent" should {
-      "succeed with the files" in {
+  "GET '/' request" when {
+
+    "listFiles return files" should {
+      "return 'OK' with the files" in {
+        //arrange
+        listFilesFunc = {
+          case "\\test\\" => IoTry(List(new File("\\test\\file1.bob"), new File("\\test\\file2.bob")).right)
+        }
+
         //act
-        Get("/") ~> createRoutes(List(InputSource("path1\\file1.bob", "content1", List.empty), InputSource("path2\\file2.bob", "content2", List.empty))) ~> check {
+        Get("/") ~> createRoutes("\\test\\") ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[List[String]] should be(List("path1\\file1.bob", "path2\\file2.bob"))
+          responseAs[List[String]] should be(List("\\test\\file1.bob", "\\test\\file2.bob"))
+        }
+      }
+    }
+
+    "listFiles fails" should {
+      "return 'InternalServerError'" in {
+        //arrange
+        listFilesFunc = {
+          case "\\test\\" => IoTry(List(new FileNotFoundException("bad!")).left)
+        }
+
+        //act
+        Get("/") ~> createRoutes("\\test\\") ~> check {
+
+          //assert
+          response.status should be(StatusCodes.InternalServerError)
+          responseAs[List[String]] should be (List("bad!"))
         }
       }
     }

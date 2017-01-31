@@ -1,6 +1,7 @@
 package com.ialekseev.bob.exec
 
 import com.ialekseev.bob._
+import com.ialekseev.bob.Models._
 import com.ialekseev.bob.analyzer.Analyzer
 import com.ialekseev.bob.analyzer.Analyzer._
 import com.ialekseev.bob.exec.Executor._

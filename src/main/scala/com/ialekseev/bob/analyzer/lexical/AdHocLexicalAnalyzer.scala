@@ -1,6 +1,6 @@
 package com.ialekseev.bob.analyzer.lexical
 
-import com.ialekseev.bob.LexicalAnalysisFailed
+import com.ialekseev.bob.Models.LexicalAnalysisFailed
 import com.ialekseev.bob.analyzer.{LexerToken, Token, _}
 
 import scalaz.Free.Trampoline

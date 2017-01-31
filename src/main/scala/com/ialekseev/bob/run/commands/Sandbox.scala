@@ -4,7 +4,6 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
 import com.ialekseev.bob.http.SandboxHttpService
-import com.ialekseev.bob.run.Command
 import scalaz.effect.IO
 
 trait Sandbox extends SandboxHttpService {
