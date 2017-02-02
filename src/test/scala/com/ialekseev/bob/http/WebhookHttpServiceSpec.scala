@@ -10,7 +10,6 @@ import com.ialekseev.bob.http.WebhookHttpService.{HttpResponse, HttpResponseRun}
 import com.ialekseev.bob.Models._
 import com.ialekseev.bob.BaseSpec
 import org.mockito.Mockito._
-import scalaz.concurrent.Task
 import scalaz.std.option._
 
 class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with ScalatestRouteTest {
@@ -30,7 +29,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with Scala
           Build(analysisResult, "code")
         }
         val request = HttpRequest(some(uri), method, Map.empty, Map.empty, none)
-        when(exec.run(request, Seq(build))).thenReturn(Task.now(RunResult(Seq(SuccessfulRun(build, "1")))))
+        when(exec.run(request, Seq(build))).thenReturn(RunResult(Seq(SuccessfulRun(build, "1"))))
 
         //act
         Get(uri) ~> createRoute(Seq(build)) ~> check {
@@ -53,7 +52,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with Scala
           Build(analysisResult, "code")
         }
         val request = HttpRequest(some(uri), method, headers, Map.empty, none)
-        when(exec.run(request, Seq(build))).thenReturn(Task.now(RunResult(Seq(SuccessfulRun(build, "1")))))
+        when(exec.run(request, Seq(build))).thenReturn(RunResult(Seq(SuccessfulRun(build, "1"))))
 
         //act
         Post(uri).withHeaders(RawHeader("h1", "super"), RawHeader("head2", "cool")) ~> createRoute(Seq(build)) ~> check {
@@ -77,7 +76,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with Scala
           Build(analysisResult, "code")
         }
         val request = HttpRequest(some(path), method, Map.empty, queryString, none)
-        when(exec.run(request, Seq(build))).thenReturn(Task.now(RunResult(Seq(SuccessfulRun(build, "1")))))
+        when(exec.run(request, Seq(build))).thenReturn(RunResult(Seq(SuccessfulRun(build, "1"))))
 
         //act
         Put(uri) ~> createRoute(Seq(build)) ~> check {
@@ -99,7 +98,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with Scala
           Build(analysisResult, "code")
         }
         val request = HttpRequest(some(uri), method, Map.empty, Map.empty, none)
-        when(exec.run(request, Seq(build))).thenReturn(Task.now(RunResult(Seq.empty))) //NO matching builds
+        when(exec.run(request, Seq(build))).thenReturn(RunResult(Seq.empty)) //NO matching builds
 
         //act
         Get(uri) ~> createRoute(Seq(build)) ~> check {
@@ -123,7 +122,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with BaseSpec with Scala
           Build(analysisResult, "code")
         }
         val request = HttpRequest(some(path), method, Map.empty, queryString, none)
-        when(exec.run(request, Seq(build))).thenReturn(Task.now(RunResult(Seq(FailedRun(build, new NullPointerException("bang!"))))))
+        when(exec.run(request, Seq(build))).thenReturn(RunResult(Seq(FailedRun(build, new NullPointerException("bang!")))))
 
         //act
         Put(uri) ~> createRoute(Seq(build)) ~> check {

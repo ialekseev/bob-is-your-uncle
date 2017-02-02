@@ -24,7 +24,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(anal.analyze("source")).thenReturn(LexicalAnalysisFailed(Seq(LexicalError(10, 20), LexicalError(30, 40))).left)
 
         //act
-        val result = executor.build("source").unsafePerformSync
+        val result = executor.build("source")
 
         //assert
         result should be (LexicalAnalysisFailed(Seq(LexicalError(10, 20), LexicalError(30, 40))).left)
@@ -45,7 +45,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.compile("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var a = "1"; var b = "2"""", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""")).thenReturn(CompilationFailed(Seq(CompilationError(400,400,400, "bad!"))).left)
 
         //act
-        val result = executor.build("<scala>do()<end>").unsafePerformSync
+        val result = executor.build("<scala>do()<end>")
 
         //assert
         result should be  (CompilationFailed(Seq(CompilationError(128,128,128, "bad!"))).left)
@@ -66,7 +66,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.compile("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var a = "1"; var b = "2"""", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""")).thenReturn("abc".right)
 
         //act
-        val result = executor.build("source").unsafePerformSync
+        val result = executor.build("source")
 
         //assert
         result should be (Build(resultToBeReturned, "abc").right)
@@ -87,7 +87,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.compile("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var ext1 = "1"; var ext2 = "str2"; var a = "1"; var b = "2"""", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""")).thenReturn("abc".right)
 
         //act
-        val result = executor.build("source", List("ext1" -> "1", "ext2" -> "str2")).unsafePerformSync
+        val result = executor.build("source", List("ext1" -> "1", "ext2" -> "str2"))
 
         //assert
         result should be (Build(resultToBeReturned, "abc").right)
@@ -108,7 +108,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.compile("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var d = "ext4"; var a = "1"; var b = "2"; var c = "3"""", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""")).thenReturn("abc".right)
 
         //act
-        val result = executor.build("source", List("a" -> "ext1", "b" -> "ext2", "d" -> "ext4")).unsafePerformSync
+        val result = executor.build("source", List("a" -> "ext1", "b" -> "ext2", "d" -> "ext4"))
 
         //assert
         result should be (Build(resultToBeReturned, "abc").right)
@@ -129,7 +129,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.compile("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var a = "1"; var b = "hi"; var c = ""; var d = """"", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""")).thenReturn("abc".right)
 
         //act
-        val result = executor.build("source").unsafePerformSync
+        val result = executor.build("source")
 
         //assert
         result should be (Build(resultToBeReturned, "abc").right)
@@ -150,7 +150,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.compile("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var a = "1"; var b = "hi"; var c = ""; var d = ""; var h = ""; var header2 = ""; var q = ""; var query2 = """"", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""")).thenReturn("abc".right)
 
         //act
-        val result = executor.build("source").unsafePerformSync
+        val result = executor.build("source")
 
         //assert
         result should be (Build(resultToBeReturned, "abc").right)
@@ -171,7 +171,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.compile("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var a = "1"; var b = "hi"; var name = ""; var s = """"", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""")).thenReturn("abc".right)
 
         //act
-        val result = executor.build("source").unsafePerformSync
+        val result = executor.build("source")
 
         //assert
         result should be (Build(resultToBeReturned, "abc").right)
@@ -192,7 +192,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.compile("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var a = "1"; var b = "hi"; var name = ""; var s = """"", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""")).thenReturn("abc".right)
 
         //act
-        val result = executor.build("source").unsafePerformSync
+        val result = executor.build("source")
 
         //assert
         result should be (Build(resultToBeReturned, "abc").right)
@@ -213,7 +213,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.compile("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var a = "1"; var b = "hi"; var name = ""; var s = """"", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""")).thenReturn("abc".right)
 
         //act
-        val result = executor.build("source").unsafePerformSync
+        val result = executor.build("source")
 
         //assert
         result should be (Build(resultToBeReturned, "abc").right)
@@ -238,7 +238,7 @@ class ExecutorSpec extends BaseSpec  {
         val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest(some("example2/{$a}/2/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")),"super"))
 
         //act
-        val result = executor.run(incoming, builds).unsafePerformSync
+        val result = executor.run(incoming, builds)
 
         //assert
         result should be (RunResult(Seq.empty))
@@ -258,7 +258,7 @@ class ExecutorSpec extends BaseSpec  {
         val builds = Seq(Build(AnalysisResult(Namespace("com", "create"), "cool", Seq.empty, Webhook(HttpRequest(some("example/"), HttpMethod.POST, Map.empty, Map.empty, some(StringLiteralBody("hello {$name}! You are {$s}, aren't you?")))), ScalaCode("do()")), "abc"))
 
         //act
-        val result = executor.run(incoming, builds).unsafePerformSync
+        val result = executor.run(incoming, builds)
 
         //assert
         result should be (RunResult(Seq.empty))
@@ -279,7 +279,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.eval("abc", Seq("request" -> HttpRequestEx("com/create/", "GET", Map.empty, Map.empty, none)))).thenReturn("1")
 
         //act
-        val result = executor.run(incoming, builds).unsafePerformSync
+        val result = executor.run(incoming, builds)
 
         //assert
         result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
@@ -300,7 +300,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.eval("abc", Seq("request" -> HttpRequestEx("COM/create/EXAMPLE/", "GET", Map.empty, Map.empty, none)))).thenReturn("1")
 
         //act
-        val result = executor.run(incoming, builds).unsafePerformSync
+        val result = executor.run(incoming, builds)
 
         //assert
         result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
@@ -321,7 +321,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.eval("abc", Seq("request" -> HttpRequestEx("/com/create/EXAMPLE/", "GET", Map.empty, Map.empty, none)))).thenReturn("1")
 
         //act
-        val result = executor.run(incoming, builds).unsafePerformSync
+        val result = executor.run(incoming, builds)
 
         //assert
         result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
@@ -342,7 +342,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.eval("abc", Seq("request" -> HttpRequestEx("com/create", "GET", Map("header1" -> "secret", "header2" -> "xxx", "header3" -> "yyy"), Map.empty, none)))).thenReturn("1")
 
         //act
-        val result = executor.run(incoming, builds).unsafePerformSync
+        val result = executor.run(incoming, builds)
 
         //assert
         result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
@@ -363,7 +363,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.eval("abc", Seq("request" -> HttpRequestEx("com/create", "GET", Map("header1" -> "secret", "header2" -> "app_xxx"), Map.empty, none), "h1" -> "secret", "h2" -> "xxx"))).thenReturn("1")
 
         //act
-        val result = executor.run(incoming, builds).unsafePerformSync
+        val result = executor.run(incoming, builds)
 
         //assert
         result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
@@ -384,7 +384,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.eval("abc", Seq("request" -> HttpRequestEx("com/create/example/1/2/", "GET", Map.empty, Map.empty, none), "a" -> "1", "b" -> "2"))).thenReturn("1")
 
         //act
-        val result = executor.run(incoming, builds).unsafePerformSync
+        val result = executor.run(incoming, builds)
 
         //assert
         result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
@@ -405,7 +405,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.eval("abc", Seq("request" -> HttpRequestEx("com/create/example/", "POST", Map.empty, Map("q1" -> "start_john_end", "Q2" -> "smith", "Q3" -> "super"), none), "name" -> "john", "surname" -> "smith"))).thenReturn("1")
 
         //act
-        val result = executor.run(incoming, builds).unsafePerformSync
+        val result = executor.run(incoming, builds)
 
         //assert
         result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
@@ -427,7 +427,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.eval("abc", Seq("request" -> HttpRequestEx("com/create/example/1/2/", "GET", Map.empty, Map.empty, body), "a" -> "1", "b" -> "2", "name" -> "John", "s" -> "fine"))).thenReturn("1")
 
         //act
-        val result = executor.run(incoming, builds).unsafePerformSync
+        val result = executor.run(incoming, builds)
 
         //assert
         result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
@@ -449,7 +449,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.eval("abc", Seq("request" -> HttpRequestEx("com/create/example/", "GET", Map.empty, Map.empty, body), "name" -> "John", "s" -> "fine"))).thenReturn("1")
 
         //act
-        val result = executor.run(incoming, builds).unsafePerformSync
+        val result = executor.run(incoming, builds)
 
         //assert
         result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
@@ -471,7 +471,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.eval("abc", Seq("request" -> HttpRequestEx("com/create/example/", "GET", Map.empty, Map.empty, body)))).thenReturn("1")
 
         //act
-        val result = executor.run(incoming, builds).unsafePerformSync
+        val result = executor.run(incoming, builds)
 
         //assert
         result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
@@ -493,7 +493,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.eval("abc", Seq("request" -> HttpRequestEx("com/create/example/", "GET", Map.empty, Map.empty, body)))).thenReturn("1")
 
         //act
-        val result = executor.run(incoming, builds).unsafePerformSync
+        val result = executor.run(incoming, builds)
 
         //assert
         result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
@@ -515,7 +515,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.eval("abc", Seq("request" -> HttpRequestEx("com/create/example/", "GET", Map.empty, Map.empty, body), "hel" -> "hello", "b" -> "1"))).thenReturn("1")
 
         //act
-        val result = executor.run(incoming, builds).unsafePerformSync
+        val result = executor.run(incoming, builds)
 
         //assert
         result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
@@ -537,7 +537,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.eval("abc", Seq("request" -> HttpRequestEx("com/create/example/", "GET", Map.empty, Map.empty, body), "hel" -> "2", "b" -> "true"))).thenReturn("1")
 
         //act
-        val result = executor.run(incoming, builds).unsafePerformSync
+        val result = executor.run(incoming, builds)
 
         //assert
         result should be (RunResult(Seq(SuccessfulRun(builds(0), "1"))))
@@ -559,7 +559,7 @@ class ExecutorSpec extends BaseSpec  {
         Mockito.when(compiler.eval("abc", Seq("request" -> HttpRequestEx("com/create/example/", "GET", Map.empty, Map.empty, body), "hel" -> "2", "b" -> "true"))).thenThrow(new NullPointerException("bang!"))
 
         //act
-        val result = executor.run(incoming, builds).unsafePerformSync
+        val result = executor.run(incoming, builds)
 
         //assert
         result.runs(0).asInstanceOf[FailedRun].error shouldBe a [NullPointerException]

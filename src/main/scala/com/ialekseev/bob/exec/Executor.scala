@@ -9,7 +9,6 @@ import scala.util.Try
 import scala.util.matching.Regex
 import scalaz.Scalaz._
 import scalaz._
-import scalaz.concurrent.Task
 
 trait Executor {
   val analyzer: Analyzer
@@ -17,7 +16,7 @@ trait Executor {
 
   private val variableRegexPattern = """\{\$([a-zA-Z]+[a-zA-Z0-9]*)\}""".r
 
-  def build(source: String, externalVariables: List[(String, String)] = List.empty): Task[BuildFailed \/ Build] = {
+  def build(source: String, externalVariables: List[(String, String)] = List.empty): BuildFailed \/ Build = {
     def extractBoundVariablesFromStr(str: String): List[(String, String)] = {
       variableRegexPattern.findAllIn(str).matchData.map(m => (m.group(1), "")).toList
     }
@@ -70,17 +69,15 @@ trait Executor {
           start + pos - compilerPositionAmendment - scalaVariables.length - scalaImport.length - scalaImplicits.length
         }
 
-        Task {
-          scalaCompiler.compile(scalaCode, scalaImport, scalaVariables, scalaImplicits).
-            leftMap(f => CompilationFailed(f.errors.map(e => e.copy(startOffset = amend(e.startOffset), pointOffset = amend(e.pointOffset), endOffset = amend(e.endOffset))))).
-            map(Build(result, _))
-        }
+        scalaCompiler.compile(scalaCode, scalaImport, scalaVariables, scalaImplicits).
+          leftMap(f => CompilationFailed(f.errors.map(e => e.copy(startOffset = amend(e.startOffset), pointOffset = amend(e.pointOffset), endOffset = amend(e.endOffset))))).
+          map(Build(result, _))
       }
-      case failed@ -\/(_) => Task.now(failed)
+      case failed@ -\/(_) => failed
     }
   }
 
-  def run(incoming: HttpRequest, builds: Seq[Build]): Task[RunResult] = {
+  def run(incoming: HttpRequest, builds: Seq[Build]): RunResult = {
 
     def matchStr(buildStr: String, incomingStr: String): Option[List[(String, String)]] = {
       val patternStr = """^\Q""" + variableRegexPattern.replaceAllIn(buildStr, """\\E(?<$1>.+)\\Q""") + """\E$"""
@@ -131,14 +128,13 @@ trait Executor {
        map(variables => (build, variables))
     }).flatten
 
-    Task {
-      RunResult {
-        matchedBuilds.map(b => {
-          Try(scalaCompiler.eval[Any](b._1.codeFileName, b._2)).map(res => SuccessfulRun(b._1, res)).recover {
-            case error => FailedRun(b._1, error)
-          }.get
-        })
-      }
+
+    RunResult {
+      matchedBuilds.map(b => {
+        Try(scalaCompiler.eval[Any](b._1.codeFileName, b._2)).map(res => SuccessfulRun(b._1, res)).recover {
+          case error => FailedRun(b._1, error)
+        }.get
+      })
     }
   }
 }

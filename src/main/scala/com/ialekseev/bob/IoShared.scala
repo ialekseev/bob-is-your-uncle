@@ -11,6 +11,7 @@ import scalaz.effect.IO
 import scalaz.Scalaz._
 import scalaz.effect.IO._
 
+//todo: Async IO ?
 trait IoShared {
 
   val defaultSourcesLocation = "bobs"
@@ -20,88 +21,97 @@ trait IoShared {
   type IoTry[T] =  EitherT[IO, List[Throwable], T]
   def IoTry[T](v: List[Throwable] \/ T): EitherT[IO, List[Throwable], T] = EitherT.eitherT[IO, List[Throwable], T](IO(v))
 
-  def listFiles(dir: String): IoTry[List[File]] = IoTry(new java.io.File(dir).listFiles.toList.right)
+  def listFiles(dir: String): IoTry[List[String]] = IoTry(new java.io.File(dir).listFiles.toList.map(_.getPath).right)
 
-  def listSourceFiles(dir: String): IoTry[List[File]] = {
+  def listSourceFiles(dir: String): IoTry[List[String]] = {
     for {
-      files: List[File] <- listFiles(dir)
-      sourceFiles: List[File] <- IoTry(files.filter(_.getName.endsWith(fileExtension)).right)
+      files: List[String] <- listFiles(dir)
+      sourceFiles: List[String] <- IoTry(files.filter(_.endsWith(fileExtension)).right)
     } yield sourceFiles
   }
 
-  def findVarFile(dir: String): IoTry[Option[File]] = {
+  def findVarFile(dir: String): IoTry[Option[String]] = {
     for {
-      files: List[File] <- listFiles(dir)
-      varsFile: Option[File] <- IoTry(files.find(_.getName == varsFileName).right)
+      files: List[String] <- listFiles(dir)
+      varsFile: Option[String] <- IoTry(files.find(_ == varsFileName).right)
     } yield varsFile
   }
   
-  def readFile(filename: String): IoTry[String] = {
-    require(filename.nonEmpty)
+  def readFile(filePath: String): IoTry[String] = {
+    require(filePath.nonEmpty)
+
+    def normalize(source: String): String = {
+      source.replaceAll("\r\n", "\n")
+    }
 
     EitherT.eitherT[IO, List[Throwable], String] {
       IO {
         Try {
-          val bufferedSource = Source.fromFile(filename)(Codec.UTF8)
+          val bufferedSource = Source.fromFile(filePath)(Codec.UTF8)
           val content = bufferedSource.mkString
           bufferedSource.close()
           content
         }.toDisjunction.leftMap(List(_))
       }
-    }
+    }.map(normalize(_))
   }
 
-  def readSource(filename: String): IoTry[String] = {
-    require(filename.nonEmpty)
-
-    def normalizeSource(source: String): String = {
-      source.replaceAll("\r\n", "\n")
-    }
-
-    readFile(filename).map(normalizeSource(_))
-  }
-
-  def extractVarsFromVarsFile(filename: String): IoTry[List[(String, String)]] = {
-    require(filename.nonEmpty)
+  def extractVarsFromVarsFile(varsFilePath: String): IoTry[List[(String, String)]] = {
+    require(varsFilePath.nonEmpty)
 
     import org.json4s._, org.json4s.native.JsonMethods._
     implicit val formats = org.json4s.DefaultFormats
 
     for {
-      text: String <- readFile(filename)
+      text: String <- readFile(varsFilePath)
       vars: List[(String, String)] <- IoTry(Try(parse(text).extract[Map[String, String]].toList).toDisjunction.leftMap(List(_)))
     } yield vars
   }
 
-  def extractVarsFromDir(dir: String): IoTry[List[(String, String)]] = {
+  def extractVarsForDir(dir: String): IoTry[List[(String, String)]] = {
     require(dir.nonEmpty)
 
     for {
-      varsFile: Option[File] <- findVarFile(dir)
+      varsFile: Option[String] <- findVarFile(dir)
       vars: List[(String, String)] <- varsFile match {
-        case Some(f) => extractVarsFromVarsFile(f.getPath)
+        case Some(f) => extractVarsFromVarsFile(f)
         case None => IoTry(List.empty.right)
       }
     } yield vars
   }
 
+  def extractVarsForFile(filePath: String): IoTry[List[(String, String)]] = {
+    require(filePath.nonEmpty)
+
+    extractVarsForDir(new File(filePath).getParent)
+  }
+
+  def readSource(sourceFilePath: String): IoTry[InputSource] = {
+    require(sourceFilePath.nonEmpty)
+
+    for {
+      content <- readFile(sourceFilePath)
+      vars <- extractVarsForFile(sourceFilePath)
+    } yield InputSource(sourceFilePath, content, vars)
+  }
+
   def readSources(dirs: List[String]): IoTry[List[InputSource]] = {
     require(dirs.nonEmpty)
 
-    case class FileWithVars(file: File, vars: List[(String, String)])
+    case class FileWithVars(filePath: String, vars: List[(String, String)])
 
     def getFilesWithVars: IoTry[List[FileWithVars]] = {
       dirs.map(dir => {
         for {
-          sourceFiles: List[File] <- listSourceFiles(dir)
-          vars <- extractVarsFromDir(dir)
+          sourceFiles: List[String] <- listSourceFiles(dir)
+          vars <- extractVarsForDir(dir)
         } yield sourceFiles.map(f => FileWithVars(f, vars))
       }).sequenceU.map(_.flatten)
     }
 
     def mapToInputSources(files: List[FileWithVars]): IoTry[List[InputSource]] = {
       files.map(file => {
-        readSource(file.file.getPath).map(l => InputSource(file.file.getPath, l, file.vars))
+        readFile(file.filePath).map(l => InputSource(file.filePath, l, file.vars))
       }).sequenceU
     }
 

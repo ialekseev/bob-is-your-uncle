@@ -18,7 +18,7 @@ trait Service extends WebhookHttpService {
 
     def build(sources: List[InputSource]): IO[List[StageFailed \/ Build]] = {
       sources.map(source => {
-        IO(exec.build(source.content, source.vars).unsafePerformSync).flatMap(b => showResult(source.path, source.content, b).map(_ => b))
+        IO(exec.build(source.content, source.vars)).flatMap(b => showResult(source.path, source.content, b).map(_ => b))
       }).sequenceU
     }
 

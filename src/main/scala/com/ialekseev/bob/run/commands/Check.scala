@@ -11,8 +11,8 @@ trait Check {
   def checkCommand(filename: String): IO[Unit] = {
     require(filename.nonEmpty)
 
-    (readSource(filename) |@| extractVarsFromDir(new File(filename).getParent))((_, _)).run.flatMap {
-      case \/-((source, vars)) => showResult(filename, source, exec.build(source, vars).unsafePerformSync)
+    (readFile(filename) |@| extractVarsForFile(filename))((_, _)).run.flatMap {
+      case \/-((source, vars)) => showResult(filename, source, exec.build(source, vars))
       case -\/(errors) => showError("Can't read the file provided", errors : _*)
     }
   }

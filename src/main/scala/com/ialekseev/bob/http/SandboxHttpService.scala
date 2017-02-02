@@ -1,8 +1,10 @@
 package com.ialekseev.bob.http
 
+import akka.http.scaladsl.marshalling.ToResponseMarshaller
 import akka.http.scaladsl.model.{StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import com.ialekseev.bob.IoShared
+import com.ialekseev.bob.exec.Executor
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import org.json4s.{native, DefaultFormats}
 import scalaz._
@@ -11,15 +13,29 @@ trait SandboxHttpService extends Json4sSupport with IoShared {
   implicit val formats = DefaultFormats
   implicit val serialization = native.Serialization
 
-  def createRoutes(dir: String) = listAllFilesRoute(dir)
+  val sandboxExecutor: Executor
 
-  private def listAllFilesRoute(dir: String) =
+  def createRoutes(dir: String) = sourcesRoute(dir) ~ oneSourceRoute
+
+  private def sourcesRoute(dir: String) = path ("sandbox" / "sources") {
     get {
-      pathSingleSlash {
-        listSourceFiles(dir).run.unsafePerformIO() match {
-          case \/-(files) => complete(files.map(_.getPath))
-          case -\/(errors) => complete(StatusCodes.InternalServerError, errors.map(_.getMessage))
-        }
+      unsafeComplete(listSourceFiles(dir))
+    }
+  }
+
+  private def oneSourceRoute = path ("sandbox" / "sources" / Segment) { filePath => {
+      get {
+        unsafeComplete(readSource(filePath))
       }
     }
+  }
+
+  private def unsafeComplete[T : ToResponseMarshaller](ioTry: IoTry[T]) = {
+    ioTry.run.unsafePerformIO() match {
+      case \/-(res) => complete(res)
+      case -\/(errors) => complete(StatusCodes.InternalServerError, errors.map(_.getMessage))
+    }
+  }
 }
+
+
