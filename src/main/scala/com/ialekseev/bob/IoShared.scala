@@ -1,6 +1,6 @@
 package com.ialekseev.bob
 
-import java.io.File
+import java.io.{File, PrintWriter}
 import com.ialekseev.bob.Models._
 import com.ialekseev.bob.analyzer.Analyzer.AnalysisResult
 import com.ialekseev.bob.exec.Executor._
@@ -10,8 +10,8 @@ import scalaz.{-\/, \/-, \/, EitherT}
 import scalaz.effect.IO
 import scalaz.Scalaz._
 import scalaz.effect.IO._
+import scala.language.reflectiveCalls
 
-//todo: Async IO ?
 trait IoShared {
 
   val defaultSourcesLocation = "bobs"
@@ -19,24 +19,31 @@ trait IoShared {
   val fileExtension = ".bob"
 
   type IoTry[T] =  EitherT[IO, List[Throwable], T]
-  def IoTry[T](v: List[Throwable] \/ T): EitherT[IO, List[Throwable], T] = EitherT.eitherT[IO, List[Throwable], T](IO(v))
+  object IoTry {
+    def apply[T](t: T): IoTry[T] = EitherT.eitherT[IO, List[Throwable], T](IO(Try(t).toDisjunction.leftMap(List(_))))
 
-  def listFiles(dir: String): IoTry[List[String]] = IoTry(new java.io.File(dir).listFiles.toList.map(_.getPath).right)
+    def success[T](t: T): IoTry[T] = EitherT.eitherT[IO, List[Throwable], T](IO(t.right))
+    def failure[T](f: Throwable): IoTry[T] = EitherT.eitherT[IO, List[Throwable], T](IO(List(f).left))
+  }
+
+  def listFiles(dir: String): IoTry[List[String]] = IoTry(new java.io.File(dir).listFiles.toList.map(_.getPath))
 
   def listSourceFiles(dir: String): IoTry[List[String]] = {
     for {
       files: List[String] <- listFiles(dir)
-      sourceFiles: List[String] <- IoTry(files.filter(_.endsWith(fileExtension)).right)
+      sourceFiles: List[String] <- IoTry.success(files.filter(_.endsWith(fileExtension)))
     } yield sourceFiles
   }
 
   def findVarFile(dir: String): IoTry[Option[String]] = {
     for {
       files: List[String] <- listFiles(dir)
-      varsFile: Option[String] <- IoTry(files.find(_ == varsFileName).right)
+      varsFile: Option[String] <- IoTry.success(files.find(_ == varsFileName))
     } yield varsFile
   }
-  
+
+  def using[A <: {def close(): Unit}, B](param: A)(f: A => B): B = try { f(param) } finally { param.close() }
+
   def readFile(filePath: String): IoTry[String] = {
     require(filePath.nonEmpty)
 
@@ -44,16 +51,14 @@ trait IoShared {
       source.replaceAll("\r\n", "\n")
     }
 
-    EitherT.eitherT[IO, List[Throwable], String] {
-      IO {
-        Try {
-          val bufferedSource = Source.fromFile(filePath)(Codec.UTF8)
-          val content = bufferedSource.mkString
-          bufferedSource.close()
-          content
-        }.toDisjunction.leftMap(List(_))
-      }
-    }.map(normalize(_))
+    IoTry(using(Source.fromFile(filePath)(Codec.UTF8))(_.mkString)).map(normalize(_))
+  }
+
+  def updateFile(filePath: String, content: String): IoTry[Unit] = {
+    require(filePath.nonEmpty)
+    require(content.nonEmpty)
+
+    IoTry(using(new PrintWriter(filePath))(_.write(content)).right)
   }
 
   def extractVarsFromVarsFile(varsFilePath: String): IoTry[List[(String, String)]] = {
@@ -64,7 +69,7 @@ trait IoShared {
 
     for {
       text: String <- readFile(varsFilePath)
-      vars: List[(String, String)] <- IoTry(Try(parse(text).extract[Map[String, String]].toList).toDisjunction.leftMap(List(_)))
+      vars: List[(String, String)] <- IoTry(parse(text).extract[Map[String, String]].toList)
     } yield vars
   }
 
@@ -75,7 +80,7 @@ trait IoShared {
       varsFile: Option[String] <- findVarFile(dir)
       vars: List[(String, String)] <- varsFile match {
         case Some(f) => extractVarsFromVarsFile(f)
-        case None => IoTry(List.empty.right)
+        case None => IoTry.success(List.empty)
       }
     } yield vars
   }
@@ -119,6 +124,16 @@ trait IoShared {
       sourceFiles: List[FileWithVars] <- getFilesWithVars
       sources: List[InputSource] <- mapToInputSources(sourceFiles)
     } yield sources
+  }
+
+  def updateSource(sourceFilePath: String, content: String): IoTry[InputSource] = {
+    require(sourceFilePath.nonEmpty)
+    require(content.nonEmpty)
+
+    for {
+      _ <- updateFile(sourceFilePath, content)
+      source <- readSource(sourceFilePath)
+    } yield source
   }
 
   def show(message: String = ""): IO[Unit] = putStrLn(message)

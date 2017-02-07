@@ -20,7 +20,7 @@ resolvers ++= Seq(
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-http-experimental" % "2.4.9",
-  "de.heikoseeberger" %% "akka-http-json4s" % "1.5.3",
+  "de.heikoseeberger" %% "akka-http-json4s" % "1.9.0",
   "org.scala-lang" % "scala-compiler" % scalaVersion.value,
   "org.scalaz" %% "scalaz-core" % "7.2.2",
   "org.scalaz" %% "scalaz-effect" % "7.2.2",
