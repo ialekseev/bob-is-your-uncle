@@ -1,14 +1,15 @@
 package com.ialekseev.bob.exec
 
-import com.ialekseev.bob.analyzer.Analyzer
-import com.ialekseev.bob.analyzer.Analyzer.{AnalysisResult, ScalaCode, Webhook}
+import com.ialekseev.bob.exec.analyzer.Analyzer
+import com.ialekseev.bob.exec.analyzer.Analyzer.{AnalysisResult, ScalaCode, Webhook}
 import com.ialekseev.bob.exec.Executor._
-import com.ialekseev.bob.Models.{Body, CompilationFailed, DictionaryBody, HttpRequest, JsonBody, StageFailed, StringLiteralBody}
+import com.ialekseev.bob.{Body, CompilationFailed, DictionaryBody, HttpRequest, JsonBody, StageFailed, StringLiteralBody}
 import org.json4s.JsonAST.JValue
 import scala.util.Try
 import scala.util.matching.Regex
 import scalaz.Scalaz._
 import scalaz._
+import scalaz.effect.IO
 
 trait Executor {
   val analyzer: Analyzer
@@ -16,7 +17,7 @@ trait Executor {
 
   private val variableRegexPattern = """\{\$([a-zA-Z]+[a-zA-Z0-9]*)\}""".r
 
-  def build(source: String, externalVariables: List[(String, String)] = List.empty): BuildFailed \/ Build = {
+  def build(source: String, externalVariables: List[(String, String)] = List.empty): IO[BuildFailed \/ Build] = {
     def extractBoundVariablesFromStr(str: String): List[(String, String)] = {
       variableRegexPattern.findAllIn(str).matchData.map(m => (m.group(1), "")).toList
     }
@@ -69,15 +70,17 @@ trait Executor {
           start + pos - compilerPositionAmendment - scalaVariables.length - scalaImport.length - scalaImplicits.length
         }
 
-        scalaCompiler.compile(scalaCode, scalaImport, scalaVariables, scalaImplicits).
-          leftMap(f => CompilationFailed(f.errors.map(e => e.copy(startOffset = amend(e.startOffset), pointOffset = amend(e.pointOffset), endOffset = amend(e.endOffset))))).
-          map(Build(result, _))
+        IO {
+          scalaCompiler.compile(scalaCode, scalaImport, scalaVariables, scalaImplicits).
+            leftMap(f => CompilationFailed(f.errors.map(e => e.copy(startOffset = amend(e.startOffset), pointOffset = amend(e.pointOffset), endOffset = amend(e.endOffset))))).
+            map(Build(result, _))
+        }
       }
-      case failed@ -\/(_) => failed
+      case failed@ -\/(_) => IO(failed)
     }
   }
 
-  def run(incoming: HttpRequest, builds: Seq[Build]): RunResult = {
+  def run(incoming: HttpRequest, builds: Seq[Build]): IO[RunResult] = {
 
     def matchStr(buildStr: String, incomingStr: String): Option[List[(String, String)]] = {
       val patternStr = """^\Q""" + variableRegexPattern.replaceAllIn(buildStr, """\\E(?<$1>.+)\\Q""") + """\E$"""
@@ -128,13 +131,14 @@ trait Executor {
        map(variables => (build, variables))
     }).flatten
 
-
-    RunResult {
-      matchedBuilds.map(b => {
-        Try(scalaCompiler.eval[Any](b._1.codeFileName, b._2)).map(res => SuccessfulRun(b._1, res)).recover {
-          case error => FailedRun(b._1, error)
-        }.get
-      })
+    IO {
+      RunResult {
+        matchedBuilds.map(b => {
+          Try(scalaCompiler.eval[Any](b._1.codeFileName, b._2)).map(res => SuccessfulRun(b._1, res)).recover {
+            case error => FailedRun(b._1, error)
+          }.get
+        })
+      }
     }
   }
 }

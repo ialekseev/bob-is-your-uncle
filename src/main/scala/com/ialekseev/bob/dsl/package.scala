@@ -1,6 +1,6 @@
 package com.ialekseev.bob
 
-import com.ialekseev.bob.Models._
+import com.ialekseev.bob._
 import org.json4s.JsonAST.JValue
 import scalaz.Scalaz._
 

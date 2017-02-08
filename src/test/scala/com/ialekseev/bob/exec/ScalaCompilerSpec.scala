@@ -1,7 +1,7 @@
 package com.ialekseev.bob.exec
 
 import com.ialekseev.bob.BaseSpec
-import com.ialekseev.bob.run.Boot
+import com.ialekseev.bob.run.boot.Boot
 
 import scalaz.Scalaz._
 import scalaz._
