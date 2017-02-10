@@ -3,6 +3,7 @@ package com.ialekseev.bob.run.cli
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
+import com.ialekseev.bob._
 import com.ialekseev.bob.exec.Executor.Build
 import com.ialekseev.bob.run.boot.HttpServiceUnsafe
 import com.ialekseev.bob.run.http.WebhookHttpService
@@ -17,25 +18,28 @@ import scalaz.effect.IO
 trait Service extends WebhookHttpService {
   this: BaseCommand with BaseHttpService =>
 
-  def serviceCommand(dirs: List[String] = List.empty): IO[Unit] = {
+  def serviceCommand(dirs: List[String] = List.empty): IoTry[Unit] = {
 
-    def build(sources: List[InputSource]): IO[List[StageFailed \/ Build]] = {
+    def build(sources: List[InputSource]): IoTry[List[StageFailed \/ Build]] = {
       sources.map(source => {
-        exec.build(source.content, source.vars).flatMap(b => showResult(source.path, source.content, b).map(_ => b))
+        for {
+          built <- exec.build(source.content, source.vars)
+          _ <- IoTry.success(showResult(source.path, source.content, built))
+        } yield built
       }).sequenceU
     }
 
-    def runService(builds: Seq[Build]): IO[Unit] = {
+    def runService(builds: List[Build]): IoTry[Unit] = {
       for {
-        context <- IO {
+        context <- IoTry {
           implicit val system = ActorSystem()
           implicit val materializer = ActorMaterializer()
           implicit val executionContext = system.dispatcher
           (system, executionContext, Http().bindAndHandle(createRoute(builds), "localhost", 8080))
         }
-        _ <- show(s"The Service is online at http://localhost:8080/\nPress RETURN to stop...")
-        _ <- read()
-        _ <- IO {
+        _ <- IoTry.successIO(show(s"The Service is online at http://localhost:8080/\nPress RETURN to stop..."))
+        _ <- IoTry.successIO(read())
+        _ <- IoTry {
           val system = context._1
           implicit val executionContext = context._2
           val bindingFuture = context._3
@@ -46,25 +50,24 @@ trait Service extends WebhookHttpService {
 
     val targetDirectories = if (dirs.nonEmpty) dirs else List(defaultSourcesLocation)
 
-    readSources(targetDirectories).run.flatMap {
-        case \/-(sources) => {
-          for {
-            _ <- show("building...")
-            _ <- {
-              build(sources).flatMap(builds => {
-                builds.sequenceU match {
-                  case \/-(builds: Seq[Build]) => {
-                    val duplicateNamespaces = builds.groupBy(_.analysisResult.namespace).collect {case (x, List(_,_,_*)) => x}.toVector
-                    if (duplicateNamespaces.length > 0) showError("Please use different names for the duplicate namespaces: " + duplicateNamespaces)
-                    else runService(builds)
-                  }
-                  case -\/(_) => showError("Please fix the failed sources before starting the service")
+    val result: IoTry[Unit] = readSources(targetDirectories).flatMap(sources => {
+        for {
+          _ <- IoTry.successIO(show("building..."))
+          _ <- {
+            build(sources).flatMap(builds => {
+              builds.sequenceU match {
+                case \/-(builds: Seq[Build]) => {
+                  val duplicateNamespaces = builds.groupBy(_.analysisResult.namespace).collect {case (x, List(_,_,_*)) => x}.toVector
+                  if (duplicateNamespaces.length > 0) IoTry.successIO(showError("Please use different names for the duplicate namespaces: " + duplicateNamespaces))
+                  else runService(builds)
                 }
-              })
-            }
-          } yield ()
-        }
-        case -\/(errors) => showError("Problem while trying to read the source files", errors: _*)
-    }
+                case -\/(_) => IoTry.successIO(showError("Please fix the failed sources before starting the service"))
+              }
+            })
+          }
+        } yield ()
+    })
+
+    result.swap.flatMap(errors => IoTry.successSwappedIO(showError("Problem while trying to process the source files", errors: _*))).swap
   }
 }

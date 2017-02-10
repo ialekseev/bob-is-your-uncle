@@ -1,5 +1,6 @@
 package com.ialekseev.bob.run.cli
 
+import com.ialekseev.bob._
 import scalaz._
 import Scalaz._
 import scalaz.effect.IO
@@ -34,26 +35,26 @@ trait Shell {
 
   val color = Console.MAGENTA
 
-  def shellCommand(): IO[Unit] = {
+  def shellCommand(): IoTry[Unit] = {
 
-    def shell(): IO[Unit] = {
-      for {
-       str <- read(color + "bob> ")
+    def shell(): IoTry[Unit] = {
+      (for {
+       str <- IoTry.successIO(read(color + "bob> "))
        _ <- parser.parse(str.split(" +").toSeq, Config())  match {
-         case Some(Config(true, _, _, _, _, _)) => show("you are already in the shell\n").flatMap(_ => shell())
+         case Some(Config(true, _, _, _, _, _)) => IoTry.successIO(show("you are already in the shell\n")).flatMap(_ => shell())
          case Some(Config(_, true, _, _, _, Arguments(Some(path)))) if path.nonEmpty => checkCommand(path).flatMap(_ => shell())
          case Some(Config(_, _ , true, _, _, Arguments(path))) => serviceCommand(path.toList).flatMap(_ => shell())
-         case Some(Config(_, _, _, true, _, _)) => showHelp().flatMap(_ => shell())
-         case Some(Config(_, _, _, _, true, _)) => show("quitting...")
-         case _ => showHelp().flatMap(_ => shell())
+         case Some(Config(_, _, _, true, _, _)) => IoTry.successIO(showHelp()).flatMap(_ => shell())
+         case Some(Config(_, _, _, _, true, _)) => IoTry.successIO(show("quitting..."))
+         case _ => IoTry.successIO(showHelp()).flatMap(_ => shell())
        }
-      } yield ()
+      } yield ()).orElse(shell())
     }
 
     for {
-      _ <- show(color)
-      _ <- show("Welcome to Bob's shell. Type 'help' for information.")
-      _ <- show(Console.RESET)
+      _ <- IoTry.successIO(show(color))
+      _ <- IoTry.successIO(show("Welcome to Bob's shell. Type 'help' for information."))
+      _ <- IoTry.successIO(show(Console.RESET))
       _ <- shell()
     } yield ()
   }

@@ -1,8 +1,22 @@
 package com.ialekseev
 
 import org.json4s.JsonAST.JValue
+import scalaz.EitherT
+import scala.util.Try
+import scalaz.Scalaz._
+import scalaz.effect.IO
 
 package object bob {
+  type IoTry[T] =  EitherT[IO, List[Throwable], T]
+  object IoTry {
+    def apply[T](t: => T): IoTry[T] = EitherT.eitherT[IO, List[Throwable], T](IO(Try(t).toDisjunction.leftMap(List(_))))
+
+    def success[T](t: T): IoTry[T] = EitherT.eitherT[IO, List[Throwable], T](IO(t.right))
+    def successIO[T](io: IO[T]): IoTry[T] = EitherT.eitherT[IO, List[Throwable], T](io.map(_.right))
+    def successSwappedIO[T](io: IO[T]): EitherT[IO, T, List[Throwable]] = EitherT.eitherT[IO, T, List[Throwable]](io.map(_.left))
+    def failure[T](f: Throwable): IoTry[T] = EitherT.eitherT[IO, List[Throwable], T](IO(List(f).left))
+  }
+
   case class LexicalError(startOffset: Int, endOffset: Int)
   case class SyntaxError(startOffset: Int, endOffset: Int, tokenIndex: Int, message: String)
   case class SemanticError(startOffset: Int, endOffset: Int, message: String)

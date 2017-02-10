@@ -2,7 +2,7 @@ package com.ialekseev.bob.exec
 
 import java.net.URLClassLoader
 import java.nio.file.Paths
-import com.ialekseev.bob.{CompilationError, CompilationFailed}
+import com.ialekseev.bob.{IoTry, CompilationError, CompilationFailed}
 import scala.collection.mutable.ListBuffer
 import scala.reflect.internal.util.Position
 import scala.tools.nsc.reporters.AbstractReporter
@@ -13,18 +13,22 @@ import scalaz._
 class ScalaCompiler {
   val compiler = new Compiler(ListBuffer.empty)
 
-  def compile(code: String, imports: String = "", fields: String = "", implicits: String = ""): CompilationFailed \/ String = {
+  def compile(code: String, imports: String = "", fields: String = "", implicits: String = ""): IoTry[CompilationFailed \/ String] = {
     require(!code.isEmpty)
 
-    synchronized {
-      val className = compiler.compile(code, imports, fields, implicits)
-      if (compiler.reportedErrors.length == 0) className.right
-      else CompilationFailed(compiler.reportedErrors).left
+    IoTry {
+      synchronized {
+        val className = compiler.compile(code, imports, fields, implicits)
+        if (compiler.reportedErrors.length == 0) className.right
+        else CompilationFailed(compiler.reportedErrors).left
+      }
     }
   }
 
-  def eval[T](className: String, variables: Seq[(String, AnyRef)]): T = {
-    compiler.eval[T](className, variables)
+  def eval[T](className: String, variables: Seq[(String, AnyRef)]): IoTry[T] = {
+    IoTry {
+      compiler.eval[T](className, variables)
+    }
   }
 }
 

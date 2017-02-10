@@ -31,14 +31,14 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
           Build(analysisResult, "code")
         }
         val request = HttpRequest(some(uri), method, Map.empty, Map.empty, none)
-        when(exec.run(request, Seq(build))).thenReturn(IO(RunResult(Seq(SuccessfulRun(build, "1")))))
+        when(exec.run(request, List(build))).thenReturn(IO(RunResult(List(SuccessfulRun(build, "1")))))
 
         //act
-        Get(uri) ~> createRoute(Seq(build)) ~> check {
+        Get(uri) ~> createRoute(List(build)) ~> check {
 
           //assert
           response.status should be (StatusCodes.OK)
-          responseAs[HttpResponse] should be (HttpResponse(request, Seq(HttpResponseRun(Namespace("com", "create"), true, none))))
+          responseAs[HttpResponse] should be (HttpResponse(request, List(HttpResponseRun(Namespace("com", "create"), true))))
         }
       }
     }
@@ -54,14 +54,14 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
           Build(analysisResult, "code")
         }
         val request = HttpRequest(some(uri), method, headers, Map.empty, none)
-        when(exec.run(request, Seq(build))).thenReturn(IO(RunResult(Seq(SuccessfulRun(build, "1")))))
+        when(exec.run(request, List(build))).thenReturn(IO(RunResult(List(SuccessfulRun(build, "1")))))
 
         //act
-        Post(uri).withHeaders(RawHeader("h1", "super"), RawHeader("head2", "cool")) ~> createRoute(Seq(build)) ~> check {
+        Post(uri).withHeaders(RawHeader("h1", "super"), RawHeader("head2", "cool")) ~> createRoute(List(build)) ~> check {
 
           //assert
           response.status should be (StatusCodes.OK)
-          responseAs[HttpResponse] should be (HttpResponse(request, Seq(HttpResponseRun(Namespace("com", "create"), true, none))))
+          responseAs[HttpResponse] should be (HttpResponse(request, List(HttpResponseRun(Namespace("com", "create"), true))))
         }
       }
     }
@@ -78,14 +78,14 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
           Build(analysisResult, "code")
         }
         val request = HttpRequest(some(path), method, Map.empty, queryString, none)
-        when(exec.run(request, Seq(build))).thenReturn(IO(RunResult(Seq(SuccessfulRun(build, "1")))))
+        when(exec.run(request, List(build))).thenReturn(IO(RunResult(List(SuccessfulRun(build, "1")))))
 
         //act
-        Put(uri) ~> createRoute(Seq(build)) ~> check {
+        Put(uri) ~> createRoute(List(build)) ~> check {
 
           //assert
           response.status should be (StatusCodes.OK)
-          responseAs[HttpResponse] should be (HttpResponse(request, Seq(HttpResponseRun(Namespace("com", "create"), true, none))))
+          responseAs[HttpResponse] should be (HttpResponse(request, List(HttpResponseRun(Namespace("com", "create"), true))))
         }
       }
     }
@@ -100,14 +100,14 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
           Build(analysisResult, "code")
         }
         val request = HttpRequest(some(uri), method, Map.empty, Map.empty, none)
-        when(exec.run(request, Seq(build))).thenReturn(IO(RunResult(Seq.empty))) //NO matching builds
+        when(exec.run(request, List(build))).thenReturn(IO(RunResult(List.empty))) //NO matching builds
 
         //act
-        Get(uri) ~> createRoute(Seq(build)) ~> check {
+        Get(uri) ~> createRoute(List(build)) ~> check {
 
           //assert
           response.status should be (StatusCodes.OK)
-          responseAs[HttpResponse] should be (HttpResponse(request, Seq.empty))
+          responseAs[HttpResponse] should be (HttpResponse(request, List.empty))
         }
       }
     }
@@ -124,14 +124,14 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
           Build(analysisResult, "code")
         }
         val request = HttpRequest(some(path), method, Map.empty, queryString, none)
-        when(exec.run(request, Seq(build))).thenReturn(IO(RunResult(Seq(FailedRun(build, new NullPointerException("bang!"))))))
+        when(exec.run(request, List(build))).thenReturn(IO(RunResult(List(FailedRun(build, List(new NullPointerException("bang!")))))))
 
         //act
-        Put(uri) ~> createRoute(Seq(build)) ~> check {
+        Put(uri) ~> createRoute(List(build)) ~> check {
 
           //assert
           response.status should be (StatusCodes.OK)
-          responseAs[HttpResponse] should be (HttpResponse(request, Seq(HttpResponseRun(Namespace("com", "create"), false, some("bang!")))))
+          responseAs[HttpResponse] should be (HttpResponse(request, List(HttpResponseRun(Namespace("com", "create"), false))))
         }
       }
     }

@@ -3,7 +3,7 @@ package com.ialekseev.bob.exec
 import com.ialekseev.bob.exec.analyzer.Analyzer
 import com.ialekseev.bob.exec.analyzer.Analyzer.{AnalysisResult, ScalaCode, Webhook}
 import com.ialekseev.bob.exec.Executor._
-import com.ialekseev.bob.{Body, CompilationFailed, DictionaryBody, HttpRequest, JsonBody, StageFailed, StringLiteralBody}
+import com.ialekseev.bob._
 import org.json4s.JsonAST.JValue
 import scala.util.Try
 import scala.util.matching.Regex
@@ -17,7 +17,7 @@ trait Executor {
 
   private val variableRegexPattern = """\{\$([a-zA-Z]+[a-zA-Z0-9]*)\}""".r
 
-  def build(source: String, externalVariables: List[(String, String)] = List.empty): IO[BuildFailed \/ Build] = {
+  def build(source: String, externalVariables: List[(String, String)] = List.empty): IoTry[BuildFailed \/ Build] = {
     def extractBoundVariablesFromStr(str: String): List[(String, String)] = {
       variableRegexPattern.findAllIn(str).matchData.map(m => (m.group(1), "")).toList
     }
@@ -70,17 +70,16 @@ trait Executor {
           start + pos - compilerPositionAmendment - scalaVariables.length - scalaImport.length - scalaImplicits.length
         }
 
-        IO {
-          scalaCompiler.compile(scalaCode, scalaImport, scalaVariables, scalaImplicits).
-            leftMap(f => CompilationFailed(f.errors.map(e => e.copy(startOffset = amend(e.startOffset), pointOffset = amend(e.pointOffset), endOffset = amend(e.endOffset))))).
+        scalaCompiler.compile(scalaCode, scalaImport, scalaVariables, scalaImplicits).map(res => {
+          res.leftMap(f => CompilationFailed(f.errors.map(e => e.copy(startOffset = amend(e.startOffset), pointOffset = amend(e.pointOffset), endOffset = amend(e.endOffset))))).
             map(Build(result, _))
-        }
+        })
       }
-      case failed@ -\/(_) => IO(failed)
+      case analysisIssues@ -\/(_) => IoTry.success(analysisIssues)
     }
   }
 
-  def run(incoming: HttpRequest, builds: Seq[Build]): IO[RunResult] = {
+  def run(incoming: HttpRequest, builds: List[Build]): IO[RunResult] = {
 
     def matchStr(buildStr: String, incomingStr: String): Option[List[(String, String)]] = {
       val patternStr = """^\Q""" + variableRegexPattern.replaceAllIn(buildStr, """\\E(?<$1>.+)\\Q""") + """\E$"""
@@ -122,7 +121,7 @@ trait Executor {
       }
     }
 
-    val matchedBuilds: Seq[(Build, List[(String, AnyRef)])] = builds.map(build => {
+    val matchedBuilds: List[(Build, List[(String, AnyRef)])] = builds.map(build => {
       (some(List(("request", com.ialekseev.bob.dsl.HttpRequest(incoming.uri.getOrElse(""), incoming.method.toString, incoming.headers, incoming.queryString, incoming.body).asInstanceOf[AnyRef]))) |@|
        matchStr((s"${build.analysisResult.namespace.path}/${build.analysisResult.namespace.name}/${build.analysisResult.webhook.req.uri.map(_.trimSlashes).getOrElse("")}").trimSlashes.toLowerCase, incoming.uri.map(_.trimSlashes.toLowerCase).getOrElse("")) |@|
        matchMap(build.analysisResult.webhook.req.headers, incoming.headers) |@|
@@ -131,15 +130,12 @@ trait Executor {
        map(variables => (build, variables))
     }).flatten
 
-    IO {
-      RunResult {
-        matchedBuilds.map(b => {
-          Try(scalaCompiler.eval[Any](b._1.codeFileName, b._2)).map(res => SuccessfulRun(b._1, res)).recover {
-            case error => FailedRun(b._1, error)
-          }.get
-        })
+    matchedBuilds.map(b => {
+      scalaCompiler.eval[Any](b._1.codeFileName, b._2).run.map {
+        case \/-(result) => SuccessfulRun(b._1, result)
+        case -\/(errors) => FailedRun(b._1, errors)
       }
-    }
+    }).sequenceU.map(RunResult(_))
   }
 }
 
@@ -149,6 +145,6 @@ object Executor {
 
   sealed trait Run
   case class SuccessfulRun(build: Build, result: Any) extends Run
-  case class FailedRun(build: Build, error: Throwable) extends Run
-  case class RunResult(runs: Seq[Run])
+  case class FailedRun(build: Build, errors: List[Throwable]) extends Run
+  case class RunResult(runs: List[Run])
 }

@@ -4,7 +4,7 @@ import akka.http.scaladsl.marshalling._
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{RequestContext, RouteResult, StandardRoute}
-import com.ialekseev.bob.run._
+import com.ialekseev.bob._
 import scala.concurrent.Future
 import scalaz.effect.IO
 import scalaz.{-\/, \/-}

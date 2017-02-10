@@ -6,7 +6,7 @@ import akka.http.scaladsl.server.ValidationRejection
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.ialekseev.bob.BaseSpec
 import com.ialekseev.bob.run.boot.HttpServiceUnsafe
-import com.ialekseev.bob.run._
+import com.ialekseev.bob._
 import com.ialekseev.bob.exec.Executor
 import com.ialekseev.bob.run.http.SandboxHttpService.{PutOneSourceResponse, GetOneSourceResponse, GetSourcesResponse}
 import org.mockito.Mockito._

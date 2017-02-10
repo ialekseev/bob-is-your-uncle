@@ -1,5 +1,6 @@
 package com.ialekseev.bob.run
 
+import com.ialekseev.bob._
 import akka.http.scaladsl.marshalling._
 import akka.http.scaladsl.server.{RouteResult, RequestContext, StandardRoute}
 import scala.concurrent.Future

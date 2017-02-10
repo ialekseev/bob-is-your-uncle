@@ -17,7 +17,7 @@ trait WebhookHttpService extends BaseHttpService with Json4sSupport {
   implicit val formats = DefaultFormats + new EnumSerializer(HttpMethod)
   implicit val serialization = native.Serialization
 
-  def createRoute(builds: Seq[Build]): Route = ctx => {
+  def createRoute(builds: List[Build]): Route = ctx => {
     require(builds.nonEmpty)
 
     //todo: potential blocks might happen here (when there are blocks in bob-files, like when using scalaj-http).
@@ -33,11 +33,11 @@ trait WebhookHttpService extends BaseHttpService with Json4sSupport {
       HttpResponse(request, r.runs.map {
         case SuccessfulRun(build, result) => {
           println(Console.GREEN + s"[Done] ${build.analysisResult.namespace.path}#${build.analysisResult.namespace.name}" + Console.RESET)
-          HttpResponseRun(build.analysisResult.namespace, true, none)
+          HttpResponseRun(build.analysisResult.namespace, true)
         }
-        case FailedRun(build, error) => {
-          println(Console.RED + s"[Error] ${build.analysisResult.namespace.path}#${build.analysisResult.namespace.name}:" + Console.RESET + " " + error.toString)
-          HttpResponseRun(build.analysisResult.namespace, false, some(error.getMessage))
+        case FailedRun(build, errors) => {
+          println(Console.RED + s"[Errors] ${build.analysisResult.namespace.path}#${build.analysisResult.namespace.name}:" + Console.RESET + " " + errors)
+          HttpResponseRun(build.analysisResult.namespace, false)
         }
       })
     })
@@ -47,6 +47,6 @@ trait WebhookHttpService extends BaseHttpService with Json4sSupport {
 }
 
 object WebhookHttpService {
-  case class HttpResponse(incoming: HttpRequest, runs: Seq[HttpResponseRun])
-  case class HttpResponseRun(namespace: Namespace, succeed: Boolean, message: Option[String])
+  case class HttpResponse(incoming: HttpRequest, runs: List[HttpResponseRun])
+  case class HttpResponseRun(namespace: Namespace, succeed: Boolean)
 }
