@@ -174,7 +174,7 @@ class AdHocSyntaxAnalyzer extends SyntaxAnalyzer with SyntaxAnalysisState {
     } yield List(namespace, rule)
   }
 
-  def parse(tokens: Seq[LexerToken]): SyntaxAnalysisFailed \/ ParseTree = {
+  def parse(tokens: List[LexerToken]): SyntaxAnalysisFailed \/ ParseTree = {
     require(tokens.nonEmpty)
 
     parseTopStat.run(ParserStateInternal(tokens, 0, Map.empty))._2.leftMap(SyntaxAnalysisFailed(_))

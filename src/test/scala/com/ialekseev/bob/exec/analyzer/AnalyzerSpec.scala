@@ -25,27 +25,27 @@ class AnalyzerSpec extends BaseSpec {
     "lexer returns errors" should {
       "fail with lexical error" in {
         //arrange
-        Mockito.when(lexer.tokenize("source")).thenReturn(LexicalAnalysisFailed(Seq(LexicalError(10, 20), LexicalError(30, 40))).left)
+        Mockito.when(lexer.tokenize("source")).thenReturn(LexicalAnalysisFailed(List(LexicalError(10, 20), LexicalError(30, 40))).left)
 
         //act
         val result = analyzer.analyze("source")
 
         //assert
-        result should be (LexicalAnalysisFailed(Seq(LexicalError(10, 20), LexicalError(30, 40))).left)
+        result should be (LexicalAnalysisFailed(List(LexicalError(10, 20), LexicalError(30, 40))).left)
       }
     }
 
     "parser returns errors" should {
       "fail with syntax error" in {
         //arrange
-        Mockito.when(lexer.tokenize("source")).thenReturn(Seq(LexerToken(Token.Keyword.`description`, 10)).right)
-        Mockito.when(parser.parse(Seq(LexerToken(Token.Keyword.`description`, 10)))).thenReturn(SyntaxAnalysisFailed(Seq(SyntaxError(10, 10, 0, "Bad!"))).left)
+        Mockito.when(lexer.tokenize("source")).thenReturn(List(LexerToken(Token.Keyword.`description`, 10)).right)
+        Mockito.when(parser.parse(List(LexerToken(Token.Keyword.`description`, 10)))).thenReturn(SyntaxAnalysisFailed(List(SyntaxError(10, 10, 0, "Bad!"))).left)
 
         //act
         val result = analyzer.analyze("source")
 
         //assert
-        result should be (SyntaxAnalysisFailed(Seq(SyntaxError(10, 10, 0, "Bad!"))).left)
+        result should be (SyntaxAnalysisFailed(List(SyntaxError(10, 10, 0, "Bad!"))).left)
       }
     }
 
@@ -56,7 +56,7 @@ class AnalyzerSpec extends BaseSpec {
           val lexicalAnalyzer = null
           val syntaxAnalyzer = null
 
-          override def parse(source: String): StageFailed \/ ParseTree = {
+          override def parse(source: String): BuildFailed \/ ParseTree = {
             source should be ("source")
 
             nonTerminal("TopStat").node(
@@ -104,7 +104,7 @@ class AnalyzerSpec extends BaseSpec {
         val result = analyzer.analyze("source")
 
         //assert
-        result should be (SemanticAnalysisFailed(Seq(SemanticError(1401, 1403, "Unexpected Http method"))).left)
+        result should be (SemanticAnalysisFailed(List(SemanticError(1401, 1403, "Unexpected Http method"))).left)
       }
     }
 
@@ -115,7 +115,7 @@ class AnalyzerSpec extends BaseSpec {
           val lexicalAnalyzer = null
           val syntaxAnalyzer = null
 
-          override def parse(source: String): StageFailed \/ ParseTree = {
+          override def parse(source: String): BuildFailed \/ ParseTree = {
             source should be ("source")
 
             nonTerminal("TopStat").node(
@@ -151,7 +151,7 @@ class AnalyzerSpec extends BaseSpec {
         val result = analyzer.analyze("source")
 
         //assert
-        result should be (AnalysisResult(Namespace("com", "create"), "hello", Seq.empty, Webhook(HttpRequest(none, HttpMethod.GET, Map.empty, Map.empty, none)), ScalaCode("val a = 1")).right)
+        result should be (AnalysisResult(Namespace("com", "create"), "hello", Nil, Webhook(HttpRequest(none, HttpMethod.GET, Map.empty, Map.empty, none)), ScalaCode("val a = 1")).right)
       }
     }
 
@@ -162,7 +162,7 @@ class AnalyzerSpec extends BaseSpec {
           val lexicalAnalyzer = null
           val syntaxAnalyzer = null
 
-          override def parse(source: String): StageFailed \/ ParseTree = {
+          override def parse(source: String): BuildFailed \/ ParseTree = {
             source should be ("source")
 
             nonTerminal("TopStat").node(
@@ -245,7 +245,7 @@ class AnalyzerSpec extends BaseSpec {
         val result = analyzer.analyze("source")
 
         //assert
-        result should be (AnalysisResult(Namespace("com.ialekseev", "create"), "hello", Seq("var1" -> "alice", "var2" -> "wonderland"), Webhook(HttpRequest(resultUri, HttpMethod.POST, Map("h1"->"a"), Map("b"->"18"), some(JsonBody(JObject("c"-> JString("19")))))), ScalaCode("val a = 1")).right)
+        result should be (AnalysisResult(Namespace("com.ialekseev", "create"), "hello", List("var1" -> "alice", "var2" -> "wonderland"), Webhook(HttpRequest(resultUri, HttpMethod.POST, Map("h1"->"a"), Map("b"->"18"), some(JsonBody(JObject("c"-> JString("19")))))), ScalaCode("val a = 1")).right)
       }
 
       "map the resulting parse tree to the analysis result (with uri)" in {

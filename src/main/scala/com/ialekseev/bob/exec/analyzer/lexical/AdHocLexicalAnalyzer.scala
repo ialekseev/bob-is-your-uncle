@@ -62,7 +62,7 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with LexicalAnalysisSta
     }) >| someUnit
   }
 
-  def tokenize(source: String): LexicalAnalysisFailed \/ Seq[LexerToken] = {
+  def tokenize(source: String): LexicalAnalysisFailed \/ List[LexerToken] = {
     if (source.nonEmpty) {
       type LexerStateT[S] = StateT[Trampoline, LexerStateInternal, S]
 
@@ -93,14 +93,14 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with LexicalAnalysisSta
       }
 
       val extractResultT = {
-        val extractResult: LexerState[LexicalAnalysisFailed \/ Seq[LexerToken]] = extractErrors >>= (errors => {
+        val extractResult: LexerState[LexicalAnalysisFailed \/ Vector[LexerToken]] = extractErrors >>= (errors => {
           if (errors.isEmpty) extractResultingTokens.map(_.right)
-          else LexicalAnalysisFailed(errors).left.point[LexerState]
+          else LexicalAnalysisFailed(errors.toList).left.point[LexerState]
         })
         extractResult.lift[Trampoline]
       }
 
-      (goT >> extractResultT).run(LexerStateInternal(source, 0, Nil, Nil)).run._2
+      (goT >> extractResultT).run(LexerStateInternal(source, 0, Vector.empty, Vector.empty)).run._2.map(_.toList)
 
     } else Nil.right
   }

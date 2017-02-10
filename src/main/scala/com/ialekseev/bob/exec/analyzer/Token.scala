@@ -67,11 +67,11 @@ object Token {
     case object `.` extends DelimiterToken { val char = '.' }
     case object `#` extends DelimiterToken { val char = '#' }
     case object `:` extends DelimiterToken { val char = ':' }
-    val chars = Seq(`.`.char, `#`.char, `:`.char)
+    val chars = List(`.`.char, `#`.char, `:`.char)
   }
 
-  object WS { val chars = Seq(' ', '\t')}
-  object NL { val chars = Seq('\n','\r', SOT, EOT)}
+  object WS { val chars = List(' ', '\t')}
+  object NL { val chars = List('\n','\r', SOT, EOT)}
   case class INDENT(length: Int) extends Token
 
   implicit val tokenShow: Show[Token] = Show.shows {

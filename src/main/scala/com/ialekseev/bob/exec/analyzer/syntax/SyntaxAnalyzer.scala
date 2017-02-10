@@ -68,7 +68,7 @@ import scalaz._
 
 
 trait SyntaxAnalyzer {
-  def parse(tokens: Seq[LexerToken]): SyntaxAnalysisFailed \/ ParseTree
+  def parse(tokens: List[LexerToken]): SyntaxAnalysisFailed \/ ParseTree
 }
 
 object SyntaxAnalyzer {

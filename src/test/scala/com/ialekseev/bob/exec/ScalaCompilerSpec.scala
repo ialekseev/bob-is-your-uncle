@@ -41,7 +41,7 @@ class ScalaCompilerSpec extends BaseSpec {
         val className = compiler.compile("1 + 1").run.unsafePerformIO().toEither.right.get.toEither.right.get
 
         //act
-        val result = compiler.eval[Int](className, Seq.empty).run.unsafePerformIO()
+        val result = compiler.eval[Int](className, Nil).run.unsafePerformIO()
 
         //assert
         result.toEither.right.get should be (2)
@@ -54,7 +54,7 @@ class ScalaCompilerSpec extends BaseSpec {
         val className = compiler.compile("a + b", fields = """var a = ""; var b = """"").run.unsafePerformIO().toEither.right.get.toEither.right.get
 
         //act
-        val result = compiler.eval[String](className, Seq("a" -> "1", "b" -> "hi")).run.unsafePerformIO()
+        val result = compiler.eval[String](className, List("a" -> "1", "b" -> "hi")).run.unsafePerformIO()
 
         //assert
         result.toEither.right.get should be ("1hi")

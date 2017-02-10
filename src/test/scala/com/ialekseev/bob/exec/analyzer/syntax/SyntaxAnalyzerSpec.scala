@@ -16,7 +16,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
     "there is a min valid set of lexer tokens" should {
       "succeed" in {
         //arrange
-        val tokens = Seq(
+        val tokens = List(
           LexerToken(Token.INDENT(0), 0),
           LexerToken(Token.Keyword.`namespace`, 100),
           LexerToken(Token.Identifier("com"), 200),
@@ -75,7 +75,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
     "there is a max valid set of lexer tokens" should {
       "succeed" in {
         //arrange
-        val tokens = Seq(
+        val tokens = List(
           LexerToken(Token.INDENT(0), 0),
           LexerToken(Token.Keyword.`namespace`, 100),
           LexerToken(Token.Identifier("com"), 200),
@@ -218,7 +218,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
     "there is an error (an invalid delimiter in namespace)" should {
       "fail" in {
         //arrange
-        val tokens = Seq(
+        val tokens = List(
           LexerToken(Token.INDENT(0), 0),
           LexerToken(Token.Keyword.`namespace`, 0),
           LexerToken(Token.Identifier("com"), 10),
@@ -230,14 +230,14 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(13, 13, 3, "Unexpected: ':' (expecting: '#')")))
+        result.toEither.left.get.errors should be (List(SyntaxError(13, 13, 3, "Unexpected: ':' (expecting: '#')")))
       }
     }
 
     "there is an error (no indent before 'description')" should {
       "fail" in {
         //arrange
-        val tokens = Seq(
+        val tokens = List(
           LexerToken(Token.INDENT(0), 0),
           LexerToken(Token.Keyword.`namespace`, 0),
           LexerToken(Token.Identifier("com"), 10),
@@ -251,14 +251,14 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(23, 33, 5, "Unexpected: 'description' (expecting: 'indent')")))
+        result.toEither.left.get.errors should be (List(SyntaxError(23, 33, 5, "Unexpected: 'description' (expecting: 'indent')")))
       }
     }
 
     "there is an error (got an identifier instead of the string literal in the description)" should {
       "fail" in {
         //arrange
-        val tokens = Seq(
+        val tokens = List(
           LexerToken(Token.INDENT(0), 0),
           LexerToken(Token.Keyword.`namespace`, 0),
           LexerToken(Token.Identifier("com"), 10),
@@ -275,14 +275,14 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(35, 37, 8, "Unexpected: 'com' (expecting: 'string literal')")))
+        result.toEither.left.get.errors should be (List(SyntaxError(35, 37, 8, "Unexpected: 'com' (expecting: 'string literal')")))
       }
     }
 
     "there is an error (an invalid delimiter in the first constant line)" should {
       "fail" in {
         //arrange
-        val tokens = Seq(
+        val tokens = List(
           LexerToken(Token.INDENT(0), 0),
           LexerToken(Token.Keyword.`namespace`, 0),
           LexerToken(Token.Identifier("com"), 10),
@@ -304,14 +304,14 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(28, 28, 11, "Unexpected: '#' (expecting: ':')")))
+        result.toEither.left.get.errors should be (List(SyntaxError(28, 28, 11, "Unexpected: '#' (expecting: ':')")))
       }
     }
 
     "there is an error (an invalid type in the second constant line)" should {
       "fail" in {
         //arrange
-        val tokens = Seq(
+        val tokens = List(
           LexerToken(Token.INDENT(0), 0),
           LexerToken(Token.Keyword.`namespace`, 0),
           LexerToken(Token.Identifier("com"), 10),
@@ -338,14 +338,14 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(38, 43, 16, "Unexpected: 'Dictionary([b:11],Map(b -> 11))' (expecting: 'string literal')")))
+        result.toEither.left.get.errors should be (List(SyntaxError(38, 43, 16, "Unexpected: 'Dictionary([b:11],Map(b -> 11))' (expecting: 'string literal')")))
       }
     }
 
     "there is an error (an invalid indent before '@webhook')" should {
       "fail" in {
         //arrange
-        val tokens = Seq(
+        val tokens = List(
           LexerToken(Token.INDENT(0), 0),
           LexerToken(Token.Keyword.`namespace`, 0),
           LexerToken(Token.Identifier("com"), 10),
@@ -365,14 +365,14 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(40, 41, 9, "Unexpected indent width: 2. Expected: 3")))
+        result.toEither.left.get.errors should be (List(SyntaxError(40, 41, 9, "Unexpected indent width: 2. Expected: 3")))
       }
     }
 
     "there is an error (an invalid type in the 'uri' line inside '@webhook')" should {
       "fail" in {
         //arrange
-        val tokens = Seq(
+        val tokens = List(
           LexerToken(Token.INDENT(0), 0),
           LexerToken(Token.Keyword.`namespace`, 0),
           LexerToken(Token.Identifier("com"), 10),
@@ -397,14 +397,14 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(61, 65, 14, "Unexpected: 'Dictionary(a = 1,Map(a -> 1))' (expecting: 'string literal')")))
+        result.toEither.left.get.errors should be (List(SyntaxError(61, 65, 14, "Unexpected: 'Dictionary(a = 1,Map(a -> 1))' (expecting: 'string literal')")))
       }
     }
 
     "there is an error (an invalid delimiter in the 'method' line inside '@webhook')" should {
       "fail" in {
         //arrange
-        val tokens = Seq(
+        val tokens = List(
           LexerToken(Token.INDENT(0), 0),
           LexerToken(Token.Keyword.`namespace`, 0),
           LexerToken(Token.Identifier("com"), 10),
@@ -434,14 +434,14 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(66, 66, 17, "Unexpected: '#' (expecting: ':')")))
+        result.toEither.left.get.errors should be (List(SyntaxError(66, 66, 17, "Unexpected: '#' (expecting: ':')")))
       }
     }
 
     "there is an error (an invalid type in the 'queryString' line inside '@webhook')" should {
       "fail" in {
         //arrange
-        val tokens = Seq(
+        val tokens = List(
           LexerToken(Token.INDENT(0), 0),
           LexerToken(Token.Keyword.`namespace`, 0),
           LexerToken(Token.Identifier("com"), 10),
@@ -476,14 +476,14 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(79, 88, 22, """Unexpected: '"/example"' (expecting: 'dictionary')""")))
+        result.toEither.left.get.errors should be (List(SyntaxError(79, 88, 22, """Unexpected: '"/example"' (expecting: 'dictionary')""")))
       }
     }
 
     "there is an error (an invalid token in the 'body' line inside '@webhook')" should {
       "fail" in {
         //arrange
-        val tokens = Seq(
+        val tokens = List(
           LexerToken(Token.INDENT(0), 0),
           LexerToken(Token.Keyword.`namespace`, 0),
           LexerToken(Token.Identifier("com"), 10),
@@ -518,14 +518,14 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(69, 73, 18, "Expecting some valid Body type here")))
+        result.toEither.left.get.errors should be (List(SyntaxError(69, 73, 18, "Expecting some valid Body type here")))
       }
     }
 
     "there is an error (no block inside the '@process')" should {
       "fail" in {
         //arrange
-        val tokens = Seq(
+        val tokens = List(
           LexerToken(Token.INDENT(0), 0),
           LexerToken(Token.Keyword.`namespace`, 100),
           LexerToken(Token.Identifier("com"), 200),
@@ -553,14 +553,14 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(1250, 1254, 18, "Unexpected end")))
+        result.toEither.left.get.errors should be (List(SyntaxError(1250, 1254, 18, "Unexpected end")))
       }
     }
 
     "there is an error (an invalid token inside the '@process')" should {
       "fail" in {
         //arrange
-        val tokens = Seq(
+        val tokens = List(
           LexerToken(Token.INDENT(0), 0),
           LexerToken(Token.Keyword.`namespace`, 100),
           LexerToken(Token.Identifier("com"), 200),
@@ -589,14 +589,14 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(1300, 1303, 18, "Unexpected: 'body' (expecting: '<scala>...<end>')")))
+        result.toEither.left.get.errors should be (List(SyntaxError(1300, 1303, 18, "Unexpected: 'body' (expecting: '<scala>...<end>')")))
       }
     }
 
     "there is an error (an invalid indent inside the '@process')" should {
       "fail" in {
         //arrange
-        val tokens = Seq(
+        val tokens = List(
           LexerToken(Token.INDENT(0), 0),
           LexerToken(Token.Keyword.`namespace`, 100),
           LexerToken(Token.Identifier("com"), 200),
@@ -625,7 +625,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
         val result = parser.parse(tokens)
 
         //assert
-        result.toEither.left.get.errors should be (Seq(SyntaxError(1250, 1253, 17, "Unexpected indent width: 4. Expected: 5")))
+        result.toEither.left.get.errors should be (List(SyntaxError(1250, 1253, 17, "Unexpected indent width: 4. Expected: 5")))
       }
     }
   }

@@ -2,14 +2,13 @@ package com.ialekseev.bob.exec.analyzer.lexical
 
 import com.ialekseev.bob.LexicalError
 import com.ialekseev.bob.exec.analyzer.{LexerToken, Token, _}
-
 import scalaz.Scalaz._
 import scalaz._
 
 private[lexical] trait LexicalAnalysisState {
   type LexerState[A] =  State[LexerStateInternal, A]
 
-  case class LexerStateInternal(private val raw: String, position: Int, tokens: Seq[LexerToken], errors: Seq[LexicalError]) {
+  case class LexerStateInternal(private val raw: String, position: Int, tokens: Vector[LexerToken], errors: Vector[LexicalError]) {
     require(raw.nonEmpty)
     require(position >= 0)
     val input = SOT + raw + EOT
@@ -46,7 +45,7 @@ private[lexical] trait LexicalAnalysisState {
     })
   }
 
-  def takeAhead(till: Seq[(Char => Boolean)], last: (Int => Int)): LexerState[Option[String]] = {
+  def takeAhead(till: Vector[(Char => Boolean)], last: (Int => Int)): LexerState[Option[String]] = {
     get[LexerStateInternal] >>= (s => {
       lookAhead(char => till.exists(_(char))).map(ahead => {
         ahead.map(sep => s.input.substring(s.position, last(sep._2)))
@@ -60,8 +59,8 @@ private[lexical] trait LexicalAnalysisState {
   def lookAhead(what: Char => Boolean): LexerState[Option[(Char, Int)]] = get[LexerStateInternal] >>= (s => lookAhead(what, s.position))
   def lookBack(what: Char => Boolean): LexerState[Option[(Char, Int)]] = get[LexerStateInternal] >>= (s => lookBack(what, s.position))
 
-  def takeAheadExcludingLast(till: (Char => Boolean)*): LexerState[Option[String]] = takeAhead(till, identity)
-  def takeAheadIncludingLast(till: (Char => Boolean)*): LexerState[Option[String]] = takeAhead(till, _ + 1)
+  def takeAheadExcludingLast(till: (Char => Boolean)*): LexerState[Option[String]] = takeAhead(till.toVector, identity)
+  def takeAheadIncludingLast(till: (Char => Boolean)*): LexerState[Option[String]] = takeAhead(till.toVector, _ + 1)
 
   def lookAheadStr(str: String): LexerState[Option[(Int, Int)]] = {
     get[LexerStateInternal] >>= (s => {
@@ -112,7 +111,7 @@ private[lexical] trait LexicalAnalysisState {
     addAndMove.map(v => (if (v.isDefined) None else someUnit))
   }
 
-  def extractResultingTokens: LexerState[Seq[LexerToken]] = get.map(_.tokens.map(c => c.copy(startOffset = c.startOffset - 1)))
-  def extractErrors: LexerState[Seq[LexicalError]] = get.map(_.errors.map(c => c.copy(startOffset = c.startOffset - 1, endOffset = c.endOffset - 1)))
+  def extractResultingTokens: LexerState[Vector[LexerToken]] = get.map(_.tokens.map(c => c.copy(startOffset = c.startOffset - 1)))
+  def extractErrors: LexerState[Vector[LexicalError]] = get.map(_.errors.map(c => c.copy(startOffset = c.startOffset - 1, endOffset = c.endOffset - 1)))
 }
 

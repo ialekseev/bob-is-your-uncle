@@ -30,5 +30,5 @@ import scalaz._
 */
 
 trait LexicalAnalyzer {
-  def tokenize(source: String): LexicalAnalysisFailed \/ Seq[LexerToken]
+  def tokenize(source: String): LexicalAnalysisFailed \/ List[LexerToken]
 }

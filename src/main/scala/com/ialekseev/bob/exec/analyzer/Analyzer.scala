@@ -12,16 +12,16 @@ trait Analyzer {
   val lexicalAnalyzer: LexicalAnalyzer
   val syntaxAnalyzer: SyntaxAnalyzer
 
-  def analyze(source: String): StageFailed \/ AnalysisResult = {
+  def analyze(source: String): BuildFailed \/ AnalysisResult = {
     if (source.nonEmpty) {
       parse(source) match {
         case \/-(parseTree) => mapTreeToAnalysisResult(parseTree)
         case syntaxFailed@ -\/(_) => syntaxFailed
       }
-    } else SemanticAnalysisFailed(Seq(SemanticError(0, 0, "Empty source is not expected!"))).left
+    } else SemanticAnalysisFailed(List(SemanticError(0, 0, "Empty source is not expected!"))).left
   }
 
-  protected def parse(source: String): StageFailed \/ ParseTree = {
+  protected def parse(source: String): BuildFailed \/ ParseTree = {
     require(!source.isEmpty)
 
     lexicalAnalyzer.tokenize(source) match {
@@ -52,12 +52,12 @@ trait Analyzer {
       (parseTree.loc.find(_.getLabel == nonTerminal("Description")) >>= (_.lastChild)).map(_.getLabel).map(stringLiteral).get.successNel
     }
 
-    def extractConstants:  ValidationNel[SemanticError, Seq[(String, String)]] = {
+    def extractConstants:  ValidationNel[SemanticError, List[(String, String)]] = {
       parseTree.loc.find(_.getLabel == nonTerminal("Constants")).map(_.tree.subForest).getOrElse(Stream.empty).
         map(c => (c.loc.firstChild.map(_.getLabel).get, c.loc.lastChild.map(_.getLabel).get)).map {
         case (Terminal(LexerToken(Token.Variable(name), _)), Terminal(LexerToken(Token.Type.StringLiteral(value), _))) => (name, value)
         case _ => sys.error("Invalid constant")
-      }.toSeq.successNel
+      }.toList.successNel
     }
 
     def extractWebhook: ValidationNel[SemanticError, Webhook] = {
@@ -91,12 +91,12 @@ trait Analyzer {
       }.get.successNel
     }
 
-    (extractNamespace |@| extractDescription |@| extractConstants |@| extractWebhook |@| extractCode)(AnalysisResult(_,_,_,_,_)).disjunction.leftMap(e => SemanticAnalysisFailed(e.toVector))
+    (extractNamespace |@| extractDescription |@| extractConstants |@| extractWebhook |@| extractCode)(AnalysisResult(_,_,_,_,_)).disjunction.leftMap(e => SemanticAnalysisFailed(e.toList))
   }
 }
 
 object Analyzer {
-  case class AnalysisResult(namespace: Namespace, description: String, constants: Seq[(String, String)], webhook: Webhook, code: Code)
+  case class AnalysisResult(namespace: Namespace, description: String, constants: List[(String, String)], webhook: Webhook, code: Code)
   case class Namespace(path: String, name: String) {
     override def toString: String = path + "#" + name
   }

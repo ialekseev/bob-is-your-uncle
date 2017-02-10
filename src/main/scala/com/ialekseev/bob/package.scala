@@ -17,16 +17,23 @@ package object bob {
     def failure[T](f: Throwable): IoTry[T] = EitherT.eitherT[IO, List[Throwable], T](IO(List(f).left))
   }
 
-  case class LexicalError(startOffset: Int, endOffset: Int)
-  case class SyntaxError(startOffset: Int, endOffset: Int, tokenIndex: Int, message: String)
-  case class SemanticError(startOffset: Int, endOffset: Int, message: String)
-  case class CompilationError(startOffset: Int, pointOffset: Int, endOffset: Int, message: String)
+  sealed trait BuildError {
+    val startOffset: Int
+    val endOffset: Int
+    val message: String
+  }
+  case class LexicalError(startOffset: Int, endOffset: Int, message: String = "") extends BuildError
+  case class SyntaxError(startOffset: Int, endOffset: Int, tokenIndex: Int, message: String) extends BuildError
+  case class SemanticError(startOffset: Int, endOffset: Int, message: String) extends BuildError
+  case class CompilationError(startOffset: Int, pointOffset: Int, endOffset: Int, message: String) extends BuildError
 
-  sealed trait StageFailed
-  case class LexicalAnalysisFailed(errors: Seq[LexicalError]) extends StageFailed
-  case class SyntaxAnalysisFailed(errors: Seq[SyntaxError]) extends StageFailed
-  case class SemanticAnalysisFailed(errors: Seq[SemanticError]) extends StageFailed
-  case class CompilationFailed(errors: Seq[CompilationError]) extends StageFailed
+  sealed trait BuildFailed {
+    val errors: List[BuildError]
+  }
+  case class LexicalAnalysisFailed(errors: List[LexicalError]) extends BuildFailed
+  case class SyntaxAnalysisFailed(errors: List[SyntaxError]) extends BuildFailed
+  case class SemanticAnalysisFailed(errors: List[SemanticError]) extends BuildFailed
+  case class CompilationFailed(errors: List[CompilationError]) extends BuildFailed
 
   case class HttpRequest(uri: Option[String], method: HttpMethod.Value, headers: Map[String, String], queryString: Map[String, String], body: Option[Body]){
     require(uri.isEmpty || uri.isDefined && uri.get.nonEmpty, "Some(uri) can't be empty!")

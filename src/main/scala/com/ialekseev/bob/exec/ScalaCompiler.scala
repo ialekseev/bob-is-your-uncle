@@ -20,12 +20,12 @@ class ScalaCompiler {
       synchronized {
         val className = compiler.compile(code, imports, fields, implicits)
         if (compiler.reportedErrors.length == 0) className.right
-        else CompilationFailed(compiler.reportedErrors).left
+        else CompilationFailed(compiler.reportedErrors.toList).left
       }
     }
   }
 
-  def eval[T](className: String, variables: Seq[(String, AnyRef)]): IoTry[T] = {
+  def eval[T](className: String, variables: List[(String, AnyRef)]): IoTry[T] = {
     IoTry {
       compiler.eval[T](className, variables)
     }
@@ -76,7 +76,7 @@ private[exec] class Compiler(val reportedErrors: ListBuffer[CompilationError]) {
     className
   }
 
-  def eval[T](className: String, variables: Seq[(String, AnyRef)]): T = {
+  def eval[T](className: String, variables: List[(String, AnyRef)]): T = {
     val cls = classLoader.loadClass(className)
     val instance = cls.getConstructor().newInstance()
     variables.foreach(v => {

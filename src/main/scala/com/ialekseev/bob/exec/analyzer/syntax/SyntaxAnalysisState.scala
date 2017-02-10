@@ -13,7 +13,7 @@ private[syntax] trait SyntaxAnalysisState {
   type IndentLevel = Int
   type IndentLength = Int
 
-  case class ParserStateInternal(val tokens: Seq[LexerToken], position: Int, indentMap: Map[IndentLevel, IndentLength])
+  case class ParserStateInternal(val tokens: List[LexerToken], position: Int, indentMap: Map[IndentLevel, IndentLength])
 
   def current: ParserState[(Int, Option[LexerToken])] = get.map(s => {
     if (s.position < s.tokens.length) (s.position, some(s.tokens(s.position)))
@@ -90,8 +90,8 @@ private[syntax] trait SyntaxAnalysisState {
       result: Option[ParseTree] <- {
         if (isErrorJustMeansWrongRuleApplication(currentPosition, done._1.tokenIndex)) {
           done._2 match {
-            case Seq() => EitherT.eitherT(none.right[List[SyntaxError]].point[ParserState])
-            case nodes@Seq(_, _*) => attachNodesToNonTerminal(EitherT.eitherT(done._2.right.point[ParserState]), nonTerminalName).map(some(_))
+            case Nil => EitherT.eitherT(none.right[List[SyntaxError]].point[ParserState])
+            case nodes@List(_, _*) => attachNodesToNonTerminal(EitherT.eitherT(done._2.right.point[ParserState]), nonTerminalName).map(some(_))
           }
         }
         else EitherT.eitherT(List(done._1).left[Option[ParseTree]].point[ParserState])

@@ -83,7 +83,7 @@ trait Executor {
 
     def matchStr(buildStr: String, incomingStr: String): Option[List[(String, String)]] = {
       val patternStr = """^\Q""" + variableRegexPattern.replaceAllIn(buildStr, """\\E(?<$1>.+)\\Q""") + """\E$"""
-      val groupNames = variableRegexPattern.findAllIn(buildStr).matchData.map(m => m.group(1)).toSeq
+      val groupNames = variableRegexPattern.findAllIn(buildStr).matchData.map(m => m.group(1)).toList
       val pattern = new Regex(patternStr, groupNames: _*)
       pattern.findFirstMatchIn(incomingStr).map(r => r.groupNames.map(n => (n, r.group(n))).toList)
     }
@@ -121,7 +121,7 @@ trait Executor {
       }
     }
 
-    val matchedBuilds: List[(Build, List[(String, AnyRef)])] = builds.map(build => {
+    val matchedBuilds: List[(Build, List[(String, AnyRef)])] = builds.toList.map(build => {
       (some(List(("request", com.ialekseev.bob.dsl.HttpRequest(incoming.uri.getOrElse(""), incoming.method.toString, incoming.headers, incoming.queryString, incoming.body).asInstanceOf[AnyRef]))) |@|
        matchStr((s"${build.analysisResult.namespace.path}/${build.analysisResult.namespace.name}/${build.analysisResult.webhook.req.uri.map(_.trimSlashes).getOrElse("")}").trimSlashes.toLowerCase, incoming.uri.map(_.trimSlashes.toLowerCase).getOrElse("")) |@|
        matchMap(build.analysisResult.webhook.req.headers, incoming.headers) |@|
@@ -140,7 +140,6 @@ trait Executor {
 }
 
 object Executor {
-  type BuildFailed = StageFailed
   case class Build(analysisResult: AnalysisResult, codeFileName: String)
 
   sealed trait Run

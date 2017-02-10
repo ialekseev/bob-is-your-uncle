@@ -3,12 +3,12 @@ package com.ialekseev.bob.run.http
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Route}
 import com.ialekseev.bob.exec.Executor
-import com.ialekseev.bob.exec.Executor.Build
 import com.ialekseev.bob.run.IoShared
 import com.ialekseev.bob.run.http.SandboxHttpService._
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import org.json4s.{native, DefaultFormats}
-
+import scalaz.{\/-, -\/}
+import scalaz.std.option._
 
 trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShared {
   implicit val formats = DefaultFormats
@@ -16,7 +16,7 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
 
   val sandboxExecutor: Executor
 
-  def createRoutes(dir: String): Route = getSourcesRoute(dir) ~ getOneSourceRoute ~ putOneSourceRoute
+  def createRoutes(dir: String): Route = getSourcesRoute(dir) ~ getOneSourceRoute ~ putOneSourceRoute ~ postBuildRequestRoute
 
   private def getSourcesRoute(dir: String) = path ("sandbox" / "sources") {
     get {
@@ -24,7 +24,7 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
         for {
           list <- listFiles(dir)
           vars <- extractVarsForDir(dir)
-        } yield GetSourcesResponse(list, vars.toMap)
+        } yield GetSourcesResponse(list, vars)
       }
     }
   }
@@ -53,27 +53,32 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
   }
 
   //todo: validate input
-  /*private def postBuildRequestRoute = path ("sandbox" / "sources" / "compile") {
+  //todo: use 'errorCoordinate' to get (x, y) position of an error
+  private def postBuildRequestRoute = path ("sandbox" / "sources" / "compile") {
     post {
       entity(as[PostBuildRequest]) { request => {
-        unsafeComplete {
-          sandboxExecutor.build(request.content, request.vars.toList)
+        completeIO {
+          sandboxExecutor.build(request.content, request.vars).map {
+            case \/-(build) => PostBuildResponse(true, some(build.codeFileName), Nil)
+            case -\/(buildFailed) => PostBuildResponse(false, none, buildFailed.errors.map(e => PostBuildResponseError(e.startOffset, e.endOffset, e.message)))
+            }
           }
         }
       }
     }
-  }*/
+  }
 }
 
 object SandboxHttpService {
-  case class GetSourcesResponse(list: List[String], vars: Map[String, String])
+  case class GetSourcesResponse(list: List[String], vars: List[(String, String)])
   case class GetOneSourceResponse(filePath: String, content: String)
 
   case class PutOneSourceRequest(content: String)
   case class PutOneSourceResponse(updated: String)
 
-  case class PostBuildRequest(content: String, vars: Map[String, String])
-  case class PostBuildResponse(build: Build)
+  case class PostBuildRequest(content: String, vars: List[(String, String)])
+  case class PostBuildResponse(succeed: Boolean, codeFileName: Option[String], errors: List[PostBuildResponseError])
+  case class PostBuildResponseError(startOffset: Int, endOffset: Int, message: String)
 }
 
 

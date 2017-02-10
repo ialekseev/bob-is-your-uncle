@@ -5,13 +5,17 @@ import akka.http.scaladsl.model.{StatusCodes}
 import akka.http.scaladsl.server.ValidationRejection
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.ialekseev.bob.BaseSpec
+import com.ialekseev.bob.exec.Executor.Build
+import com.ialekseev.bob.exec.analyzer.Analyzer.{ScalaCode, Webhook, Namespace, AnalysisResult}
 import com.ialekseev.bob.run.boot.HttpServiceUnsafe
 import com.ialekseev.bob._
 import com.ialekseev.bob.exec.Executor
-import com.ialekseev.bob.run.http.SandboxHttpService.{PutOneSourceResponse, GetOneSourceResponse, GetSourcesResponse}
+import com.ialekseev.bob.run.http.SandboxHttpService._
 import org.mockito.Mockito._
 import org.json4s.native.JsonMethods._
-
+import scalaz.\/
+import scalaz.std.option._
+import scalaz.syntax.either._
 
 class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe with BaseSpec with ScalatestRouteTest {
   val sandboxExecutor: Executor = mock[Executor]
@@ -45,7 +49,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[GetSourcesResponse] should be(GetSourcesResponse(List("\\test\\file1.bob", "\\test\\file2.bob"), Map("a" -> "1", "b" -> "2")))
+          responseAs[GetSourcesResponse] should be(GetSourcesResponse(List("\\test\\file1.bob", "\\test\\file2.bob"), List("a" -> "1", "b" -> "2")))
         }
       }
     }
@@ -175,24 +179,42 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
     }
   }
 
-  /*"POST build request" when {
+  "POST build request" when {
 
-    "Executor returns some result" should {
-      "return 'OK' with the result" in {
+    "Executor returns a successful build" should {
+      "return 'OK' with it" in {
         //arrange
-        val resultToBeReturned = Build(AnalysisResult(Namespace("com", "create"), "cool", Seq("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")), "codefile")
-        when(sandboxExecutor.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(resultToBeReturned.right)
+        val resultToBeReturned = Build(AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")), "codefile")
+        when(sandboxExecutor.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(IoTry.success(resultToBeReturned.right[BuildFailed]))
 
-        val post = parse("""{"content":"content1", "vars": {"a": "1", "b": "2"}}""")
+        val post = parse("""{"content":"content1", "vars": [{"a": "1"}, {"b": "2"}]}""")
 
         //act
-        Post("/sandbox/sources/%5Ctest%5Cfile1.bob", post) ~> createRoutes("\\test\\") ~> check {
+        Post("/sandbox/sources/compile", post) ~> createRoutes("\\test\\") ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[PostBuildResponse] should be(PostBuildResponse(resultToBeReturned))
+          responseAs[PostBuildResponse] should be(PostBuildResponse(true, some("codefile"), Nil))
         }
       }
     }
-  }*/
+
+    "Executor returns failed build" should {
+      "return 'OK' with it" in {
+        //arrange
+        val resultToBeReturned = SyntaxAnalysisFailed(List(SyntaxError(1, 2, 5, "Bad!")))
+        when(sandboxExecutor.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(IoTry.success[BuildFailed \/ Build](resultToBeReturned.left[Build]))
+
+        val post = parse("""{"content":"content1", "vars": [{"a": "1"}, {"b": "2"}]}""")
+
+        //act
+        Post("/sandbox/sources/compile", post) ~> createRoutes("\\test\\") ~> check {
+
+          //assert
+          response.status should be(StatusCodes.OK)
+          responseAs[PostBuildResponse] should be(PostBuildResponse(false, none, List(PostBuildResponseError(1, 2, "Bad!"))))
+        }
+      }
+    }
+  }
 }

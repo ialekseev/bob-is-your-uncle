@@ -8,7 +8,7 @@ import com.ialekseev.bob.exec.Executor.Build
 import com.ialekseev.bob.run.boot.HttpServiceUnsafe
 import com.ialekseev.bob.run.http.WebhookHttpService
 import com.ialekseev.bob.run.InputSource
-import com.ialekseev.bob.StageFailed
+import com.ialekseev.bob.BuildFailed
 import com.ialekseev.bob.exec.Executor.Build
 import com.ialekseev.bob.run.http._
 import scalaz._
@@ -20,7 +20,7 @@ trait Service extends WebhookHttpService {
 
   def serviceCommand(dirs: List[String] = List.empty): IoTry[Unit] = {
 
-    def build(sources: List[InputSource]): IoTry[List[StageFailed \/ Build]] = {
+    def build(sources: List[InputSource]): IoTry[List[BuildFailed \/ Build]] = {
       sources.map(source => {
         for {
           built <- exec.build(source.content, source.vars)
@@ -56,7 +56,7 @@ trait Service extends WebhookHttpService {
           _ <- {
             build(sources).flatMap(builds => {
               builds.sequenceU match {
-                case \/-(builds: Seq[Build]) => {
+                case \/-(builds: List[Build]) => {
                   val duplicateNamespaces = builds.groupBy(_.analysisResult.namespace).collect {case (x, List(_,_,_*)) => x}.toVector
                   if (duplicateNamespaces.length > 0) IoTry.successIO(showError("Please use different names for the duplicate namespaces: " + duplicateNamespaces))
                   else runService(builds)
