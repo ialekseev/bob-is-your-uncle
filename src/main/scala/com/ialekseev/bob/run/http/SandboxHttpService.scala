@@ -52,21 +52,23 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
     }
   }
 
-  //todo: validate input
-  //todo: use 'errorCoordinate' to get (x, y) position of an error
   private def postBuildRequestRoute = path ("sandbox" / "sources" / "compile") {
     post {
       entity(as[PostBuildRequest]) { request => {
-        completeIO {
-          sandboxExecutor.build(request.content, request.vars).map {
-            case \/-(build) => PostBuildResponse(true, some(build.codeFileName), Nil)
-            case -\/(buildFailed) => PostBuildResponse(false, none, buildFailed.errors.map(e => PostBuildResponseError(e.startOffset, e.endOffset, e.message)))
+        validate(request.content.nonEmpty, "Content can't be empty") {
+          completeIO {
+            sandboxExecutor.build(request.content, request.vars).map {
+              case \/-(build) => PostBuildResponse(true, some(build.codeFileName), Nil)
+              case -\/(buildFailed) => PostBuildResponse(false, none, buildFailed.errors.map(e => PostBuildResponseError(e.startOffset, e.endOffset, e.message)))
+              }
             }
           }
         }
       }
     }
   }
+
+  //todo: postRunRequestRoute
 }
 
 object SandboxHttpService {

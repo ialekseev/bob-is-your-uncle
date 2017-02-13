@@ -18,6 +18,8 @@ trait Executor {
   private val variableRegexPattern = """\{\$([a-zA-Z]+[a-zA-Z0-9]*)\}""".r
 
   def build(source: String, externalVariables: List[(String, String)] = List.empty): IoTry[BuildFailed \/ Build] = {
+    require(source.nonEmpty)
+
     def extractBoundVariablesFromStr(str: String): List[(String, String)] = {
       variableRegexPattern.findAllIn(str).matchData.map(m => (m.group(1), "")).toList
     }

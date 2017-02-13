@@ -2,9 +2,7 @@ package com.ialekseev.bob.run.http
 
 import java.io.{FileNotFoundException}
 import akka.http.scaladsl.model.{StatusCodes}
-import akka.http.scaladsl.server.ValidationRejection
-import akka.http.scaladsl.testkit.ScalatestRouteTest
-import com.ialekseev.bob.BaseSpec
+import akka.http.scaladsl.server.{Route}
 import com.ialekseev.bob.exec.Executor.Build
 import com.ialekseev.bob.exec.analyzer.Analyzer.{ScalaCode, Webhook, Namespace, AnalysisResult}
 import com.ialekseev.bob.run.boot.HttpServiceUnsafe
@@ -17,7 +15,7 @@ import scalaz.\/
 import scalaz.std.option._
 import scalaz.syntax.either._
 
-class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe with BaseSpec with ScalatestRouteTest {
+class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe with HttpServiceBaseSpec {
   val sandboxExecutor: Executor = mock[Executor]
   override def beforeEach(): Unit = { reset(sandboxExecutor); super.beforeEach()}
 
@@ -147,16 +145,17 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
       }
     }
 
-    "IO updates file with empty content" should {
-      "return 'ClientError'" in {
+    "Client sends empty content" should {
+      "return 'BadRequest'" in {
         //arrange
         val put = parse("""{"content":""}""")
 
         //act
-        Put("/sandbox/sources/%5Ctest%5Cfile1.bob", put) ~> createRoutes("\\test\\") ~> check {
+        Put("/sandbox/sources/%5Ctest%5Cfile1.bob", put) ~> Route.seal(createRoutes("\\test\\")) ~> check {
 
           //assert
-          rejection should be (ValidationRejection("Content can't be empty", None))
+          response.status should be(StatusCodes.BadRequest)
+          responseAsString should be ("Content can't be empty")
         }
       }
     }
@@ -182,7 +181,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
   "POST build request" when {
 
     "Executor returns a successful build" should {
-      "return 'OK' with it" in {
+      "return 'OK' with build details" in {
         //arrange
         val resultToBeReturned = Build(AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")), "codefile")
         when(sandboxExecutor.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(IoTry.success(resultToBeReturned.right[BuildFailed]))
@@ -200,7 +199,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
     }
 
     "Executor returns failed build" should {
-      "return 'OK' with it" in {
+      "return 'OK' with failed build details" in {
         //arrange
         val resultToBeReturned = SyntaxAnalysisFailed(List(SyntaxError(1, 2, 5, "Bad!")))
         when(sandboxExecutor.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(IoTry.success[BuildFailed \/ Build](resultToBeReturned.left[Build]))
@@ -213,6 +212,36 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
           //assert
           response.status should be(StatusCodes.OK)
           responseAs[PostBuildResponse] should be(PostBuildResponse(false, none, List(PostBuildResponseError(1, 2, "Bad!"))))
+        }
+      }
+    }
+
+    "Client sends empty content" should {
+      "return 'BadRequest'" in {
+        //arrange
+        val post = parse("""{"content":"", "vars": [{"a": "1"}, {"b": "2"}]}""")
+
+        //act
+        Post("/sandbox/sources/compile", post) ~> Route.seal(createRoutes("\\test\\")) ~> check {
+
+          //assert
+          response.status should be(StatusCodes.BadRequest)
+          responseAsString should be ("Content can't be empty")
+        }
+      }
+    }
+
+    "IO fails" should {
+      "return 'InternalServerError'" in {
+        //arrange
+        val post = parse("""{"content":"content1", "vars": [{"a": "1"}, {"b": "2"}]}""")
+        when(sandboxExecutor.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(IoTry.failure[BuildFailed \/ Build](new FileNotFoundException("bad!")))
+
+        //act
+        Post("/sandbox/sources/compile", post) ~> createRoutes("\\test\\") ~> check {
+
+          //assert
+          response.status should be(StatusCodes.InternalServerError)
         }
       }
     }

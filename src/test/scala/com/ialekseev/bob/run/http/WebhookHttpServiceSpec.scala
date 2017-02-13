@@ -2,19 +2,17 @@ package com.ialekseev.bob.run.http
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.headers.RawHeader
-import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.ialekseev.bob.exec.analyzer.Analyzer.{AnalysisResult, Namespace, ScalaCode, Webhook}
 import com.ialekseev.bob.exec.Executor
 import com.ialekseev.bob.exec.Executor.{Build, FailedRun, RunResult, SuccessfulRun}
 import com.ialekseev.bob.run.boot.HttpServiceUnsafe
 import com.ialekseev.bob.run.http.WebhookHttpService.{HttpResponse, HttpResponseRun}
 import com.ialekseev.bob._
-import com.ialekseev.bob.BaseSpec
 import org.mockito.Mockito._
 import scalaz.std.option._
 import scalaz.effect.IO
 
-class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe with BaseSpec with ScalatestRouteTest {
+class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe with HttpServiceBaseSpec {
 
   val exec = mock[Executor]
   override def beforeEach(): Unit = { reset(exec); super.beforeEach()}

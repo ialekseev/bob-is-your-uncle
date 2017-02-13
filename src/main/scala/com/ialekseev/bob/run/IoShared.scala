@@ -182,7 +182,6 @@ trait IoShared {
       } yield ()
     }
 
-    //todo: move to some general place
     def errorCoordinate(source: String, offset: Int): (Int, Int) = {
       require(offset >= 0)
 
