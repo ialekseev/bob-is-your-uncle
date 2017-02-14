@@ -14,7 +14,7 @@ import scalaz.Scalaz._
 trait WebhookHttpService extends BaseHttpService with Json4sSupport {
   val exec: Executor
 
-  implicit val formats = DefaultFormats + new EnumSerializer(HttpMethod)
+  implicit val formats = DefaultFormats + new EnumSerializer(HttpMethod) //todo: why not EnumNameSerializer?
   implicit val serialization = native.Serialization
 
   def createRoute(builds: List[Build]): Route = ctx => {

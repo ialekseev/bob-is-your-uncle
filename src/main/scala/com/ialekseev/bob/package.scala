@@ -46,5 +46,5 @@ package object bob {
   sealed trait Body
   case class StringLiteralBody(text: String) extends Body
   case class DictionaryBody(dic: Map[String, String]) extends Body
-  case class JsonBody(j: JValue) extends Body
+  case class JsonBody(json: JValue) extends Body
 }

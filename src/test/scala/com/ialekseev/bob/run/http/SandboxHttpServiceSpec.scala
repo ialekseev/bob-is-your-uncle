@@ -3,7 +3,7 @@ package com.ialekseev.bob.run.http
 import java.io.{FileNotFoundException}
 import akka.http.scaladsl.model.{StatusCodes}
 import akka.http.scaladsl.server.{Route}
-import com.ialekseev.bob.exec.Executor.Build
+import com.ialekseev.bob.exec.Executor.{SuccessfulRun, RunResult, Build}
 import com.ialekseev.bob.exec.analyzer.Analyzer.{ScalaCode, Webhook, Namespace, AnalysisResult}
 import com.ialekseev.bob.run.boot.HttpServiceUnsafe
 import com.ialekseev.bob._
@@ -12,6 +12,7 @@ import com.ialekseev.bob.run.http.SandboxHttpService._
 import org.mockito.Mockito._
 import org.json4s.native.JsonMethods._
 import scalaz.\/
+import scalaz.effect.IO
 import scalaz.std.option._
 import scalaz.syntax.either._
 
@@ -33,6 +34,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
 
     "IO returns list of files" should {
       "return 'OK' with the files" in {
+
         //arrange
         listFilesFunc = {
           case "\\test\\" => IoTry.success(List("\\test\\file1.bob", "\\test\\file2.bob"))
@@ -193,7 +195,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[PostBuildResponse] should be(PostBuildResponse(true, some("codefile"), Nil))
+          responseAs[PostBuildResponse] should be(PostBuildResponse(Nil))
         }
       }
     }
@@ -211,7 +213,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[PostBuildResponse] should be(PostBuildResponse(false, none, List(PostBuildResponseError(1, 2, "Bad!"))))
+          responseAs[PostBuildResponse] should be(PostBuildResponse(List(BuildErrorResponse(1, 2, "Bad!"))))
         }
       }
     }
@@ -245,5 +247,28 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
         }
       }
     }
+  }
+
+  "POST run request" when {
+
+    "Executor returns a successful Run (for incoming request having text body)" should {
+      "return 'OK' with run details" in {
+        //arrange
+        val post = parse("""{"content":"content1", "vars": [{"a": "1"}, {"b": "2"}], "run": {"uri": "/hello/", "method": "GET", "headers": {"h1" : "1"}, "queryString": {"q2" : "2"}, "body": {"text": "body!"} } }""")
+        val buildToBeReturned = Build(AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")), "codefile")
+        when(sandboxExecutor.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(IoTry.success(buildToBeReturned.right[BuildFailed]))
+        when(sandboxExecutor.run(HttpRequest(some("/hello/"), HttpMethod.GET, Map("h1" -> "1"), Map("q2" -> "2"), some(StringLiteralBody("body!"))), List(buildToBeReturned))).thenReturn(IO(RunResult(List(SuccessfulRun(buildToBeReturned, "done!")))))
+
+        //act
+        Post("/sandbox/sources/run", post) ~> createRoutes("\\test\\") ~> check {
+
+          //assert
+          response.status should be(StatusCodes.OK)
+          responseAs[PostRunResponse] should be(PostRunResponse(some("done!"), Nil))
+        }
+      }
+    }
+
+    //todo: other cases: incoming request having dic/json body, build failed, internal error
   }
 }

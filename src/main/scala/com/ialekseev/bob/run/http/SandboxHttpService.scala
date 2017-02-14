@@ -2,21 +2,26 @@ package com.ialekseev.bob.run.http
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Route}
+import com.ialekseev.bob._
 import com.ialekseev.bob.exec.Executor
+import com.ialekseev.bob.exec.Executor.{SuccessfulRun, RunResult, Run, Build}
 import com.ialekseev.bob.run.IoShared
 import com.ialekseev.bob.run.http.SandboxHttpService._
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
-import org.json4s.{native, DefaultFormats}
-import scalaz.{\/-, -\/}
+import org.json4s.JsonAST.{JField, JString, JObject}
+import org.json4s.ext.EnumNameSerializer
+import org.json4s.{CustomSerializer, FieldSerializer, native, DefaultFormats}
+import scalaz.{\/, EitherT, \/-, -\/}
+import scalaz.syntax.either._
 import scalaz.std.option._
 
 trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShared {
-  implicit val formats = DefaultFormats
+  implicit val formats = DefaultFormats + FieldSerializer[PostBuildResponse]() + FieldSerializer[PostRunResponse]() + new EnumNameSerializer(HttpMethod) + new BodySerializer
   implicit val serialization = native.Serialization
 
   val sandboxExecutor: Executor
 
-  def createRoutes(dir: String): Route = getSourcesRoute(dir) ~ getOneSourceRoute ~ putOneSourceRoute ~ postBuildRequestRoute
+  def createRoutes(dir: String): Route = getSourcesRoute(dir) ~ getOneSourceRoute ~ putOneSourceRoute ~ postBuildRequestRoute ~ postRunRequestRoute
 
   private def getSourcesRoute(dir: String) = path ("sandbox" / "sources") {
     get {
@@ -58,8 +63,8 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
         validate(request.content.nonEmpty, "Content can't be empty") {
           completeIO {
             sandboxExecutor.build(request.content, request.vars).map {
-              case \/-(build) => PostBuildResponse(true, some(build.codeFileName), Nil)
-              case -\/(buildFailed) => PostBuildResponse(false, none, buildFailed.errors.map(e => PostBuildResponseError(e.startOffset, e.endOffset, e.message)))
+              case \/-(build) => PostBuildResponse(Nil)
+              case -\/(buildFailed) => PostBuildResponse(buildFailed.errors.map(mapBuildError))
               }
             }
           }
@@ -68,10 +73,31 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
     }
   }
 
-  //todo: postRunRequestRoute
+  private def postRunRequestRoute = path ("sandbox" / "sources" / "run") {
+    post {
+      entity(as[PostRunRequest]) { request => {
+          completeIO {
+            val done: IoTry[BuildFailed \/ RunResult] = (for {
+              build <- EitherT.eitherT[IoTry, BuildFailed, Build](sandboxExecutor.build(request.content, request.vars))
+              run <- EitherT.eitherT[IoTry, BuildFailed, RunResult](IoTry.successIO(sandboxExecutor.run(request.run, List(build))).map(_.right))
+            } yield run).run
+
+            done.map {
+              case \/-(RunResult(SuccessfulRun(_, result) :: Nil)) => PostRunResponse(some(result.toString), Nil)
+              case -\/(buildFailed) => ??? //PostRunResponse(none, buildFailed.errors.map(mapBuildError))
+              case _ => sys.error("Sandbox: Not supposed to be here")
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 object SandboxHttpService {
+  case class BuildErrorResponse(startOffset: Int, endOffset: Int, message: String)
+  def mapBuildError(e: BuildError): BuildErrorResponse =  BuildErrorResponse(e.startOffset, e.endOffset, e.message)
+
   case class GetSourcesResponse(list: List[String], vars: List[(String, String)])
   case class GetOneSourceResponse(filePath: String, content: String)
 
@@ -79,8 +105,22 @@ object SandboxHttpService {
   case class PutOneSourceResponse(updated: String)
 
   case class PostBuildRequest(content: String, vars: List[(String, String)])
-  case class PostBuildResponse(succeed: Boolean, codeFileName: Option[String], errors: List[PostBuildResponseError])
-  case class PostBuildResponseError(startOffset: Int, endOffset: Int, message: String)
+  case class PostBuildResponse(errors: List[BuildErrorResponse]) {
+    val succeed = errors.isEmpty
+  }
+
+  case class PostRunRequest(content: String, vars: List[(String, String)], run: HttpRequest)
+  case class PostRunResponse(result: Option[String], errors: List[BuildErrorResponse]) {
+    val succeed =  errors.isEmpty
+  }
+  class BodySerializer extends CustomSerializer[Body](format => (
+    {
+      case JObject(JField("text", JString(s)) :: Nil) => StringLiteralBody(s)
+    },
+    {
+      case StringLiteralBody(s) => JObject(JField("text", JString(s)))
+    }
+    ))
 }
 
 
