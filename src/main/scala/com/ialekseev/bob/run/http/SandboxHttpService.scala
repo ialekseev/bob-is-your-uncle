@@ -4,13 +4,12 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Route}
 import com.ialekseev.bob._
 import com.ialekseev.bob.exec.Executor
-import com.ialekseev.bob.exec.Executor.{SuccessfulRun, RunResult, Run, Build}
+import com.ialekseev.bob.exec.Executor.{SuccessfulRun, RunResult, Build}
 import com.ialekseev.bob.run.IoShared
 import com.ialekseev.bob.run.http.SandboxHttpService._
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
-import org.json4s.JsonAST.{JField, JString, JObject}
 import org.json4s.ext.EnumNameSerializer
-import org.json4s.{CustomSerializer, FieldSerializer, native, DefaultFormats}
+import org.json4s._
 import scalaz.{\/, EitherT, \/-, -\/}
 import scalaz.syntax.either._
 import scalaz.std.option._
@@ -96,7 +95,7 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
 
 object SandboxHttpService {
   case class BuildErrorResponse(startOffset: Int, endOffset: Int, message: String)
-  def mapBuildError(e: BuildError): BuildErrorResponse =  BuildErrorResponse(e.startOffset, e.endOffset, e.message)
+  def mapBuildError(e: BuildError): BuildErrorResponse = BuildErrorResponse(e.startOffset, e.endOffset, e.message)
 
   case class GetSourcesResponse(list: List[String], vars: List[(String, String)])
   case class GetOneSourceResponse(filePath: String, content: String)
@@ -113,14 +112,6 @@ object SandboxHttpService {
   case class PostRunResponse(result: Option[String], errors: List[BuildErrorResponse]) {
     val succeed =  errors.isEmpty
   }
-  class BodySerializer extends CustomSerializer[Body](format => (
-    {
-      case JObject(JField("text", JString(s)) :: Nil) => StringLiteralBody(s)
-    },
-    {
-      case StringLiteralBody(s) => JObject(JField("text", JString(s)))
-    }
-    ))
 }
 
 

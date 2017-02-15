@@ -8,7 +8,7 @@ import com.ialekseev.bob.run.http.WebhookHttpService.{HttpResponse, HttpResponse
 import com.ialekseev.bob.{HttpMethod, HttpRequest, _}
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import org.json4s.ext.EnumSerializer
-import org.json4s.{DefaultFormats, native}
+import org.json4s.{Serialization, Formats, DefaultFormats, native}
 import scalaz.Scalaz._
 
 trait WebhookHttpService extends BaseHttpService with Json4sSupport {

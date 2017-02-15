@@ -269,6 +269,24 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
       }
     }
 
-    //todo: other cases: incoming request having dic/json body, build failed, internal error
+    "Executor returns a successful Run (for incoming request having dic body)" should {
+      "return 'OK' with run details" in {
+        //arrange
+        val post = parse("""{"content":"content1", "vars": [{"a": "1"}, {"b": "2"}], "run": {"uri": "/hello/", "method": "GET", "headers": {"h1" : "1"}, "queryString": {"q2" : "2"}, "body": {"dic": {"par1": "val1", "par2": "val2"} } } }""")
+        val buildToBeReturned = Build(AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")), "codefile")
+        when(sandboxExecutor.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(IoTry.success(buildToBeReturned.right[BuildFailed]))
+        when(sandboxExecutor.run(HttpRequest(some("/hello/"), HttpMethod.GET, Map("h1" -> "1"), Map("q2" -> "2"), some(DictionaryBody(Map("par1"->"val1", "par2"->"val2")))), List(buildToBeReturned))).thenReturn(IO(RunResult(List(SuccessfulRun(buildToBeReturned, "done!")))))
+
+        //act
+        Post("/sandbox/sources/run", post) ~> createRoutes("\\test\\") ~> check {
+
+          //assert
+          response.status should be(StatusCodes.OK)
+          responseAs[PostRunResponse] should be(PostRunResponse(some("done!"), Nil))
+        }
+      }
+    }
+
+    //todo: other cases: incoming request having json body, build failed, internal error
   }
 }
