@@ -1,18 +1,18 @@
 package com.ialekseev.bob.run.http
 
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.{Route}
+import akka.http.scaladsl.server.Route
 import com.ialekseev.bob._
 import com.ialekseev.bob.exec.Executor
-import com.ialekseev.bob.exec.Executor.{SuccessfulRun, RunResult, Build}
+import com.ialekseev.bob.exec.Executor.{Build, RunResult, SuccessfulRun}
 import com.ialekseev.bob.run.IoShared
 import com.ialekseev.bob.run.http.SandboxHttpService._
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
-import org.json4s.ext.EnumNameSerializer
 import org.json4s._
-import scalaz.{\/, EitherT, \/-, -\/}
-import scalaz.syntax.either._
+import org.json4s.ext.EnumNameSerializer
 import scalaz.std.option._
+import scalaz.syntax.either._
+import scalaz.{-\/, EitherT, \/, \/-}
 
 trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShared {
   implicit val formats = DefaultFormats + FieldSerializer[PostBuildResponse]() + FieldSerializer[PostRunResponse]() + new EnumNameSerializer(HttpMethod) + new BodySerializer
@@ -83,7 +83,7 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
 
             done.map {
               case \/-(RunResult(SuccessfulRun(_, result) :: Nil)) => PostRunResponse(some(result.toString), Nil)
-              case -\/(buildFailed) => ??? //PostRunResponse(none, buildFailed.errors.map(mapBuildError))
+              case -\/(buildFailed) => PostRunResponse(none, buildFailed.errors.map(mapBuildError))
               case _ => sys.error("Sandbox: Not supposed to be here")
             }
           }

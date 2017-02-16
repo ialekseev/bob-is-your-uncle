@@ -4,6 +4,7 @@ import com.ialekseev.bob._
 import akka.http.scaladsl.marshalling._
 import akka.http.scaladsl.server.{RouteResult, RequestContext, StandardRoute}
 import org.json4s.{native, DefaultFormats, CustomSerializer}
+import org.json4s.native.JsonMethods._
 import org.json4s.JsonAST.{JString, JField, JObject}
 import scala.concurrent.Future
 import scalaz.effect.IO
@@ -20,10 +21,8 @@ package object http {
     {
       case JObject(JField("text", JString(text)) :: Nil) => StringLiteralBody(text)
       case JObject(JField("dic", JObject(dic)) :: Nil) => DictionaryBody(dic.map(d => (d._1, d._2.extract[String])).toMap)
+      case JObject(JField("json", JString(jsonStr)) :: Nil) => JsonBody(parse(jsonStr))
     },
-    {
-      case StringLiteralBody(text) => JObject(JField("text", JString(text)))
-      case DictionaryBody(dic) => JObject(dic.map(d => (d._1, JString(d._2))).toList)
-    }
+    PartialFunction.empty
     ))
 }

@@ -9,6 +9,7 @@ import com.ialekseev.bob.run.boot.HttpServiceUnsafe
 import com.ialekseev.bob._
 import com.ialekseev.bob.exec.Executor
 import com.ialekseev.bob.run.http.SandboxHttpService._
+import org.json4s.JsonAST.{JString, JField, JObject}
 import org.mockito.Mockito._
 import org.json4s.native.JsonMethods._
 import scalaz.\/
@@ -200,7 +201,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
       }
     }
 
-    "Executor returns failed build" should {
+    "Executor returns a failed build" should {
       "return 'OK' with failed build details" in {
         //arrange
         val resultToBeReturned = SyntaxAnalysisFailed(List(SyntaxError(1, 2, 5, "Bad!")))
@@ -287,6 +288,55 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
       }
     }
 
-    //todo: other cases: incoming request having json body, build failed, internal error
+    "Executor returns a successful Run (for incoming request having json body)" should {
+      "return 'OK' with run details" in {
+        //arrange
+        val post = parse("""{"content":"content1", "vars": [{"a": "1"}, {"b": "2"}], "run": {"uri": "/hello/", "method": "GET", "headers": {"h1" : "1"}, "queryString": {"q2" : "2"}, "body": {"json": "{\"f1\": \"val1\", \"f2\": \"val2\"}" } } }""")
+        val buildToBeReturned = Build(AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")), "codefile")
+        when(sandboxExecutor.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(IoTry.success(buildToBeReturned.right[BuildFailed]))
+        when(sandboxExecutor.run(HttpRequest(some("/hello/"), HttpMethod.GET, Map("h1" -> "1"), Map("q2" -> "2"), some(JsonBody(JObject(JField("f1", JString("val1")) :: JField("f2", JString("val2")) :: Nil)))), List(buildToBeReturned))).thenReturn(IO(RunResult(List(SuccessfulRun(buildToBeReturned, "done!")))))
+
+        //act
+        Post("/sandbox/sources/run", post) ~> createRoutes("\\test\\") ~> check {
+
+          //assert
+          response.status should be(StatusCodes.OK)
+          responseAs[PostRunResponse] should be(PostRunResponse(some("done!"), Nil))
+        }
+      }
+    }
+
+    "Executor returns a failed Build" should {
+      "return 'OK' with failed build details" in {
+        //arrange
+        val post = parse("""{"content":"content1", "vars": [{"a": "1"}, {"b": "2"}], "run": {"uri": "/hello/", "method": "GET", "headers": {"h1" : "1"}, "queryString": {"q2" : "2"}, "body": {"json": "{\"f1\": \"val1\", \"f2\": \"val2\"}" } } }""")
+
+        val resultToBeReturned = SyntaxAnalysisFailed(List(SyntaxError(1, 2, 5, "Bad!")))
+        when(sandboxExecutor.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(IoTry.success[BuildFailed \/ Build](resultToBeReturned.left[Build]))
+
+        //act
+        Post("/sandbox/sources/run", post) ~> createRoutes("\\test\\") ~> check {
+
+          //assert
+          response.status should be(StatusCodes.OK)
+          responseAs[PostRunResponse] should be(PostRunResponse(none, List(BuildErrorResponse(1, 2, "Bad!"))))
+        }
+      }
+    }
+
+    "Build's IO fails" should {
+      "return 'InternalServerError'" in {
+        //arrange
+        val post = parse("""{"content":"content1", "vars": [{"a": "1"}, {"b": "2"}], "run": {"uri": "/hello/", "method": "GET", "headers": {"h1" : "1"}, "queryString": {"q2" : "2"}, "body": {"dic": {"par1": "val1", "par2": "val2"} } } }""")
+        when(sandboxExecutor.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(IoTry.failure[BuildFailed \/ Build](new FileNotFoundException("bad!")))
+
+        //act
+        Post("/sandbox/sources/run", post) ~> createRoutes("\\test\\") ~> check {
+
+          //assert
+          response.status should be(StatusCodes.InternalServerError)
+        }
+      }
+    }
   }
 }

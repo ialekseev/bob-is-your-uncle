@@ -1,20 +1,20 @@
 package com.ialekseev.bob.run.http
 
 import akka.http.scaladsl.server.Route
-import com.ialekseev.bob.exec.analyzer.Analyzer.Namespace
 import com.ialekseev.bob.exec.Executor
 import com.ialekseev.bob.exec.Executor.{Build, FailedRun, SuccessfulRun}
+import com.ialekseev.bob.exec.analyzer.Analyzer.Namespace
 import com.ialekseev.bob.run.http.WebhookHttpService.{HttpResponse, HttpResponseRun}
-import com.ialekseev.bob.{HttpMethod, HttpRequest, _}
+import com.ialekseev.bob.{HttpMethod, HttpRequest}
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
-import org.json4s.ext.EnumSerializer
-import org.json4s.{Serialization, Formats, DefaultFormats, native}
+import org.json4s.ext.EnumNameSerializer
+import org.json4s.{DefaultFormats, native}
 import scalaz.Scalaz._
 
 trait WebhookHttpService extends BaseHttpService with Json4sSupport {
   val exec: Executor
 
-  implicit val formats = DefaultFormats + new EnumSerializer(HttpMethod) //todo: why not EnumNameSerializer?
+  implicit val formats = DefaultFormats + new EnumNameSerializer(HttpMethod)
   implicit val serialization = native.Serialization
 
   def createRoute(builds: List[Build]): Route = ctx => {
