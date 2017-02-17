@@ -10,6 +10,10 @@ import scala.util.Random
 import scalaz.Scalaz._
 import scalaz._
 
+/*todo: refactor to be an Actor - remove sync blocks
+* Probably internally the Actor will delegate work to 2 different actors: 1 - for compilation (Compiler), 2 - for evaluation (Evaluator).
+* 1 & 2 will have separate instances of Global.
+* The above might make sense since 1 & 2 have potentially different latency*/
 class ScalaCompiler {
   val compiler = new Compiler(ListBuffer.empty)
 
@@ -27,7 +31,9 @@ class ScalaCompiler {
 
   def eval[T](className: String, variables: List[(String, AnyRef)]): IoTry[T] = {
     IoTry {
-      compiler.eval[T](className, variables)
+      synchronized {
+        compiler.eval[T](className, variables)
+      }
     }
   }
 }
@@ -66,17 +72,35 @@ private[exec] class Compiler(val reportedErrors: ListBuffer[CompilationError]) {
   private val global = new Global(customSettings, reporter)
   val classLoader = new AbstractFileClassLoader(target, this.getClass.getClassLoader)
 
-  def compile(code: String, imports: String, fields: String, implicits: String): String = {
+  private def generateRandomName: String = "bob" + Random.alphanumeric.take(40).mkString
+
+  //todo: refactor
+  //todo: or not Array?
+  def compile(code: String, imports: String, fields: String, implicits: String): Array[Byte] = {
     reporter.reset()
+    target.clear()
+
     val run = new global.Run
-    val className = "bob" + Random.alphanumeric.take(40).mkString
+    val className = generateRandomName
     val wrappedCodeInClass = wrapCodeInClass(className, code, imports, fields, implicits)
     val sourceFiles = List(new BatchSourceFile("(inline)", wrappedCodeInClass))
     run.compileSources(sourceFiles)
-    className
+    val fileName = className + ".class"
+    val file = target.lookupName(fileName, false)
+    file.toByteArray
   }
 
-  def eval[T](className: String, variables: List[(String, AnyRef)]): T = {
+  //todo: refactor
+  //todo: or not Array?
+  def eval[T](code: Array[Byte], variables: List[(String, AnyRef)]): T = {
+    target.clear()
+
+    val className = generateRandomName
+    val fileName = className + ".class"
+    val file = target.fileNamed(fileName)
+    val stream = file.output
+    try stream.write(code) finally stream.close()
+
     val cls = classLoader.loadClass(className)
     val instance = cls.getConstructor().newInstance()
     variables.foreach(v => {
