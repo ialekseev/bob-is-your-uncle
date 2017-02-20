@@ -2,6 +2,8 @@ package com.ialekseev.bob.exec
 
 import java.net.URLClassLoader
 import java.nio.file.Paths
+import akka.actor.Actor
+import akka.actor.Actor.Receive
 import com.ialekseev.bob.{IoTry, CompilationError, CompilationFailed}
 import scala.collection.mutable.ListBuffer
 import scala.reflect.internal.util.Position
@@ -14,33 +16,34 @@ import scalaz._
 * Probably internally the Actor will delegate work to 2 different actors: 1 - for compilation (Compiler), 2 - for evaluation (Evaluator).
 * 1 & 2 will have separate instances of Global.
 * The above might make sense since 1 & 2 have potentially different latency*/
-class ScalaCompiler {
+
+case class CompilationRequest(code: String, imports: String = "", fields: String = "", implicits: String = "")
+case class CompilationSucceededResponse(r: List[Byte])
+case class CompilationFailedResponse(r: List[CompilationError])
+case class EvaluationRequest(code: List[Byte], variables: List[(String, AnyRef)])
+case class EvaluationResponse(r: Any)
+
+class CompilerActor extends Actor {
   val compiler = new Compiler(ListBuffer.empty)
-
-  def compile(code: String, imports: String = "", fields: String = "", implicits: String = ""): IoTry[CompilationFailed \/ String] = {
-    require(!code.isEmpty)
-
-    IoTry {
-      synchronized {
-        val className = compiler.compile(code, imports, fields, implicits)
-        if (compiler.reportedErrors.length == 0) className.right
-        else CompilationFailed(compiler.reportedErrors.toList).left
-      }
-    }
-  }
-
-  def eval[T](className: String, variables: List[(String, AnyRef)]): IoTry[T] = {
-    IoTry {
-      synchronized {
-        compiler.eval[T](className, variables)
-      }
+  override def receive: Receive = {
+    case CompilationRequest(code, imports, fields, implicits) => {
+      val result =  compiler.compile(code, imports, fields, implicits)
+      if (compiler.reportedErrors.length == 0) sender ! CompilationSucceededResponse(result.toList)
+      else sender ! CompilationFailedResponse(compiler.reportedErrors.toList)
     }
   }
 }
 
+class EvaluatorActor extends Actor {
+  val compiler = new Compiler(ListBuffer.empty)
+  override def receive: Receive = {
+    case EvaluationRequest(code, variables) => sender ! EvaluationResponse(compiler.eval(code.toArray, variables))
+  }
+}
+
+
 //https://eknet.org/main/dev/runtimecompilescala.html tuned for our needs + custom reporter (todo: this is a thread-unsafe head-on implementation)
 import java.io.File
-
 import scala.reflect.internal.util.{AbstractFileClassLoader, BatchSourceFile}
 import scala.tools.nsc.io.VirtualDirectory
 import scala.tools.nsc.{Global, Settings}
@@ -75,7 +78,6 @@ private[exec] class Compiler(val reportedErrors: ListBuffer[CompilationError]) {
   private def generateRandomName: String = "bob" + Random.alphanumeric.take(40).mkString
 
   //todo: refactor
-  //todo: or not Array?
   def compile(code: String, imports: String, fields: String, implicits: String): Array[Byte] = {
     reporter.reset()
     target.clear()
@@ -91,8 +93,7 @@ private[exec] class Compiler(val reportedErrors: ListBuffer[CompilationError]) {
   }
 
   //todo: refactor
-  //todo: or not Array?
-  def eval[T](code: Array[Byte], variables: List[(String, AnyRef)]): T = {
+  def eval(code: Array[Byte], variables: List[(String, AnyRef)]): Any = {
     target.clear()
 
     val className = generateRandomName
@@ -106,7 +107,7 @@ private[exec] class Compiler(val reportedErrors: ListBuffer[CompilationError]) {
     variables.foreach(v => {
       instance.getClass.getMethods.find(_.getName == v._1 + "_$eq").get.invoke(instance, v._2.asInstanceOf[AnyRef])
     })
-    instance.asInstanceOf[() => Any].apply().asInstanceOf[T]
+    instance.asInstanceOf[() => Any].apply()
   }
 
   private def wrapCodeInClass(className: String, code: String, imports: String, fields: String, implicits: String) = {

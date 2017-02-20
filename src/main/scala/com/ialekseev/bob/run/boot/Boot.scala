@@ -1,12 +1,20 @@
 package com.ialekseev.bob.run.boot
 
+import akka.actor.{Props, ActorSystem}
 import com.ialekseev.bob.IoTry
-import com.ialekseev.bob.exec.ScalaCompiler
+import com.ialekseev.bob.exec.analyzer.DefaultAnalyzer
+import com.ialekseev.bob.exec.{Executor, EvaluatorActor, CompilerActor}
 import com.ialekseev.bob.run.cli.{Check, BaseCommand, Service, Shell}
 import com.ialekseev.bob.run.http.BaseHttpService
 
 object Boot extends App with BaseCommand with BaseHttpService with HttpServiceUnsafe with Check with Shell with Service {
-  def compiler = new ScalaCompiler
+  val system = ActorSystem("bob's system")
+
+  val exec = new Executor {
+    val analyzer = DefaultAnalyzer
+    val compilerActor = system.actorOf(Props[CompilerActor])
+    val evaluatorActor = system.actorOf(Props[EvaluatorActor])
+  }
 
   (parser.parse(args, Config()) match {
     case Some(Config(true, _, _, _, _, _)) => shellCommand()

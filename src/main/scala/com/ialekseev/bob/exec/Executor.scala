@@ -8,16 +8,25 @@ import org.json4s.JsonAST.JValue
 import scala.util.Try
 import scala.util.matching.Regex
 import scalaz.Scalaz._
+import akka.actor.ActorRef
 import scalaz._
 import scalaz.effect.IO
+import scala.concurrent.Future
+import akka.pattern.ask
+import akka.util.Timeout
+import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 trait Executor {
   val analyzer: Analyzer
-  val scalaCompiler: ScalaCompiler
+  val compilerActor: ActorRef //todo: where to recover?
+  val evaluatorActor: ActorRef
 
   private val variableRegexPattern = """\{\$([a-zA-Z]+[a-zA-Z0-9]*)\}""".r
+  implicit val timeout = Timeout(5 seconds) //todo: move
 
-  def build(source: String, externalVariables: List[(String, String)] = List.empty): IoTry[BuildFailed \/ Build] = {
+  //todo: use https://github.com/Verizon/delorean for to Task conversion
+  def build(source: String, externalVariables: List[(String, String)] = List.empty): Task[BuildFailed \/ Build] = {
     require(source.nonEmpty)
 
     def extractBoundVariablesFromStr(str: String): List[(String, String)] = {
@@ -72,16 +81,16 @@ trait Executor {
           start + pos - compilerPositionAmendment - scalaVariables.length - scalaImport.length - scalaImplicits.length
         }
 
-        scalaCompiler.compile(scalaCode, scalaImport, scalaVariables, scalaImplicits).map(res => {
-          res.leftMap(f => CompilationFailed(f.errors.map(e => e.copy(startOffset = amend(e.startOffset), pointOffset = amend(e.pointOffset), endOffset = amend(e.endOffset))))).
-            map(Build(result, _))
-        })
+        (compilerActor ? CompilationRequest(scalaCode, scalaImport, scalaVariables, scalaImplicits)).map {
+          case CompilationSucceededResponse(code) => Build(result, code).right
+          case CompilationFailedResponse(errors) => CompilationFailed(errors.map(e => e.copy(startOffset = amend(e.startOffset), pointOffset = amend(e.pointOffset), endOffset = amend(e.endOffset)))).left
+        }
       }
-      case analysisIssues@ -\/(_) => IoTry.success(analysisIssues)
+      case analysisIssues@ -\/(_) => Future.successful(analysisIssues)
     }
   }
 
-  def run(incoming: HttpRequest, builds: List[Build]): IO[RunResult] = {
+  def run(incoming: HttpRequest, builds: List[Build]): Task[RunResult] = {
 
     def matchStr(buildStr: String, incomingStr: String): Option[List[(String, String)]] = {
       val patternStr = """^\Q""" + variableRegexPattern.replaceAllIn(buildStr, """\\E(?<$1>.+)\\Q""") + """\E$"""
@@ -133,16 +142,15 @@ trait Executor {
     }).flatten
 
     matchedBuilds.map(b => {
-      scalaCompiler.eval[Any](b._1.codeFileName, b._2).run.map {
-        case \/-(result) => SuccessfulRun(b._1, result)
-        case -\/(errors) => FailedRun(b._1, errors)
+      (evaluatorActor ? EvaluationRequest(b._1.code, b._2)).mapTo[EvaluationResponse].map(r => SuccessfulRun(b._1, r)).recover {
+        case e => FailedRun(b._1, List(e)) //todo: does it make any sense to return errors (timeouts actually) here ?
       }
     }).sequenceU.map(RunResult(_))
   }
 }
 
 object Executor {
-  case class Build(analysisResult: AnalysisResult, codeFileName: String)
+  case class Build(analysisResult: AnalysisResult, code: List[Byte])
 
   sealed trait Run
   case class SuccessfulRun(build: Build, result: Any) extends Run
