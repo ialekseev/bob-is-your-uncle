@@ -3,19 +3,12 @@ package com.ialekseev.bob.exec
 import java.net.URLClassLoader
 import java.nio.file.Paths
 import akka.actor.Actor
-import akka.actor.Actor.Receive
-import com.ialekseev.bob.{IoTry, CompilationError, CompilationFailed}
+import com.ialekseev.bob.CompilationError
 import scala.collection.mutable.ListBuffer
 import scala.reflect.internal.util.Position
 import scala.tools.nsc.reporters.AbstractReporter
 import scala.util.Random
-import scalaz.Scalaz._
-import scalaz._
 
-/*todo: refactor to be an Actor - remove sync blocks
-* Probably internally the Actor will delegate work to 2 different actors: 1 - for compilation (Compiler), 2 - for evaluation (Evaluator).
-* 1 & 2 will have separate instances of Global.
-* The above might make sense since 1 & 2 have potentially different latency*/
 
 case class CompilationRequest(code: String, imports: String = "", fields: String = "", implicits: String = "")
 case class CompilationSucceededResponse(r: List[Byte])

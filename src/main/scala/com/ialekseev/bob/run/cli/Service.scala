@@ -10,36 +10,38 @@ import com.ialekseev.bob.run.http.WebhookHttpService
 import com.ialekseev.bob.run.InputSource
 import com.ialekseev.bob.BuildFailed
 import com.ialekseev.bob.exec.Executor.Build
+import com.ialekseev.bob.run._
 import com.ialekseev.bob.run.http._
 import scalaz._
 import Scalaz._
 import scalaz.effect.IO
+import scalaz.concurrent.Task
 
 trait Service extends WebhookHttpService {
   this: BaseCommand with BaseHttpService =>
 
-  def serviceCommand(dirs: List[String] = List.empty): IoTry[Unit] = {
+  def serviceCommand(dirs: List[String] = List.empty): Task[Unit] = {
 
-    def build(sources: List[InputSource]): IoTry[List[BuildFailed \/ Build]] = {
+    def build(sources: List[InputSource]): Task[List[BuildFailed \/ Build]] = {
       sources.map(source => {
         for {
           built <- exec.build(source.content, source.vars)
-          _ <- IoTry.success(showResult(source.path, source.content, built))
+          _ <- showResult(source.path, source.content, built).toTask
         } yield built
       }).sequenceU
     }
 
-    def runService(builds: List[Build]): IoTry[Unit] = {
+    def runService(builds: List[Build]): IO[Unit] = {
       for {
-        context <- IoTry {
+        context <- IO {
           implicit val system = ActorSystem()
           implicit val materializer = ActorMaterializer()
           implicit val executionContext = system.dispatcher
           (system, executionContext, Http().bindAndHandle(createRoute(builds), "localhost", 8080))
         }
-        _ <- IoTry.successIO(show(s"The Service is online at http://localhost:8080/\nPress RETURN to stop..."))
-        _ <- IoTry.successIO(read())
-        _ <- IoTry {
+        _ <- show(s"The Service is online at http://localhost:8080/\nPress RETURN to stop...")
+        _ <- read()
+        _ <- IO {
           val system = context._1
           implicit val executionContext = context._2
           val bindingFuture = context._3
@@ -50,24 +52,26 @@ trait Service extends WebhookHttpService {
 
     val targetDirectories = if (dirs.nonEmpty) dirs else List(defaultSourcesLocation)
 
-    val result: IoTry[Unit] = readSources(targetDirectories).flatMap(sources => {
+    val result: Task[Unit] = readSources(targetDirectories).toTask.flatMap(sources => {
         for {
-          _ <- IoTry.successIO(show("building..."))
+          _ <- show("building...").toTask
           _ <- {
             build(sources).flatMap(builds => {
               builds.sequenceU match {
                 case \/-(builds: List[Build]) => {
                   val duplicateNamespaces = builds.groupBy(_.analysisResult.namespace).collect {case (x, List(_,_,_*)) => x}.toVector
-                  if (duplicateNamespaces.length > 0) IoTry.successIO(showError("Please use different names for the duplicate namespaces: " + duplicateNamespaces))
-                  else runService(builds)
+                  if (duplicateNamespaces.length > 0) showError("Please use different names for the duplicate namespaces: " + duplicateNamespaces).toTask
+                  else runService(builds).toTask
                 }
-                case -\/(_) => IoTry.successIO(showError("Please fix the failed sources before starting the service"))
+                case -\/(_) => showError("Please fix the failed sources before starting the service").toTask
               }
             })
           }
         } yield ()
     })
 
-    result.swap.flatMap(errors => IoTry.successSwappedIO(showError("Problem while trying to process the source files", errors: _*))).swap
+    result.handle {
+      case e => showError("Problem while trying to process the source files", e).toTask
+    }
   }
 }

@@ -7,12 +7,13 @@ import org.json4s.{native, DefaultFormats, CustomSerializer}
 import org.json4s.native.JsonMethods._
 import org.json4s.JsonAST.{JString, JField, JObject}
 import scala.concurrent.Future
-import scalaz.effect.IO
+import scalaz.concurrent.Task
 
 package object http {
   trait BaseHttpService {
+    def completeTask[T : ToResponseMarshaller](task: Task[T]): StandardRoute
+    def completeTask[T : ToResponseMarshaller](ctx: RequestContext, task: Task[T]): Future[RouteResult]
     def completeIO[T : ToResponseMarshaller](ioTry: IoTry[T]): StandardRoute
-    def completeIO[T : ToResponseMarshaller](ctx: RequestContext, io: IO[T]): Future[RouteResult]
   }
 
   implicit val formats = DefaultFormats

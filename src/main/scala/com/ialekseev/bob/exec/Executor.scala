@@ -11,11 +11,13 @@ import scalaz.Scalaz._
 import akka.actor.ActorRef
 import scalaz._
 import scalaz.effect.IO
+import scalaz.concurrent.Task
 import scala.concurrent.Future
 import akka.pattern.ask
 import akka.util.Timeout
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
+import delorean._
 
 trait Executor {
   val analyzer: Analyzer
@@ -81,12 +83,12 @@ trait Executor {
           start + pos - compilerPositionAmendment - scalaVariables.length - scalaImport.length - scalaImplicits.length
         }
 
-        (compilerActor ? CompilationRequest(scalaCode, scalaImport, scalaVariables, scalaImplicits)).map {
+        (compilerActor ? CompilationRequest(scalaCode, scalaImport, scalaVariables, scalaImplicits)).toTask.map {
           case CompilationSucceededResponse(code) => Build(result, code).right
           case CompilationFailedResponse(errors) => CompilationFailed(errors.map(e => e.copy(startOffset = amend(e.startOffset), pointOffset = amend(e.pointOffset), endOffset = amend(e.endOffset)))).left
         }
       }
-      case analysisIssues@ -\/(_) => Future.successful(analysisIssues)
+      case analysisIssues@ -\/(_) => Task.now(analysisIssues)
     }
   }
 
@@ -142,7 +144,7 @@ trait Executor {
     }).flatten
 
     matchedBuilds.map(b => {
-      (evaluatorActor ? EvaluationRequest(b._1.code, b._2)).mapTo[EvaluationResponse].map(r => SuccessfulRun(b._1, r)).recover {
+      (evaluatorActor ? EvaluationRequest(b._1.code, b._2)).mapTo[EvaluationResponse].toTask.map(r => SuccessfulRun(b._1, r)).handle {
         case e => FailedRun(b._1, List(e)) //todo: does it make any sense to return errors (timeouts actually) here ?
       }
     }).sequenceU.map(RunResult(_))

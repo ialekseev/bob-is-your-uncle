@@ -1,9 +1,10 @@
 package com.ialekseev.bob.run.cli
 
-import com.ialekseev.bob._
 import scalaz._
 import Scalaz._
 import scalaz.effect.IO
+import scalaz.concurrent.Task
+import com.ialekseev.bob.run._
 
 trait Shell {
   this: BaseCommand with Check with Service =>
@@ -35,26 +36,28 @@ trait Shell {
 
   val color = Console.MAGENTA
 
-  def shellCommand(): IoTry[Unit] = {
+  def shellCommand(): Task[Unit] = {
 
-    def shell(): IoTry[Unit] = {
+    def shell(): Task[Unit] = {
       (for {
-       str <- IoTry.successIO(read(color + "bob> "))
+       str <- read(color + "bob> ").toTask
        _ <- parser.parse(str.split(" +").toSeq, Config())  match {
-         case Some(Config(true, _, _, _, _, _)) => IoTry.successIO(show("you are already in the shell\n")).flatMap(_ => shell())
+         case Some(Config(true, _, _, _, _, _)) => show("you are already in the shell\n").toTask.flatMap(_ => shell())
          case Some(Config(_, true, _, _, _, Arguments(Some(path)))) if path.nonEmpty => checkCommand(path).flatMap(_ => shell())
          case Some(Config(_, _ , true, _, _, Arguments(path))) => serviceCommand(path.toList).flatMap(_ => shell())
-         case Some(Config(_, _, _, true, _, _)) => IoTry.successIO(showHelp()).flatMap(_ => shell())
-         case Some(Config(_, _, _, _, true, _)) => IoTry.successIO(show("quitting..."))
-         case _ => IoTry.successIO(showHelp()).flatMap(_ => shell())
+         case Some(Config(_, _, _, true, _, _)) => showHelp().toTask.flatMap(_ => shell())
+         case Some(Config(_, _, _, _, true, _)) => show("quitting...").toTask
+         case _ => showHelp().toTask.flatMap(_ => shell())
        }
-      } yield ()).orElse(shell())
+      } yield ()).handle {
+        case _ => shell()
+      }
     }
 
     for {
-      _ <- IoTry.successIO(show(color))
-      _ <- IoTry.successIO(show("Welcome to Bob's shell. Type 'help' for information."))
-      _ <- IoTry.successIO(show(Console.RESET))
+      _ <- show(color).toTask
+      _ <- show("Welcome to Bob's shell. Type 'help' for information.").toTask
+      _ <- show(Console.RESET).toTask
       _ <- shell()
     } yield ()
   }

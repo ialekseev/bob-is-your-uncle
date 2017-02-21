@@ -10,6 +10,7 @@ import com.ialekseev.bob.run.http.SandboxHttpService._
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import org.json4s._
 import org.json4s.ext.EnumNameSerializer
+import scalaz.concurrent.Task
 import scalaz.std.option._
 import scalaz.syntax.either._
 import scalaz.{-\/, EitherT, \/, \/-}
@@ -60,7 +61,7 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
     post {
       entity(as[PostBuildRequest]) { request => {
         validate(request.content.nonEmpty, "Content can't be empty") {
-          completeIO {
+          completeTask {
             sandboxExecutor.build(request.content, request.vars).map {
               case \/-(build) => PostBuildResponse(Nil)
               case -\/(buildFailed) => PostBuildResponse(buildFailed.errors.map(mapBuildError))
@@ -75,10 +76,10 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
   private def postRunRequestRoute = path ("sandbox" / "sources" / "run") {
     post {
       entity(as[PostRunRequest]) { request => {
-          completeIO {
-            val done: IoTry[BuildFailed \/ RunResult] = (for {
-              build <- EitherT.eitherT[IoTry, BuildFailed, Build](sandboxExecutor.build(request.content, request.vars))
-              run <- EitherT.eitherT[IoTry, BuildFailed, RunResult](IoTry.successIO(sandboxExecutor.run(request.run, List(build))).map(_.right))
+          completeTask {
+            val done: Task[BuildFailed \/ RunResult] = (for {
+              build <- EitherT.eitherT[Task, BuildFailed, Build](sandboxExecutor.build(request.content, request.vars))
+              run <- EitherT.eitherT[Task, BuildFailed, RunResult](sandboxExecutor.run(request.run, List(build)).map(_.right))
             } yield run).run
 
             done.map {
