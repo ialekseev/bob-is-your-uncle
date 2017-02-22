@@ -17,7 +17,8 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
   val exec = mock[Executor]
   override def beforeEach(): Unit = { reset(exec); super.beforeEach()}
 
-  "Webhook routing" when {
+  //todo: refactor
+  /*"Webhook routing" when {
 
     "GET request has just uri AND there IS a matching build" should {
       "succeed with the build" in {
@@ -133,5 +134,5 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
         }
       }
     }
-  }
+  }*/
 }

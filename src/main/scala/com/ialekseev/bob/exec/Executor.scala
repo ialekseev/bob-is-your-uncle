@@ -144,8 +144,8 @@ trait Executor {
     }).flatten
 
     matchedBuilds.map(b => {
-      (evaluatorActor ? EvaluationRequest(b._1.code, b._2)).mapTo[EvaluationResponse].toTask.map(r => SuccessfulRun(b._1, r)).handle {
-        case e => FailedRun(b._1, List(e)) //todo: does it make any sense to return errors (timeouts actually) here ?
+      (evaluatorActor ? EvaluationRequest(b._1.code, b._2)).mapTo[EvaluationResponse].toTask.map(r => SuccessfulRun(b._1, r.result)).handle {
+        case _ => FailedRun(b._1)
       }
     }).sequenceU.map(RunResult(_))
   }
@@ -156,6 +156,6 @@ object Executor {
 
   sealed trait Run
   case class SuccessfulRun(build: Build, result: Any) extends Run
-  case class FailedRun(build: Build, errors: List[Throwable]) extends Run
+  case class FailedRun(build: Build) extends Run
   case class RunResult(runs: List[Run])
 }

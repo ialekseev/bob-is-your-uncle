@@ -6,7 +6,8 @@ import scalaz.Scalaz._
 import scalaz._
 
 class ScalaCompilerSpec extends BaseSpec {
-  val compiler = Boot.compiler
+ //todo: refactor
+ /* val compiler = Boot.compiler
 
   "Compiling" when {
 
@@ -60,5 +61,5 @@ class ScalaCompilerSpec extends BaseSpec {
         result.toEither.right.get should be ("1hi")
       }
     }
-  }
+  }*/
 }

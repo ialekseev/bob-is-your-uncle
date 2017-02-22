@@ -32,8 +32,8 @@ trait WebhookHttpService extends BaseHttpService with Json4sSupport {
           println(Console.GREEN + s"[Done] ${build.analysisResult.namespace.path}#${build.analysisResult.namespace.name}" + Console.RESET)
           HttpResponseRun(build.analysisResult.namespace, true)
         }
-        case FailedRun(build, errors) => {
-          println(Console.RED + s"[Errors] ${build.analysisResult.namespace.path}#${build.analysisResult.namespace.name}:" + Console.RESET + " " + errors)
+        case FailedRun(build) => {
+          println(Console.RED + s"[Errors] ${build.analysisResult.namespace.path}#${build.analysisResult.namespace.name}:" + Console.RESET + " " + "failed")
           HttpResponseRun(build.analysisResult.namespace, false)
         }
       })

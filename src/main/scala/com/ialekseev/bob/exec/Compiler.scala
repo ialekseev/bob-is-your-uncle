@@ -9,12 +9,11 @@ import scala.reflect.internal.util.Position
 import scala.tools.nsc.reporters.AbstractReporter
 import scala.util.Random
 
-
 case class CompilationRequest(code: String, imports: String = "", fields: String = "", implicits: String = "")
 case class CompilationSucceededResponse(r: List[Byte])
 case class CompilationFailedResponse(r: List[CompilationError])
 case class EvaluationRequest(code: List[Byte], variables: List[(String, AnyRef)])
-case class EvaluationResponse(r: Any)
+case class EvaluationResponse(result: Any)
 
 class CompilerActor extends Actor {
   val compiler = new Compiler(ListBuffer.empty)
