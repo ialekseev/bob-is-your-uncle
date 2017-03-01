@@ -3,6 +3,7 @@ package com.ialekseev.bob.exec
 import com.ialekseev.bob.exec.analyzer.Analyzer
 import com.ialekseev.bob.exec.analyzer.Analyzer.{AnalysisResult, ScalaCode, Webhook}
 import com.ialekseev.bob.exec.Executor._
+import com.ialekseev.bob.exec.Compiler._
 import com.ialekseev.bob._
 import org.json4s.JsonAST.JValue
 import scala.util.Try
@@ -27,7 +28,6 @@ trait Executor {
   private val variableRegexPattern = """\{\$([a-zA-Z]+[a-zA-Z0-9]*)\}""".r
   implicit val timeout = Timeout(5 seconds) //todo: move
 
-  //todo: use https://github.com/Verizon/delorean for to Task conversion
   def build(source: String, externalVariables: List[(String, String)] = List.empty): Task[BuildFailed \/ Build] = {
     require(source.nonEmpty)
 
@@ -84,7 +84,7 @@ trait Executor {
         }
 
         (compilerActor ? CompilationRequest(scalaCode, scalaImport, scalaVariables, scalaImplicits)).toTask.map {
-          case CompilationSucceededResponse(code) => Build(result, code).right
+          case CompilationSucceededResponse(className, bytes) => Build(result, className, bytes).right
           case CompilationFailedResponse(errors) => CompilationFailed(errors.map(e => e.copy(startOffset = amend(e.startOffset), pointOffset = amend(e.pointOffset), endOffset = amend(e.endOffset)))).left
         }
       }
@@ -144,7 +144,7 @@ trait Executor {
     }).flatten
 
     matchedBuilds.map(b => {
-      (evaluatorActor ? EvaluationRequest(b._1.code, b._2)).mapTo[EvaluationResponse].toTask.map(r => SuccessfulRun(b._1, r.result)).handle {
+      (evaluatorActor ? EvaluationRequest(b._1.className, b._1.bytes, b._2)).mapTo[EvaluationResponse].toTask.map(r => SuccessfulRun(b._1, r.result)).handle {
         case _ => FailedRun(b._1)
       }
     }).sequenceU.map(RunResult(_))
@@ -152,7 +152,7 @@ trait Executor {
 }
 
 object Executor {
-  case class Build(analysisResult: AnalysisResult, code: List[Byte])
+  case class Build(analysisResult: AnalysisResult, className: String, bytes: List[Byte])
 
   sealed trait Run
   case class SuccessfulRun(build: Build, result: Any) extends Run
