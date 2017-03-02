@@ -5,7 +5,6 @@ import scalaz._
 import Scalaz._
 import scalaz.effect.IO
 import scalaz.concurrent.Task
-import com.ialekseev.bob.IoTry
 import com.ialekseev.bob.exec.Executor._
 import com.ialekseev.bob.run._
 
@@ -16,7 +15,7 @@ trait Check {
     require(filename.nonEmpty)
 
     val result: Task[Unit] = for {
-      input <- ((readFile(filename) |@| extractVarsForFile(filename))((_, _))).toTask
+      input <- ((readFile(filename) |@| extractVarsForFile(filename))((_, _)))
       built <- exec.build(input._1, input._2)
       _ <- showResult(filename, input._1, built).toTask
     } yield (): Unit

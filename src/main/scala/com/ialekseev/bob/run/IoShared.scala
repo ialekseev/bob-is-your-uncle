@@ -1,6 +1,6 @@
 package com.ialekseev.bob.run
 
-import java.io.{File, PrintWriter}
+import java.nio.file.{Files, Paths}
 import com.ialekseev.bob._
 import com.ialekseev.bob.run._
 import com.ialekseev.bob.exec.Executor._
@@ -8,10 +8,13 @@ import com.ialekseev.bob.exec.analyzer.Analyzer.AnalysisResult
 import scala.io.{Codec, Source, StdIn}
 import scala.language.reflectiveCalls
 import scala.util.Try
+import scala.collection.JavaConverters._
 import scalaz.Scalaz._
 import scalaz.effect.IO
 import scalaz.effect.IO._
+import scalaz.concurrent.Task
 import scalaz.{-\/, EitherT, \/, \/-}
+import fs2.interop.scalaz._
 
 trait IoShared {
 
@@ -19,42 +22,45 @@ trait IoShared {
   val varsFileName = "_vars.json"
   val fileExtension = ".bob"
 
-  def listFiles(dir: String): IoTry[List[String]] = IoTry(new java.io.File(dir).listFiles.toList.map(_.getPath))
+  def listFiles(dir: String): Task[List[String]] = {
+    require(dir.nonEmpty)
 
-  def listSourceFiles(dir: String): IoTry[List[String]] = {
+    Task {
+      Files.newDirectoryStream(Paths.get(dir)).iterator().asScala.map(_.toAbsolutePath.toString).toList
+    }
+  }
+
+  def listSourceFiles(dir: String): Task[List[String]] = {
     for {
-      files: List[String] <- listFiles(dir)
-      sourceFiles: List[String] <- IoTry.success(files.filter(_.endsWith(fileExtension)))
+      files <- listFiles(dir)
+      sourceFiles <- Task.now(files.filter(_.endsWith(fileExtension)))
     } yield sourceFiles
   }
 
-  def findVarFile(dir: String): IoTry[Option[String]] = {
+  def findVarFile(dir: String): Task[Option[String]] = {
     for {
-      files: List[String] <- listFiles(dir)
-      varsFile: Option[String] <- IoTry.success(files.find(_ == varsFileName))
+      files <- listFiles(dir)
+      varsFile <- Task.now(files.find(_ == varsFileName))
     } yield varsFile
   }
 
-  def using[A <: {def close(): Unit}, B](param: A)(f: A => B): B = try { f(param) } finally { param.close() }
-
-  def readFile(filePath: String): IoTry[String] = {
+  def readFile(filePath: String): Task[String] = {
     require(filePath.nonEmpty)
 
-    def normalize(source: String): String = {
-      source.replaceAll("\r\n", "\n")
-    }
-
-    IoTry(using(Source.fromFile(filePath)(Codec.UTF8))(_.mkString)).map(normalize(_))
+    fs2.io.file.readAll[Task](Paths.get(filePath), 4096).through(fs2.text.utf8Decode).through(fs2.text.lines).intersperse("\n").runFold("")(_ + _)
   }
 
-  def updateFile(filePath: String, content: String): IoTry[Unit] = {
+  def updateFile(filePath: String, content: String): Task[Unit] = {
     require(filePath.nonEmpty)
     require(content.nonEmpty)
 
-    IoTry(using(new PrintWriter(filePath))(_.write(content)).right)
+    for {
+      _ <- Task(Files.delete(Paths.get(filePath)))
+      _ <- fs2.Stream.eval(Task.now(content)).through(fs2.text.utf8Encode).through(fs2.io.file.writeAll(Paths.get(filePath))).run
+    } yield (): Unit
   }
 
-  def extractVarsFromVarsFile(varsFilePath: String): IoTry[List[(String, String)]] = {
+  def extractVarsFromVarsFile(varsFilePath: String): Task[List[(String, String)]] = {
     require(varsFilePath.nonEmpty)
 
     import org.json4s._
@@ -62,30 +68,30 @@ trait IoShared {
     implicit val formats = org.json4s.DefaultFormats
 
     for {
-      text: String <- readFile(varsFilePath)
-      vars: List[(String, String)] <- IoTry(parse(text).extract[Map[String, String]].toList)
+      text <- readFile(varsFilePath)
+      vars <- Task(parse(text).extract[Map[String, String]].toList)
     } yield vars
   }
 
-  def extractVarsForDir(dir: String): IoTry[List[(String, String)]] = {
+  def extractVarsForDir(dir: String): Task[List[(String, String)]] = {
     require(dir.nonEmpty)
 
     for {
-      varsFile: Option[String] <- findVarFile(dir)
-      vars: List[(String, String)] <- varsFile match {
+      varsFile <- findVarFile(dir)
+      vars <- varsFile match {
         case Some(f) => extractVarsFromVarsFile(f)
-        case None => IoTry.success(List.empty)
+        case None => Task.now(List.empty)
       }
     } yield vars
   }
 
-  def extractVarsForFile(filePath: String): IoTry[List[(String, String)]] = {
+  def extractVarsForFile(filePath: String): Task[List[(String, String)]] = {
     require(filePath.nonEmpty)
 
-    extractVarsForDir(new File(filePath).getParent)
+    extractVarsForDir(Paths.get(filePath).getParent.toAbsolutePath.toString)
   }
 
-  def readSource(sourceFilePath: String): IoTry[InputSource] = {
+  def readSource(sourceFilePath: String): Task[InputSource] = {
     require(sourceFilePath.nonEmpty)
 
     for {
@@ -94,33 +100,33 @@ trait IoShared {
     } yield InputSource(sourceFilePath, content, vars)
   }
 
-  def readSources(dirs: List[String]): IoTry[List[InputSource]] = {
+  def readSources(dirs: List[String]): Task[List[InputSource]] = {
     require(dirs.nonEmpty)
 
     case class FileWithVars(filePath: String, vars: List[(String, String)])
 
-    def getFilesWithVars: IoTry[List[FileWithVars]] = {
+    def getFilesWithVars: Task[List[FileWithVars]] = {
       dirs.map(dir => {
         for {
-          sourceFiles: List[String] <- listSourceFiles(dir)
+          sourceFiles <- listSourceFiles(dir)
           vars <- extractVarsForDir(dir)
         } yield sourceFiles.map(f => FileWithVars(f, vars))
       }).sequenceU.map(_.flatten)
     }
 
-    def mapToInputSources(files: List[FileWithVars]): IoTry[List[InputSource]] = {
+    def mapToInputSources(files: List[FileWithVars]): Task[List[InputSource]] = {
       files.map(file => {
         readFile(file.filePath).map(l => InputSource(file.filePath, l, file.vars))
       }).sequenceU
     }
 
     for {
-      sourceFiles: List[FileWithVars] <- getFilesWithVars
-      sources: List[InputSource] <- mapToInputSources(sourceFiles)
+      sourceFiles <- getFilesWithVars
+      sources <- mapToInputSources(sourceFiles)
     } yield sources
   }
 
-  def updateSource(sourceFilePath: String, content: String): IoTry[InputSource] = {
+  def updateSource(sourceFilePath: String, content: String): Task[InputSource] = {
     require(sourceFilePath.nonEmpty)
     require(content.nonEmpty)
 

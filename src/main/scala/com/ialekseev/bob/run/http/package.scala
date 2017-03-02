@@ -13,7 +13,6 @@ package object http {
   trait BaseHttpService {
     def completeTask[T : ToResponseMarshaller](task: Task[T]): StandardRoute
     def completeTask[T : ToResponseMarshaller](ctx: RequestContext, task: Task[T]): Future[RouteResult]
-    def completeIO[T : ToResponseMarshaller](ioTry: IoTry[T]): StandardRoute
   }
 
   implicit val formats = DefaultFormats

@@ -25,7 +25,7 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
 
   private def getSourcesRoute(dir: String) = path ("sandbox" / "sources") {
     get {
-      completeIO {
+      completeTask {
         for {
           list <- listFiles(dir)
           vars <- extractVarsForDir(dir)
@@ -36,7 +36,7 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
 
   private def getOneSourceRoute = path ("sandbox" / "sources" / Segment) { filePath => {
       get {
-        completeIO {
+        completeTask {
           readFile(filePath).map(GetOneSourceResponse(filePath, _))
         }
       }
@@ -47,7 +47,7 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
     put {
       entity(as[PutOneSourceRequest]) { source => {
         validate(source.content.nonEmpty, "Content can't be empty") {
-          completeIO {
+          completeTask {
             updateFile(filePath, source.content).map(_ => PutOneSourceResponse(filePath))
               }
             }

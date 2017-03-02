@@ -16,19 +16,21 @@ import scalaz.concurrent.Task
 import scalaz.std.option._
 import scalaz.syntax.either._
 
+//todo: cover by integration tests with real Compiler/Evaluator actors, actor failure scenario, real IO-operations etc
+
 class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe with HttpServiceBaseSpec {
   val sandboxExecutor: Executor = mock[Executor]
   override def beforeEach(): Unit = { reset(sandboxExecutor); super.beforeEach()}
 
-  private var listFilesFunc: String => IoTry[List[String]] = null
-  private var extractVarsForDirFunc: String => IoTry[List[(String, String)]] = null
-  private var readFileFunc: String => IoTry[String] = null
-  private var updateFileFunc: (String, String) => IoTry[Unit] = null
+  private var listFilesFunc: String => Task[List[String]] = null
+  private var extractVarsForDirFunc: String => Task[List[(String, String)]] = null
+  private var readFileFunc: String => Task[String] = null
+  private var updateFileFunc: (String, String) => Task[Unit] = null
 
-  override def listFiles(dir: String): IoTry[List[String]] = listFilesFunc(dir)
-  override def extractVarsForDir(dir: String): IoTry[List[(String, String)]] = extractVarsForDirFunc(dir)
-  override def readFile(filePath: String): IoTry[String] = readFileFunc(filePath)
-  override def updateFile(filePath: String, content: String): IoTry[Unit] = updateFileFunc(filePath, content)
+  override def listFiles(dir: String): Task[List[String]] = listFilesFunc(dir)
+  override def extractVarsForDir(dir: String): Task[List[(String, String)]] = extractVarsForDirFunc(dir)
+  override def readFile(filePath: String): Task[String] = readFileFunc(filePath)
+  override def updateFile(filePath: String, content: String): Task[Unit] = updateFileFunc(filePath, content)
 
   "GET list of all files request" when {
 
@@ -37,11 +39,11 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
 
         //arrange
         listFilesFunc = {
-          case "\\test\\" => IoTry.success(List("\\test\\file1.bob", "\\test\\file2.bob"))
+          case "\\test\\" => Task.now(List("\\test\\file1.bob", "\\test\\file2.bob"))
         }
 
         extractVarsForDirFunc = {
-          case "\\test\\" => IoTry.success(List("a" -> "1", "b" -> "2"))
+          case "\\test\\" => Task.now(List("a" -> "1", "b" -> "2"))
         }
 
         //act
@@ -58,7 +60,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
       "return 'InternalServerError'" in {
         //arrange
         listFilesFunc = {
-          case "\\test\\" => IoTry.failure(new FileNotFoundException("bad list!"))
+          case "\\test\\" => Task.fail(new FileNotFoundException("bad list!"))
         }
 
         //act
@@ -74,11 +76,11 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
       "return 'InternalServerError'" in {
         //arrange
         listFilesFunc = {
-          case "\\test\\" => IoTry.success(List("\\test\\file1.bob", "\\test\\file2.bob"))
+          case "\\test\\" => Task.now(List("\\test\\file1.bob", "\\test\\file2.bob"))
         }
 
         extractVarsForDirFunc = {
-          case "\\test\\" => IoTry.failure(new FileNotFoundException("bad var!"))
+          case "\\test\\" => Task.fail(new FileNotFoundException("bad var!"))
         }
 
         //act
@@ -97,7 +99,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
       "return 'OK' with the file" in {
         //arrange
         readFileFunc = {
-          case "\\test\\file1.bob" => IoTry.success("content")
+          case "\\test\\file1.bob" => Task.now("content")
         }
 
         //act
@@ -114,7 +116,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
       "return 'InternalServerError'" in {
         //arrange
         readFileFunc = {
-          case "\\test\\file1.bob" => IoTry.failure(new FileNotFoundException("bad!"))
+          case "\\test\\file1.bob" => Task.fail(new FileNotFoundException("bad!"))
         }
 
         //act
@@ -134,7 +136,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
         //arrange
         val put = parse("""{"content":"content1"}""")
         updateFileFunc = {
-          case ("\\test\\file1.bob", "content1") => IoTry.success((): Unit)
+          case ("\\test\\file1.bob", "content1") => Task.now((): Unit)
         }
 
         //act
@@ -167,7 +169,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
         //arrange
         val put = parse("""{"content":"content1"}""")
         updateFileFunc = {
-          case ("\\test\\file1.bob", "content1") => IoTry.failure(new FileNotFoundException("bad!"))
+          case ("\\test\\file1.bob", "content1") => Task.fail(new FileNotFoundException("bad!"))
         }
 
         //act

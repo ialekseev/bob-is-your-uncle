@@ -12,8 +12,6 @@ import scala.collection.immutable.Map
 import scalaz.Scalaz._
 import akka.testkit.{TestKit, TestActorRef}
 
-//todo: integration tests of the Executor with real Compiler/Evaluator actors, actor failure scenario etc
-
 class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec  {
   override def afterAll {
     TestKit.shutdownActorSystem(system)
