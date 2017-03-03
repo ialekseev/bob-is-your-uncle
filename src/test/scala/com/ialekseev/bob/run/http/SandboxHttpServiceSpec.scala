@@ -22,12 +22,12 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
   val sandboxExecutor: Executor = mock[Executor]
   override def beforeEach(): Unit = { reset(sandboxExecutor); super.beforeEach()}
 
-  private var listFilesFunc: String => Task[List[String]] = null
+  private var listSourceFilesFunc: String => Task[List[String]] = null
   private var extractVarsForDirFunc: String => Task[List[(String, String)]] = null
   private var readFileFunc: String => Task[String] = null
   private var updateFileFunc: (String, String) => Task[Unit] = null
 
-  override def listFiles(dir: String): Task[List[String]] = listFilesFunc(dir)
+  override def listSourceFiles(dir: String): Task[List[String]] = listSourceFilesFunc(dir)
   override def extractVarsForDir(dir: String): Task[List[(String, String)]] = extractVarsForDirFunc(dir)
   override def readFile(filePath: String): Task[String] = readFileFunc(filePath)
   override def updateFile(filePath: String, content: String): Task[Unit] = updateFileFunc(filePath, content)
@@ -38,7 +38,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
       "return 'OK' with the files" in {
 
         //arrange
-        listFilesFunc = {
+        listSourceFilesFunc = {
           case "\\test\\" => Task.now(List("\\test\\file1.bob", "\\test\\file2.bob"))
         }
 
@@ -59,7 +59,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
     "IO fails to list files" should {
       "return 'InternalServerError'" in {
         //arrange
-        listFilesFunc = {
+        listSourceFilesFunc = {
           case "\\test\\" => Task.fail(new FileNotFoundException("bad list!"))
         }
 
@@ -75,7 +75,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
     "IO fails to provide vars" should {
       "return 'InternalServerError'" in {
         //arrange
-        listFilesFunc = {
+        listSourceFilesFunc = {
           case "\\test\\" => Task.now(List("\\test\\file1.bob", "\\test\\file2.bob"))
         }
 

@@ -27,7 +27,7 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
     get {
       completeTask {
         for {
-          list <- listFiles(dir)
+          list <- listSourceFiles(dir)
           vars <- extractVarsForDir(dir)
         } yield GetSourcesResponse(list, vars)
       }

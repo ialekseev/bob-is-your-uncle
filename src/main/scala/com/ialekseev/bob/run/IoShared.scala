@@ -40,7 +40,7 @@ trait IoShared {
   def findVarFile(dir: String): Task[Option[String]] = {
     for {
       files <- listFiles(dir)
-      varsFile <- Task.now(files.find(_ == varsFileName))
+      varsFile <- Task.now(files.find(f => Paths.get(f).getFileName.toString == varsFileName))
     } yield varsFile
   }
 
@@ -55,7 +55,7 @@ trait IoShared {
     require(content.nonEmpty)
 
     for {
-      _ <- Task(Files.delete(Paths.get(filePath)))
+      _ <- Task(Files.deleteIfExists(Paths.get(filePath)))
       _ <- fs2.Stream.eval(Task.now(content)).through(fs2.text.utf8Encode).through(fs2.io.file.writeAll(Paths.get(filePath))).run
     } yield (): Unit
   }
