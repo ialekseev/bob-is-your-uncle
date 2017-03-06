@@ -11,12 +11,11 @@ import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import org.json4s._
 import org.json4s.ext.EnumNameSerializer
 import scalaz.concurrent.Task
-import scalaz.std.option._
 import scalaz.syntax.either._
 import scalaz.{-\/, EitherT, \/, \/-}
 
 trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShared {
-  implicit val formats = DefaultFormats + FieldSerializer[PostBuildResponse]() + FieldSerializer[PostRunResponse]() + new EnumNameSerializer(HttpMethod) + new BodySerializer
+  implicit val formats = DefaultFormats + new EnumNameSerializer(HttpMethod) + new BodySerializer
   implicit val serialization = native.Serialization
 
   val sandboxExecutor: Executor
@@ -63,8 +62,8 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
         validate(request.content.nonEmpty, "Content can't be empty") {
           completeTask {
             sandboxExecutor.build(request.content, request.vars).map {
-              case \/-(build) => PostBuildResponse(Nil)
-              case -\/(buildFailed) => PostBuildResponse(buildFailed.errors.map(mapBuildError))
+              case \/-(build) => PostBuildSuccessResponse
+              case -\/(buildFailed) => PostBuildFailureResponse(buildFailed.errors.map(mapBuildError(_)), buildFailed.stage)
               }
             }
           }
@@ -83,8 +82,8 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
             } yield run).run
 
             done.map {
-              case \/-(RunResult(SuccessfulRun(_, result) :: Nil)) => PostRunResponse(some(result.toString), Nil)
-              case -\/(buildFailed) => PostRunResponse(none, buildFailed.errors.map(mapBuildError))
+              case \/-(RunResult(SuccessfulRun(_, result) :: Nil)) => PostRunSuccessResponse(result.toString)
+              case -\/(buildFailed) => PostRunFailureResponse(buildFailed.errors.map(mapBuildError), buildFailed.stage)
               case _ => sys.error("Sandbox: Not supposed to be here")
             }
           }
@@ -105,14 +104,12 @@ object SandboxHttpService {
   case class PutOneSourceResponse(updated: String)
 
   case class PostBuildRequest(content: String, vars: List[(String, String)])
-  case class PostBuildResponse(errors: List[BuildErrorResponse]) {
-    val succeed = errors.isEmpty
-  }
+  case object PostBuildSuccessResponse
+  case class PostBuildFailureResponse(errors: List[BuildErrorResponse], stage: String)
 
   case class PostRunRequest(content: String, vars: List[(String, String)], run: HttpRequest)
-  case class PostRunResponse(result: Option[String], errors: List[BuildErrorResponse]) {
-    val succeed =  errors.isEmpty
-  }
+  case class PostRunSuccessResponse(result: String)
+  case class PostRunFailureResponse(errors: List[BuildErrorResponse], stage: String)
 }
 
 

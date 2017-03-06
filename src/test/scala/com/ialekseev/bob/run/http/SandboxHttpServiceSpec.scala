@@ -16,8 +16,6 @@ import scalaz.concurrent.Task
 import scalaz.std.option._
 import scalaz.syntax.either._
 
-//todo: cover by integration tests with real Compiler/Evaluator actors, actor failure scenario, real IO-operations etc
-
 class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe with HttpServiceBaseSpec {
   val sandboxExecutor: Executor = mock[Executor]
   override def beforeEach(): Unit = { reset(sandboxExecutor); super.beforeEach()}
@@ -197,7 +195,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[PostBuildResponse] should be(PostBuildResponse(Nil))
+          responseAs[PostBuildSuccessResponse.type] shouldBe PostBuildSuccessResponse
         }
       }
     }
@@ -215,7 +213,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[PostBuildResponse] should be(PostBuildResponse(List(BuildErrorResponse(1, 2, "Bad!"))))
+          responseAs[PostBuildFailureResponse] should be(PostBuildFailureResponse(List(BuildErrorResponse(1, 2, "Bad!")), "syntax"))
         }
       }
     }
@@ -266,7 +264,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[PostRunResponse] should be(PostRunResponse(some("done!"), Nil))
+          responseAs[PostRunSuccessResponse] shouldBe PostRunSuccessResponse("done!")
         }
       }
     }
@@ -284,7 +282,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[PostRunResponse] should be(PostRunResponse(some("done!"), Nil))
+          responseAs[PostRunSuccessResponse] shouldBe PostRunSuccessResponse("done!")
         }
       }
     }
@@ -302,7 +300,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[PostRunResponse] should be(PostRunResponse(some("done!"), Nil))
+          responseAs[PostRunSuccessResponse] shouldBe PostRunSuccessResponse("done!")
         }
       }
     }
@@ -320,7 +318,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[PostRunResponse] should be(PostRunResponse(none, List(BuildErrorResponse(1, 2, "Bad!"))))
+          responseAs[PostRunFailureResponse] shouldBe PostRunFailureResponse(List(BuildErrorResponse(1, 2, "Bad!")), "syntax")
         }
       }
     }

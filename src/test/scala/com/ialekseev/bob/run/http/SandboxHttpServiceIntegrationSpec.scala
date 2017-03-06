@@ -9,7 +9,6 @@ import com.ialekseev.bob.exec.analyzer.DefaultAnalyzer
 import com.ialekseev.bob.run.boot.HttpServiceUnsafe
 import com.ialekseev.bob.run.http.SandboxHttpService._
 import org.json4s.native.JsonMethods._
-import scalaz.std.option._
 
 class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServiceUnsafe with HttpServiceBaseSpec {
   val sandboxExecutor: Executor = new Executor {
@@ -106,7 +105,66 @@ class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServ
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[PostBuildResponse].succeed shouldBe true
+          responseAs[PostBuildSuccessResponse.type] shouldBe PostBuildSuccessResponse
+        }
+      }
+    }
+
+    "Executor returns an analyzer failure" should {
+      "return 'OK' with errors" in {
+        //arrange
+        val content =
+          """
+            |namespace com.ialekseev.core#ping
+            | bad : \"ping\"
+            |
+            | @webhook
+            |    queryString: [\"ping\": \"{$ping}\"]
+            |
+            | @process
+            |    <scala>
+            |        1 + abc
+            |    <end>
+          """.stripMargin
+
+        val post = parse(s"""{"content":"$content", "vars": [{"a": "1"}, {"b": "2"}]}""")
+
+        //act
+        Post("/sandbox/sources/compile", post) ~> createRoutes(tempDir) ~> check {
+
+          //assert
+          response.status should be(StatusCodes.OK)
+          responseAs[PostBuildFailureResponse].errors.head.startOffset shouldBe 38
+          responseAs[PostBuildFailureResponse].errors.head.endOffset shouldBe 40
+        }
+      }
+    }
+
+    "Executor returns a compiler failure" should {
+      "return 'OK' with errors" in {
+        //arrange
+        val content =
+          """
+            |namespace com.ialekseev.core#ping
+            | description : \"ping\"
+            |
+            | @webhook
+            |    queryString: [\"ping\": \"{$ping}\"]
+            |
+            | @process
+            |    <scala>
+            |        1 + abc
+            |    <end>
+          """.stripMargin
+
+        val post = parse(s"""{"content":"$content", "vars": [{"a": "1"}, {"b": "2"}]}""")
+
+        //act
+        Post("/sandbox/sources/compile", post) ~> createRoutes(tempDir) ~> check {
+
+          //assert
+          response.status should be(StatusCodes.OK)
+          responseAs[PostBuildFailureResponse].errors.head.startOffset shouldBe 149
         }
       }
     }
@@ -138,7 +196,7 @@ class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServ
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[PostRunResponse] should be(PostRunResponse(some("777"), Nil))
+          responseAs[PostRunSuccessResponse] shouldBe PostRunSuccessResponse("777")
         }
       }
     }

@@ -15,11 +15,12 @@ package object bob {
 
   sealed trait BuildFailed {
     val errors: List[BuildError]
+    val stage: String
   }
-  case class LexicalAnalysisFailed(errors: List[LexicalError]) extends BuildFailed
-  case class SyntaxAnalysisFailed(errors: List[SyntaxError]) extends BuildFailed
-  case class SemanticAnalysisFailed(errors: List[SemanticError]) extends BuildFailed
-  case class CompilationFailed(errors: List[CompilationError]) extends BuildFailed
+  case class LexicalAnalysisFailed(errors: List[LexicalError]) extends BuildFailed { val stage = "lexical"}
+  case class SyntaxAnalysisFailed(errors: List[SyntaxError]) extends BuildFailed { val stage = "syntax"}
+  case class SemanticAnalysisFailed(errors: List[SemanticError]) extends BuildFailed { val stage = "semantic"}
+  case class CompilationFailed(errors: List[CompilationError]) extends BuildFailed { val stage = "compiler"}
 
   case class HttpRequest(uri: Option[String], method: HttpMethod.Value, headers: Map[String, String], queryString: Map[String, String], body: Option[Body]){
     require(uri.isEmpty || uri.isDefined && uri.get.nonEmpty, "Some(uri) can't be empty!")
