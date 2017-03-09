@@ -1,5 +1,6 @@
 package com.ialekseev.bob.run.http
 
+import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.ialekseev.bob.exec.Executor
 import com.ialekseev.bob.exec.Executor.{Build, FailedRun, SuccessfulRun}
@@ -7,20 +8,22 @@ import com.ialekseev.bob.exec.analyzer.Analyzer.Namespace
 import com.ialekseev.bob.run.http.WebhookHttpService.{HttpResponse, HttpResponseRun}
 import com.ialekseev.bob.{HttpMethod, HttpRequest}
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
-import org.json4s.ext.EnumNameSerializer
-import org.json4s.{DefaultFormats, native}
 import scalaz.Scalaz._
 
 trait WebhookHttpService extends BaseHttpService with Json4sSupport {
   val exec: Executor
 
-  implicit val formats = DefaultFormats + new EnumNameSerializer(HttpMethod)
-  implicit val serialization = native.Serialization
+  val prefix = "hook"
 
-  def createRoute(builds: List[Build]): Route = ctx => {
+  def createRoute(builds: List[Build]) = pathPrefix(prefix) {
+    processingRoute(builds)
+  }
+
+  private def processingRoute(builds: List[Build]): Route = ctx => {
     require(builds.nonEmpty)
 
-    val uri = ctx.request.uri.path.toString
+    val path = ctx.request.uri.path.toString
+    val uri = path.substring(path.indexOf(prefix) + prefix.length)
     val method = HttpMethod.withName(ctx.request.method.value)
     val headers = ctx.request.headers.map(h => (h.name, h.value)).toMap
     val queryString = ctx.request.uri.query().toMap

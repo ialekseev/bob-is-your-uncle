@@ -32,7 +32,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
         when(exec.run(request, List(build))).thenReturn(Task.now(RunResult(List(SuccessfulRun(build, "1")))))
 
         //act
-        Get(uri) ~> createRoute(List(build)) ~> check {
+        Get("/hook" + uri) ~> createRoute(List(build)) ~> check {
 
           //assert
           response.status should be (StatusCodes.OK)
@@ -55,7 +55,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
         when(exec.run(request, List(build))).thenReturn(Task.now(RunResult(List(SuccessfulRun(build, "1")))))
 
         //act
-        Post(uri).withHeaders(RawHeader("h1", "super"), RawHeader("head2", "cool")) ~> createRoute(List(build)) ~> check {
+        Post("/hook" + uri).withHeaders(RawHeader("h1", "super"), RawHeader("head2", "cool")) ~> createRoute(List(build)) ~> check {
 
           //assert
           response.status should be (StatusCodes.OK)
@@ -79,7 +79,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
         when(exec.run(request, List(build))).thenReturn(Task.now(RunResult(List(SuccessfulRun(build, "1")))))
 
         //act
-        Put(uri) ~> createRoute(List(build)) ~> check {
+        Put("/hook" + uri) ~> createRoute(List(build)) ~> check {
 
           //assert
           response.status should be (StatusCodes.OK)
@@ -101,7 +101,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
         when(exec.run(request, List(build))).thenReturn(Task.now(RunResult(List.empty))) //NO matching builds
 
         //act
-        Get(uri) ~> createRoute(List(build)) ~> check {
+        Get("/hook" + uri) ~> createRoute(List(build)) ~> check {
 
           //assert
           response.status should be (StatusCodes.OK)
@@ -125,7 +125,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
         when(exec.run(request, List(build))).thenReturn(Task.now(RunResult(List(FailedRun(build)))))
 
         //act
-        Put(uri) ~> createRoute(List(build)) ~> check {
+        Put("/hook" + uri) ~> createRoute(List(build)) ~> check {
 
           //assert
           response.status should be (StatusCodes.OK)

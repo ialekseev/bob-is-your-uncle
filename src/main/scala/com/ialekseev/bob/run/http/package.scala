@@ -3,6 +3,7 @@ package com.ialekseev.bob.run
 import com.ialekseev.bob._
 import akka.http.scaladsl.marshalling._
 import akka.http.scaladsl.server.{RouteResult, RequestContext, StandardRoute}
+import org.json4s.ext.EnumNameSerializer
 import org.json4s.{native, DefaultFormats, CustomSerializer}
 import org.json4s.native.JsonMethods._
 import org.json4s.JsonAST.{JString, JField, JObject}
@@ -15,7 +16,7 @@ package object http {
     def completeTask[T : ToResponseMarshaller](ctx: RequestContext, task: Task[T]): Future[RouteResult]
   }
 
-  implicit val formats = DefaultFormats
+  implicit val formats = DefaultFormats + new EnumNameSerializer(HttpMethod) + new BodySerializer
   implicit val serialization = native.Serialization
   class BodySerializer extends CustomSerializer[Body](format => (
     {

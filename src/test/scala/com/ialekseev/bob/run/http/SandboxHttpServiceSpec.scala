@@ -17,8 +17,8 @@ import scalaz.std.option._
 import scalaz.syntax.either._
 
 class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe with HttpServiceBaseSpec {
-  val sandboxExecutor: Executor = mock[Executor]
-  override def beforeEach(): Unit = { reset(sandboxExecutor); super.beforeEach()}
+  val exec: Executor = mock[Executor]
+  override def beforeEach(): Unit = { reset(exec); super.beforeEach()}
 
   private var listSourceFilesFunc: String => Task[List[String]] = null
   private var extractVarsForDirFunc: String => Task[List[(String, String)]] = null
@@ -186,7 +186,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
       "return 'OK' with build details" in {
         //arrange
         val resultToBeReturned = Build(AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")), "super", List(1,2,3))
-        when(sandboxExecutor.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(Task.now(resultToBeReturned.right))
+        when(exec.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(Task.now(resultToBeReturned.right))
 
         val post = parse("""{"content":"content1", "vars": [{"a": "1"}, {"b": "2"}]}""")
 
@@ -204,7 +204,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
       "return 'OK' with failed build details" in {
         //arrange
         val resultToBeReturned = SyntaxAnalysisFailed(List(SyntaxError(1, 2, 5, "Bad!")))
-        when(sandboxExecutor.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(Task.now(resultToBeReturned.left))
+        when(exec.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(Task.now(resultToBeReturned.left))
 
         val post = parse("""{"content":"content1", "vars": [{"a": "1"}, {"b": "2"}]}""")
 
@@ -237,7 +237,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
       "return 'InternalServerError'" in {
         //arrange
         val post = parse("""{"content":"content1", "vars": [{"a": "1"}, {"b": "2"}]}""")
-        when(sandboxExecutor.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(Task.fail(new FileNotFoundException("bad!")))
+        when(exec.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(Task.fail(new FileNotFoundException("bad!")))
 
         //act
         Post("/sandbox/sources/compile", post) ~> createRoutes("\\test\\") ~> check {
@@ -256,8 +256,8 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
         //arrange
         val post = parse("""{"content":"content1", "vars": [{"a": "1"}, {"b": "2"}], "run": {"uri": "/hello/", "method": "GET", "headers": {"h1" : "1"}, "queryString": {"q2" : "2"}, "body": {"text": "body!"} } }""")
         val buildToBeReturned = Build(AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")), "super", List(1,2,3))
-        when(sandboxExecutor.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(Task.now(buildToBeReturned.right))
-        when(sandboxExecutor.run(HttpRequest(some("/hello/"), HttpMethod.GET, Map("h1" -> "1"), Map("q2" -> "2"), some(StringLiteralBody("body!"))), List(buildToBeReturned))).thenReturn(Task.now(RunResult(List(SuccessfulRun(buildToBeReturned, "done!")))))
+        when(exec.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(Task.now(buildToBeReturned.right))
+        when(exec.run(HttpRequest(some("/hello/"), HttpMethod.GET, Map("h1" -> "1"), Map("q2" -> "2"), some(StringLiteralBody("body!"))), List(buildToBeReturned))).thenReturn(Task.now(RunResult(List(SuccessfulRun(buildToBeReturned, "done!")))))
 
         //act
         Post("/sandbox/sources/run", post) ~> createRoutes("\\test\\") ~> check {
@@ -274,8 +274,8 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
         //arrange
         val post = parse("""{"content":"content1", "vars": [{"a": "1"}, {"b": "2"}], "run": {"uri": "/hello/", "method": "GET", "headers": {"h1" : "1"}, "queryString": {"q2" : "2"}, "body": {"dic": {"par1": "val1", "par2": "val2"} } } }""")
         val buildToBeReturned = Build(AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")), "super", List(1,2,3))
-        when(sandboxExecutor.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(Task.now(buildToBeReturned.right))
-        when(sandboxExecutor.run(HttpRequest(some("/hello/"), HttpMethod.GET, Map("h1" -> "1"), Map("q2" -> "2"), some(DictionaryBody(Map("par1"->"val1", "par2"->"val2")))), List(buildToBeReturned))).thenReturn(Task.now(RunResult(List(SuccessfulRun(buildToBeReturned, "done!")))))
+        when(exec.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(Task.now(buildToBeReturned.right))
+        when(exec.run(HttpRequest(some("/hello/"), HttpMethod.GET, Map("h1" -> "1"), Map("q2" -> "2"), some(DictionaryBody(Map("par1"->"val1", "par2"->"val2")))), List(buildToBeReturned))).thenReturn(Task.now(RunResult(List(SuccessfulRun(buildToBeReturned, "done!")))))
 
         //act
         Post("/sandbox/sources/run", post) ~> createRoutes("\\test\\") ~> check {
@@ -292,8 +292,8 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
         //arrange
         val post = parse("""{"content":"content1", "vars": [{"a": "1"}, {"b": "2"}], "run": {"uri": "/hello/", "method": "GET", "headers": {"h1" : "1"}, "queryString": {"q2" : "2"}, "body": {"json": "{\"f1\": \"val1\", \"f2\": \"val2\"}" } } }""")
         val buildToBeReturned = Build(AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")), "super", List(1,2,3))
-        when(sandboxExecutor.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(Task.now(buildToBeReturned.right))
-        when(sandboxExecutor.run(HttpRequest(some("/hello/"), HttpMethod.GET, Map("h1" -> "1"), Map("q2" -> "2"), some(JsonBody(JObject(JField("f1", JString("val1")) :: JField("f2", JString("val2")) :: Nil)))), List(buildToBeReturned))).thenReturn(Task.now(RunResult(List(SuccessfulRun(buildToBeReturned, "done!")))))
+        when(exec.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(Task.now(buildToBeReturned.right))
+        when(exec.run(HttpRequest(some("/hello/"), HttpMethod.GET, Map("h1" -> "1"), Map("q2" -> "2"), some(JsonBody(JObject(JField("f1", JString("val1")) :: JField("f2", JString("val2")) :: Nil)))), List(buildToBeReturned))).thenReturn(Task.now(RunResult(List(SuccessfulRun(buildToBeReturned, "done!")))))
 
         //act
         Post("/sandbox/sources/run", post) ~> createRoutes("\\test\\") ~> check {
@@ -311,7 +311,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
         val post = parse("""{"content":"content1", "vars": [{"a": "1"}, {"b": "2"}], "run": {"uri": "/hello/", "method": "GET", "headers": {"h1" : "1"}, "queryString": {"q2" : "2"}, "body": {"json": "{\"f1\": \"val1\", \"f2\": \"val2\"}" } } }""")
 
         val resultToBeReturned = SyntaxAnalysisFailed(List(SyntaxError(1, 2, 5, "Bad!")))
-        when(sandboxExecutor.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(Task.now(resultToBeReturned.left))
+        when(exec.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(Task.now(resultToBeReturned.left))
 
         //act
         Post("/sandbox/sources/run", post) ~> createRoutes("\\test\\") ~> check {
@@ -327,7 +327,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
       "return 'InternalServerError'" in {
         //arrange
         val post = parse("""{"content":"content1", "vars": [{"a": "1"}, {"b": "2"}], "run": {"uri": "/hello/", "method": "GET", "headers": {"h1" : "1"}, "queryString": {"q2" : "2"}, "body": {"dic": {"par1": "val1", "par2": "val2"} } } }""")
-        when(sandboxExecutor.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(Task.fail(new FileNotFoundException("bad!")))
+        when(exec.build("content1", List("a" -> "1", "b" -> "2"))).thenReturn(Task.fail(new FileNotFoundException("bad!")))
 
         //act
         Post("/sandbox/sources/run", post) ~> createRoutes("\\test\\") ~> check {

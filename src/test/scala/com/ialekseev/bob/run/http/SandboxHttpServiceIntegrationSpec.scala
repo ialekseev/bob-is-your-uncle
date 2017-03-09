@@ -11,7 +11,7 @@ import com.ialekseev.bob.run.http.SandboxHttpService._
 import org.json4s.native.JsonMethods._
 
 class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServiceUnsafe with HttpServiceBaseSpec {
-  val sandboxExecutor: Executor = new Executor {
+  val exec: Executor = new Executor {
     val analyzer = DefaultAnalyzer
     val compilerActor = system.actorOf(Props[CompilerActor])
     val evaluatorActor = system.actorOf(Props[EvaluatorActor])

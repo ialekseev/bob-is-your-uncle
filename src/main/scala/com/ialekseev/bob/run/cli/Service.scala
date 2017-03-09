@@ -34,12 +34,12 @@ trait Service extends WebhookHttpService {
     def runService(builds: List[Build]): IO[Unit] = {
       for {
         context <- IO {
-          implicit val system = ActorSystem()
+          implicit val system = ActorSystem("service-system")
           implicit val materializer = ActorMaterializer()
           implicit val executionContext = system.dispatcher
-          (system, executionContext, Http().bindAndHandle(createRoute(builds), "localhost", 8080))
+          (system, executionContext, Http().bindAndHandle(createRoute(builds), "localhost", 8080)) //todo: move to the config
         }
-        _ <- show(s"The Service is online at http://localhost:8080/\nPress RETURN to stop...")
+        _ <- show(s"The Service is online at http://localhost:8080/\nPress RETURN to stop...") //todo: from config
         _ <- read()
         _ <- IO {
           val system = context._1
