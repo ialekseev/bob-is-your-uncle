@@ -13,6 +13,7 @@ import scalaz.Scalaz._
 import akka.testkit.{TestKit, TestActorRef}
 
 class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec  {
+  implicit val ec = system.dispatcher
   override def afterAll {
     TestKit.shutdownActorSystem(system)
   }

@@ -17,10 +17,10 @@ import scala.concurrent.Future
 import akka.pattern.ask
 import akka.util.Timeout
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.ExecutionContext
 import delorean._
 
-trait Executor {
+abstract class Executor(implicit executionContext: ExecutionContext) {
   val analyzer: Analyzer
   val compilerActor: ActorRef //todo: where to recover?
   val evaluatorActor: ActorRef

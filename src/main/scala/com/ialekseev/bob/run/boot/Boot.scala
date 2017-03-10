@@ -9,6 +9,7 @@ import com.ialekseev.bob.run.http.BaseHttpService
 
 object Boot extends App with BaseCommand with BaseHttpService with HttpServiceUnsafe with Check with Shell with Service with Sandbox {
   val system = ActorSystem("bob-system")
+  implicit val executionContext = system.dispatcher
 
   val exec = new Executor {
     val analyzer = DefaultAnalyzer

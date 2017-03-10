@@ -65,6 +65,7 @@ trait Shell {
       _ <- show("Welcome to Bob's shell. Type 'help' for information.").toTask
       _ <- show(Console.RESET).toTask
       _ <- shell()
+      _ <- Task.delay(print("hello"))
     } yield ()
   }
 
