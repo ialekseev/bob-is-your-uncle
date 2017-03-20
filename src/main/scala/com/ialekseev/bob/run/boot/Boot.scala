@@ -24,5 +24,7 @@ object Boot extends App with BaseCommand with BaseHttpService with HttpServiceUn
     case Some(Config(_,_,_,true,_,_,Arguments(path))) => sandboxCommand(path)
     case _ => showHelp().toTask
   }).unsafePerformSync
+
+  system.terminate()
 }
 

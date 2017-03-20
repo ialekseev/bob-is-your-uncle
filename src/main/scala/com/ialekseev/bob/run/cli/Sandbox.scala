@@ -13,8 +13,6 @@ import scalaz.effect.IO
 trait Sandbox extends SandboxHttpService {
   this: BaseCommand with BaseHttpService =>
 
-  //todo: I can't quit the sandbox from the console
-
   def sandboxCommand(dir: Option[String] = none): Task[Unit] = {
     val targetDirectory = dir.getOrElse(defaultSourcesLocation)
 

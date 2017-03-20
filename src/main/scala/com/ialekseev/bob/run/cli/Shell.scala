@@ -43,20 +43,21 @@ trait Shell {
 
   def shellCommand(): Task[Unit] = {
 
+    //todo: play with scalaz's Task to understand whether I need to 'suspend' here or not
     def shell(): Task[Unit] = {
       (for {
        str <- read(color + "bob> ").toTask
-       _ <- parser.parse(str.split(" +").toSeq, Config())  match {
-         case Some(Config(true,_,_,_,_,_,_)) => show("you are already in the shell\n").toTask.flatMap(_ => shell())
-         case Some(Config(_,true,_,_,_,_,Arguments(Some(path)))) if path.nonEmpty => checkCommand(path).flatMap(_ => shell())
-         case Some(Config(_,_,true,_,_,_,Arguments(path))) => serviceCommand(path.toList).flatMap(_ => shell())
-         case Some(Config(_,_,_,true,_,_,Arguments(path))) => sandboxCommand(path).flatMap(_ => shell())
-         case Some(Config(_,_,_,_,true,_,_)) => showHelp().toTask.flatMap(_ => shell())
+      _ <- parser.parse(str.split(" +").toSeq, Config())  match {
+         case Some(Config(true,_,_,_,_,_,_)) => show("you are already in the shell\n").toTask.flatMap(_ => Task.suspend(shell()))
+         case Some(Config(_,true,_,_,_,_,Arguments(Some(path)))) if path.nonEmpty => checkCommand(path).flatMap(_ => Task.suspend(shell()))
+         case Some(Config(_,_,true,_,_,_,Arguments(path))) => serviceCommand(path.toList).flatMap(_ => Task.suspend(shell()))
+         case Some(Config(_,_,_,true,_,_,Arguments(path))) => sandboxCommand(path).flatMap(_ => Task.suspend(shell()))
+         case Some(Config(_,_,_,_,true,_,_)) => showHelp().toTask.flatMap(_ => Task.suspend(shell()))
          case Some(Config(_,_,_,_,_,true,_)) => show("quitting...").toTask
-         case _ => showHelp().toTask.flatMap(_ => shell())
+         case _ => showHelp().toTask.flatMap(_ => Task.suspend(shell()))
        }
       } yield ()).handle {
-        case _ => shell()
+        case e => showError("got an error", e).toTask.flatMap(_ => Task.suspend(shell()))
       }
     }
 
@@ -65,7 +66,6 @@ trait Shell {
       _ <- show("Welcome to Bob's shell. Type 'help' for information.").toTask
       _ <- show(Console.RESET).toTask
       _ <- shell()
-      _ <- Task.delay(print("hello"))
     } yield ()
   }
 
