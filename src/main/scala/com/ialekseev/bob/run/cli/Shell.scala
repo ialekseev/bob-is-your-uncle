@@ -43,7 +43,6 @@ trait Shell {
 
   def shellCommand(): Task[Unit] = {
 
-    //todo: play with scalaz's Task to understand whether I need to 'suspend' here or not
     def shell(): Task[Unit] = {
       (for {
        str <- read(color + "bob> ").toTask

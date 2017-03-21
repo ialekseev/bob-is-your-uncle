@@ -42,3 +42,5 @@ libraryDependencies ++= Seq(
   "org.mockito" % "mockito-core" % "1.10.19" % "test",
   "com.typesafe.akka" % "akka-http-testkit_2.11" % "2.4.9" % "test"
 )
+
+reForkOptions ~= (_.copy(connectInput = true))
