@@ -3,12 +3,23 @@
 <head lang="en">
     <meta charset="UTF-8">
     <title>Sandbox</title>
+
+    <script src="https://code.angularjs.org/2.0.0-beta.9/angular2-polyfills.min.js"></script>
+    <script src="https://code.angularjs.org/tools/system.js"></script>
+    <script src="https://code.angularjs.org/tools/typescript.js"></script>
+    <script src="config.js"></script>
+    <script src="https://code.angularjs.org/2.0.0-beta.9/Rx.min.js"></script>
+    <script src="https://code.angularjs.org/2.0.0-beta.9/angular2.min.js"></script>
+    <script src="https://code.angularjs.org/2.0.0-beta.9/http.min.js"></script>
+    <script>
+    System.import('app').catch(console.error.bind(console));
+    </script>
 </head>
 
-<body ng-app>
-<div ng-controller="sandboxController">
-    <strong>todo</strong>
-</div>
+<body>
+<sandbox-app>
+    Loading Sandbox ...
+</sandbox-app>
 </body>
 
 </html>
