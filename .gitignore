@@ -12,4 +12,5 @@
 
 #Project specific
 /bobs/
+/node_modules/
 custom.sbt
