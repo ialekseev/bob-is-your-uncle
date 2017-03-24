@@ -1,3 +1,31 @@
-<div>
-    <strong>{{name}} !!!</strong>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-2 sidebar">
+            <ul class="nav nav-sidebar">
+                <li *ngFor="let source of sources" (click)="onSourceClick(source)">
+                    <a href="javascript:void(0);">{{source}}</a>
+                </li>
+            </ul>
+        </div>
+        <div *ngIf="selectedSourceFilePath" class="col-md-10">
+            <h2>{{selectedSourceFilePath}}</h2>
+            <div class="form-horizontal">
+                <div class="form-group">
+                    <div class="col-md-10">
+                        <textarea [(ngModel)]="selectedSourceContent" class="form-control" rows="15"></textarea>
+                        <div style="margin-top: 5px">
+                            <button type="button" (click)="onSaveSelectedSourceClick()" class="btn btn-primary btn-lg">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <ul>
+                <li *ngFor="let variable of variables">
+                    {{variable.name}} = {{variable.value}}
+                </li>
+            </ul>
+        </div>
+    </div>
 </div>
