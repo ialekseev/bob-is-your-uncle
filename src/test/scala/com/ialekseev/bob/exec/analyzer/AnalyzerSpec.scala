@@ -245,7 +245,7 @@ class AnalyzerSpec extends BaseSpec {
         val result = analyzer.analyze("source")
 
         //assert
-        result should be (AnalysisResult(Namespace("com.ialekseev", "create"), "hello", List("var1" -> "alice", "var2" -> "wonderland"), Webhook(HttpRequest(resultUri, HttpMethod.POST, Map("h1"->"a"), Map("b"->"18"), some(JsonBody(JObject("c"-> JString("19")))))), ScalaCode("val a = 1")).right)
+        result should be (AnalysisResult(Namespace("com.ialekseev", "create"), "hello", List(Variable("var1", "alice"), Variable("var2", "wonderland")), Webhook(HttpRequest(resultUri, HttpMethod.POST, Map("h1"->"a"), Map("b"->"18"), some(JsonBody(JObject("c"-> JString("19")))))), ScalaCode("val a = 1")).right)
       }
 
       "map the resulting parse tree to the analysis result (with uri)" in {

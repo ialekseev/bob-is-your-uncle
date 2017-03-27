@@ -2,11 +2,13 @@ package com.ialekseev.bob.exec
 
 import akka.actor.ActorSystem
 import akka.testkit.{TestActorRef, TestKit}
-import com.ialekseev.bob.BaseSpec
+import com.ialekseev.bob.{BaseSpec, Variable}
 import com.ialekseev.bob.exec.Compiler._
+
 import scalaz.Scalaz._
 import akka.pattern.ask
 import akka.util.Timeout
+
 import scala.concurrent.duration._
 
 class CompilerSpec extends TestKit(ActorSystem("compiler-specs")) with BaseSpec {
@@ -81,7 +83,7 @@ class CompilerSpec extends TestKit(ActorSystem("compiler-specs")) with BaseSpec 
         val compiled = (compilerActor ? CompilationRequest("a + b", fields = """var a = ""; var b = """"")).value.get.get.asInstanceOf[CompilationSucceededResponse]
 
         //act
-        val result = evaluatorActor ? EvaluationRequest(compiled.className, compiled.bytes, List("a" -> "1", "b" -> "hi"))
+        val result = evaluatorActor ? EvaluationRequest(compiled.className, compiled.bytes, List(Variable("a", "1"), Variable("b", "hi")))
 
         //assert
         result.value.get.get should be (EvaluationResponse("1hi"))

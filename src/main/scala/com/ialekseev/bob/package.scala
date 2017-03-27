@@ -34,4 +34,6 @@ package object bob {
   case class StringLiteralBody(text: String) extends Body
   case class DictionaryBody(dic: Map[String, String]) extends Body
   case class JsonBody(json: JValue) extends Body
+
+  case class Variable[+T](name: String, value: T)
 }

@@ -73,7 +73,7 @@ class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServ
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[GetSourcesResponse] should be(GetSourcesResponse(List(tempDir + "file1.bob", tempDir + "file2.bob", tempDir + "file3.bob"), List("a" -> "1", "b" -> "2")))
+          responseAs[GetSourcesResponse] should be(GetSourcesResponse(tempDir, List(tempDir + "file1.bob", tempDir + "file2.bob", tempDir + "file3.bob"), List(Variable("a", "1"), Variable("b", "2"))))
         }
       }
     }
@@ -98,7 +98,7 @@ class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServ
             |    <end>
           """.stripMargin
 
-        val post = parse(s"""{"content":"$content", "vars": [{"a": "1"}, {"b": "2"}]}""")
+        val post = parse(s"""{"content":"$content", "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
 
         //act
         Post("/sandbox/sources/compile", post) ~> createRoutes(tempDir) ~> check {
@@ -127,7 +127,7 @@ class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServ
             |    <end>
           """.stripMargin
 
-        val post = parse(s"""{"content":"$content", "vars": [{"a": "1"}, {"b": "2"}]}""")
+        val post = parse(s"""{"content":"$content", "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
 
         //act
         Post("/sandbox/sources/compile", post) ~> createRoutes(tempDir) ~> check {
@@ -157,7 +157,7 @@ class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServ
             |    <end>
           """.stripMargin
 
-        val post = parse(s"""{"content":"$content", "vars": [{"a": "1"}, {"b": "2"}]}""")
+        val post = parse(s"""{"content":"$content", "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
 
         //act
         Post("/sandbox/sources/compile", post) ~> createRoutes(tempDir) ~> check {

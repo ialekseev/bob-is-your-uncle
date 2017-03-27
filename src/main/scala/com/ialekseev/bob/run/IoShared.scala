@@ -37,7 +37,7 @@ trait IoShared {
     } yield sourceFiles
   }
 
-  def findVarFile(dir: String): Task[Option[String]] = {
+  def findVarsFile(dir: String): Task[Option[String]] = {
     for {
       files <- listFiles(dir)
       varsFile <- Task.now(files.find(f => Paths.get(f).getFileName.toString == varsFileName))
@@ -60,7 +60,7 @@ trait IoShared {
     } yield (): Unit
   }
 
-  def extractVarsFromVarsFile(varsFilePath: String): Task[List[(String, String)]] = {
+  def extractVarsFromVarsFile(varsFilePath: String): Task[List[Variable[String]]] = {
     require(varsFilePath.nonEmpty)
 
     import org.json4s._
@@ -69,15 +69,15 @@ trait IoShared {
 
     for {
       text <- readFile(varsFilePath)
-      vars <- Task(parse(text).extract[Map[String, String]].toList)
+      vars <- Task(parse(text).extract[Map[String, String]].map(t => Variable(t._1, t._2)).toList)
     } yield vars
   }
 
-  def extractVarsForDir(dir: String): Task[List[(String, String)]] = {
+  def extractVarsForDir(dir: String): Task[List[Variable[String]]] = {
     require(dir.nonEmpty)
 
     for {
-      varsFile <- findVarFile(dir)
+      varsFile <- findVarsFile(dir)
       vars <- varsFile match {
         case Some(f) => extractVarsFromVarsFile(f)
         case None => Task.now(List.empty)
@@ -85,7 +85,7 @@ trait IoShared {
     } yield vars
   }
 
-  def extractVarsForFile(filePath: String): Task[List[(String, String)]] = {
+  def extractVarsForFile(filePath: String): Task[List[Variable[String]]] = {
     require(filePath.nonEmpty)
 
     extractVarsForDir(Paths.get(filePath).getParent.toAbsolutePath.toString)
@@ -103,7 +103,7 @@ trait IoShared {
   def readSources(dirs: List[String]): Task[List[InputSource]] = {
     require(dirs.nonEmpty)
 
-    case class FileWithVars(filePath: String, vars: List[(String, String)])
+    case class FileWithVars(filePath: String, vars: List[Variable[String]])
 
     def getFilesWithVars: Task[List[FileWithVars]] = {
       dirs.map(dir => {

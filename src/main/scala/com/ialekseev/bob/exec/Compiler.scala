@@ -1,17 +1,19 @@
 package com.ialekseev.bob.exec
 
 import java.io.File
-import java.net.{URLClassLoader}
-import java.nio.file.{Paths}
+import java.net.URLClassLoader
+import java.nio.file.Paths
+
 import akka.actor.Actor
-import com.ialekseev.bob.CompilationError
+import com.ialekseev.bob.{CompilationError, Variable}
 import com.ialekseev.bob.exec.Compiler._
+
 import scala.collection.mutable.ListBuffer
-import scala.reflect.internal.util.{AbstractFileClassLoader, BatchSourceFile, ScalaClassLoader, Position}
+import scala.reflect.internal.util.{AbstractFileClassLoader, BatchSourceFile, Position, ScalaClassLoader}
 import scala.tools.nsc.{Global, Settings}
 import scala.tools.nsc.io.VirtualDirectory
 import scala.tools.nsc.reporters.AbstractReporter
-import scala.util.{Random}
+import scala.util.Random
 import scalaz.Scalaz._
 import scalaz.\/
 
@@ -19,7 +21,7 @@ object Compiler {
   case class CompilationRequest(code: String, imports: String = "", fields: String = "", implicits: String = "")
   case class CompilationSucceededResponse(className: String, bytes: List[Byte])
   case class CompilationFailedResponse(r: List[CompilationError])
-  case class EvaluationRequest(className: String, bytes: List[Byte], variables: List[(String, AnyRef)])
+  case class EvaluationRequest(className: String, bytes: List[Byte], variables: List[Variable[AnyRef]])
   case class EvaluationResponse(result: Any)
 }
 
@@ -95,7 +97,7 @@ class EvaluatorActor extends Actor {
     }
   }
 
-  def eval(className: String, bytes: List[Byte], variables: List[(String, AnyRef)]): Any = {
+  def eval(className: String, bytes: List[Byte], variables: List[Variable[AnyRef]]): Any = {
     require(className.nonEmpty)
     require(bytes.nonEmpty)
 
@@ -103,7 +105,7 @@ class EvaluatorActor extends Actor {
 
     val instance = cls.getConstructor().newInstance()
     variables.foreach(v => {
-      instance.getClass.getMethods.find(_.getName == v._1 + "_$eq").get.invoke(instance, v._2.asInstanceOf[AnyRef])
+      instance.getClass.getMethods.find(_.getName == v.name + "_$eq").get.invoke(instance, v.value)
     })
     instance.asInstanceOf[() => Any].apply()
   }

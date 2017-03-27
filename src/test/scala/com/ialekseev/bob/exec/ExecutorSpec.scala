@@ -54,7 +54,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
           val compilerActor = compiler
           val evaluatorActor = null
         }
-        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
+        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", List(Variable("a", "1"), Variable("b", "2")), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
         Mockito.when(anal.analyze("<scala>do()<end>")).thenReturn(resultToBeReturned.right)
 
         //act
@@ -79,7 +79,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
           val compilerActor = compiler
           val evaluatorActor = null
         }
-        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
+        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", List(Variable("a", "1"), Variable("b", "2")), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
         Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
 
         //act
@@ -104,11 +104,11 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
           val compilerActor = compiler
           val evaluatorActor = null
         }
-        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
+        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", List(Variable("a", "1"), Variable("b", "2")), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
         Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
 
         //act
-        val result = executor.build("source", List("ext1" -> "1", "ext2" -> "str2")).unsafePerformSync
+        val result = executor.build("source", List(Variable("ext1", "1"), Variable("ext2", "str2"))).unsafePerformSync
 
         //assert
         result.toEither.right.get should be (Build(resultToBeReturned, "super", List(1,2,3)))
@@ -129,11 +129,11 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
           val compilerActor = compiler
           val evaluatorActor = null
         }
-        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "2", "c" -> "3"), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
+        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", List(Variable("a", "1"), Variable("b", "2"), Variable("c", "3")), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
         Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
 
         //act
-        val result = executor.build("source", List("a" -> "ext1", "b" -> "ext2", "d" -> "ext4")).unsafePerformSync
+        val result = executor.build("source", List(Variable("a", "ext1"), Variable("b", "ext2"), Variable("d", "ext4"))).unsafePerformSync
 
         //assert
         result.toEither.right.get should be (Build(resultToBeReturned, "super", List(1,2,3)))
@@ -154,7 +154,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
           val compilerActor = compiler
           val evaluatorActor = null
         }
-        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "hi"), Webhook(HttpRequest(some("example/{$c}/{$d}"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
+        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", List(Variable("a", "1"), Variable("b", "hi")), Webhook(HttpRequest(some("example/{$c}/{$d}"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
         Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
 
         //act
@@ -179,7 +179,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
           val compilerActor = compiler
           val evaluatorActor = null
         }
-        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "hi"), Webhook(HttpRequest(some("example/{$c}/{$d}"), HttpMethod.GET, Map("header1" -> "{$h}", "header2" -> "head_{$header2}"), Map("query1" -> "{$q}_queryString", "query2" -> "{$query2}"), none[Body])), ScalaCode("do()"))
+        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", List(Variable("a", "1"), Variable("b", "hi")), Webhook(HttpRequest(some("example/{$c}/{$d}"), HttpMethod.GET, Map("header1" -> "{$h}", "header2" -> "head_{$header2}"), Map("query1" -> "{$q}_queryString", "query2" -> "{$query2}"), none[Body])), ScalaCode("do()"))
         Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
 
         //act
@@ -204,7 +204,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
           val compilerActor = compiler
           val evaluatorActor = null
         }
-        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "hi"), Webhook(HttpRequest(some("example/1"), HttpMethod.GET, Map.empty, Map.empty, some(StringLiteralBody("hello {$name}! You are {$s}, aren't you?")))), ScalaCode("do()"))
+        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", List(Variable("a", "1"), Variable("b", "hi")), Webhook(HttpRequest(some("example/1"), HttpMethod.GET, Map.empty, Map.empty, some(StringLiteralBody("hello {$name}! You are {$s}, aren't you?")))), ScalaCode("do()"))
         Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
 
         //act
@@ -229,7 +229,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
           val compilerActor = compiler
           val evaluatorActor = null
         }
-        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "hi"), Webhook(HttpRequest(some("example/1"), HttpMethod.GET, Map.empty, Map.empty, some(DictionaryBody(Map("hello"-> "{$name}!", "state" -> "{$s}, aren't you?"))))), ScalaCode("do()"))
+        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", List(Variable("a", "1"), Variable("b", "hi")), Webhook(HttpRequest(some("example/1"), HttpMethod.GET, Map.empty, Map.empty, some(DictionaryBody(Map("hello"-> "{$name}!", "state" -> "{$s}, aren't you?"))))), ScalaCode("do()"))
         Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
 
         //act
@@ -254,7 +254,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
           val compilerActor = compiler
           val evaluatorActor = null
         }
-        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "hi"), Webhook(HttpRequest(some("example/1"), HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("hello_{$name}_!"-> JString("my {$s} friend")))))), ScalaCode("do()"))
+        val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", List(Variable("a", "1"), Variable("b", "hi")), Webhook(HttpRequest(some("example/1"), HttpMethod.GET, Map.empty, Map.empty, some(JsonBody(JObject("hello_{$name}_!"-> JString("my {$s} friend")))))), ScalaCode("do()"))
         Mockito.when(anal.analyze("source")).thenReturn(resultToBeReturned.right)
 
         //act
@@ -314,7 +314,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val anal = mock[Analyzer]
         val evaluator = TestActorRef(new Actor {
           def receive = {
-            case v if v == EvaluationRequest("super", List(1,2,3), List("request" -> HttpRequestEx("com/create/", "GET", Map.empty, Map.empty, none))) => sender ! EvaluationResponse("1")
+            case v if v == EvaluationRequest("super", List(1,2,3), List(Variable("request", HttpRequestEx("com/create/", "GET", Map.empty, Map.empty, none)))) => sender ! EvaluationResponse("1")
           }
         })
         val executor = new Executor {
@@ -339,7 +339,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val anal = mock[Analyzer]
         val evaluator = TestActorRef(new Actor {
           def receive = {
-            case v if v == EvaluationRequest("super", List(1,2,3), List("request" -> HttpRequestEx("COM/create/EXAMPLE/", "GET", Map.empty, Map.empty, none))) => sender ! EvaluationResponse("1")
+            case v if v == EvaluationRequest("super", List(1,2,3), List(Variable("request", HttpRequestEx("COM/create/EXAMPLE/", "GET", Map.empty, Map.empty, none)))) => sender ! EvaluationResponse("1")
           }
         })
         val executor = new Executor {
@@ -364,7 +364,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val anal = mock[Analyzer]
         val evaluator = TestActorRef(new Actor {
           def receive = {
-            case v if v == EvaluationRequest("super", List(1,2,3), List("request" -> HttpRequestEx("/com/create/EXAMPLE/", "GET", Map.empty, Map.empty, none))) => sender ! EvaluationResponse("1")
+            case v if v == EvaluationRequest("super", List(1,2,3), List(Variable("request", HttpRequestEx("/com/create/EXAMPLE/", "GET", Map.empty, Map.empty, none)))) => sender ! EvaluationResponse("1")
           }
         })
         val executor = new Executor {
@@ -389,7 +389,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val anal = mock[Analyzer]
         val evaluator = TestActorRef(new Actor {
           def receive = {
-            case v if v == EvaluationRequest("super", List(1,2,3), List("request" -> HttpRequestEx("com/create", "GET", Map("header1" -> "secret", "header2" -> "xxx", "header3" -> "yyy"), Map.empty, none))) => sender ! EvaluationResponse("1")
+            case v if v == EvaluationRequest("super", List(1,2,3), List(Variable("request", HttpRequestEx("com/create", "GET", Map("header1" -> "secret", "header2" -> "xxx", "header3" -> "yyy"), Map.empty, none)))) => sender ! EvaluationResponse("1")
           }
         })
         val executor = new Executor {
@@ -414,7 +414,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val anal = mock[Analyzer]
         val evaluator = TestActorRef(new Actor {
           def receive = {
-            case v if v == EvaluationRequest("super", List(1,2,3), List("request" -> HttpRequestEx("com/create", "GET", Map("header1" -> "secret", "header2" -> "app_xxx"), Map.empty, none), "h1" -> "secret", "h2" -> "xxx")) => sender ! EvaluationResponse("1")
+            case v if v == EvaluationRequest("super", List(1,2,3), List(Variable("request", HttpRequestEx("com/create", "GET", Map("header1" -> "secret", "header2" -> "app_xxx"), Map.empty, none)), Variable("h1", "secret"), Variable("h2", "xxx"))) => sender ! EvaluationResponse("1")
           }
         })
         val executor = new Executor {
@@ -439,7 +439,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val anal = mock[Analyzer]
         val evaluator = TestActorRef(new Actor {
           def receive = {
-            case v if v == EvaluationRequest("super", List(1,2,3), List("request" -> HttpRequestEx("com/create/example/1/2/", "GET", Map.empty, Map.empty, none), "a" -> "1", "b" -> "2")) => sender ! EvaluationResponse("1")
+            case v if v == EvaluationRequest("super", List(1,2,3), List(Variable("request", HttpRequestEx("com/create/example/1/2/", "GET", Map.empty, Map.empty, none)), Variable("a", "1"), Variable("b", "2"))) => sender ! EvaluationResponse("1")
           }
         })
         val executor = new Executor {
@@ -464,7 +464,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val anal = mock[Analyzer]
         val evaluator = TestActorRef(new Actor {
           def receive = {
-            case v if v == EvaluationRequest("super", List(1,2,3), List("request" -> HttpRequestEx("com/create/example/", "POST", Map.empty, Map("q1" -> "start_john_end", "Q2" -> "smith", "Q3" -> "super"), none), "name" -> "john", "surname" -> "smith")) => sender ! EvaluationResponse("1")
+            case v if v == EvaluationRequest("super", List(1,2,3), List(Variable("request", HttpRequestEx("com/create/example/", "POST", Map.empty, Map("q1" -> "start_john_end", "Q2" -> "smith", "Q3" -> "super"), none)), Variable("name", "john"), Variable("surname", "smith"))) => sender ! EvaluationResponse("1")
           }
         })
         val executor = new Executor {
@@ -490,7 +490,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val body = some(StringLiteralBody("hello John! You are fine, aren't you?"))
         val evaluator = TestActorRef(new Actor {
           def receive = {
-            case v if v == EvaluationRequest("super", List(1,2,3), List("request" -> HttpRequestEx("com/create/example/1/2/", "GET", Map.empty, Map.empty, body), "a" -> "1", "b" -> "2", "name" -> "John", "s" -> "fine")) => sender ! EvaluationResponse("1")
+            case v if v == EvaluationRequest("super", List(1,2,3), List(Variable("request", HttpRequestEx("com/create/example/1/2/", "GET", Map.empty, Map.empty, body)), Variable("a", "1"), Variable("b", "2"), Variable("name", "John"), Variable("s", "fine"))) => sender ! EvaluationResponse("1")
           }
         })
         val executor = new Executor {
@@ -516,7 +516,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val body = some(DictionaryBody(Map("hello"-> "John", "state" -> "fine, aren't you?")))
         val evaluator = TestActorRef(new Actor {
           def receive = {
-            case v if v == EvaluationRequest("super", List(1,2,3), List("request" -> HttpRequestEx("com/create/example/", "GET", Map.empty, Map.empty, body), "name" -> "John", "s" -> "fine")) => sender ! EvaluationResponse("1")
+            case v if v == EvaluationRequest("super", List(1,2,3), List(Variable("request", HttpRequestEx("com/create/example/", "GET", Map.empty, Map.empty, body)), Variable("name", "John"), Variable("s", "fine"))) => sender ! EvaluationResponse("1")
           }
         })
         val executor = new Executor {
@@ -542,7 +542,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val body = some(JsonBody(JObject("a"-> JString("1"), "b" -> JInt(1))))
         val evaluator = TestActorRef(new Actor {
           def receive = {
-            case v if v == EvaluationRequest("super", List(1,2,3), List("request" -> HttpRequestEx("com/create/example/", "GET", Map.empty, Map.empty, body))) => sender ! EvaluationResponse("1")
+            case v if v == EvaluationRequest("super", List(1,2,3), List(Variable("request", HttpRequestEx("com/create/example/", "GET", Map.empty, Map.empty, body)))) => sender ! EvaluationResponse("1")
           }
         })
         val executor = new Executor {
@@ -568,7 +568,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val body = some(JsonBody(JObject("a"-> JObject("a1" -> JString("1"), "a2" -> JInt(2)), "c" -> JString("2"), "b" -> JInt(1))))
         val evaluator = TestActorRef(new Actor {
           def receive = {
-            case v if v == EvaluationRequest("super", List(1,2,3), List("request" -> HttpRequestEx("com/create/example/", "GET", Map.empty, Map.empty, body))) => sender ! EvaluationResponse("1")
+            case v if v == EvaluationRequest("super", List(1,2,3), List(Variable("request", HttpRequestEx("com/create/example/", "GET", Map.empty, Map.empty, body)))) => sender ! EvaluationResponse("1")
           }
         })
         val executor = new Executor {
@@ -595,7 +595,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val body = some(JsonBody(JObject("a"-> JObject("a1" -> JString("1"), "a2" -> JString("before_hello_after")), "c" -> JString("2"), "b" -> JString("1"))))
         val evaluator = TestActorRef(new Actor {
           def receive = {
-            case v if v == EvaluationRequest("super", List(1,2,3), List("request" -> HttpRequestEx("com/create/example/", "GET", Map.empty, Map.empty, body), "hel" -> "hello", "b" -> "1")) => sender ! EvaluationResponse("1")
+            case v if v == EvaluationRequest("super", List(1,2,3), List(Variable("request", HttpRequestEx("com/create/example/", "GET", Map.empty, Map.empty, body)), Variable("hel", "hello"), Variable("b", "1"))) => sender ! EvaluationResponse("1")
           }
         })
         val executor = new Executor {
@@ -621,7 +621,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val body = some(JsonBody(JObject("a"-> JObject("a1" -> JString("1"), "a2" -> JInt(2)), "c" -> JString("2"), "b" -> JBool(true))))
         val evaluator = TestActorRef(new Actor {
           def receive = {
-            case v if v == EvaluationRequest("super", List(1,2,3), List("request" -> HttpRequestEx("com/create/example/", "GET", Map.empty, Map.empty, body), "hel" -> "2", "b" -> "true")) => sender ! EvaluationResponse("1")
+            case v if v == EvaluationRequest("super", List(1,2,3), List(Variable("request", HttpRequestEx("com/create/example/", "GET", Map.empty, Map.empty, body)), Variable("hel", "2"), Variable("b", "true"))) => sender ! EvaluationResponse("1")
           }
         })
         val executor = new Executor {
@@ -647,7 +647,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val body = some(JsonBody(JObject("a"-> JObject("a1" -> JString("1"), "a2" -> JInt(2)), "c" -> JString("2"), "b" -> JBool(true))))
         val evaluator = TestActorRef(new Actor {
           def receive = {
-            case v if v == EvaluationRequest("super", List(1,2,3), List("request" -> HttpRequestEx("com/create/example/", "GET", Map.empty, Map.empty, body), "hel" -> "2", "b" -> "true")) => throw new NullPointerException("bang!")
+            case v if v == EvaluationRequest("super", List(1,2,3), List(Variable("request", HttpRequestEx("com/create/example/", "GET", Map.empty, Map.empty, body)), Variable("hel", "2"), Variable("b", "true"))) => throw new NullPointerException("bang!")
           }
         })
         val executor = new Executor {

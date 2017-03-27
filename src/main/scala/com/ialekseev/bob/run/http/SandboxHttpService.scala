@@ -8,6 +8,9 @@ import com.ialekseev.bob.exec.Executor.{Build, RunResult, SuccessfulRun}
 import com.ialekseev.bob.run.IoShared
 import com.ialekseev.bob.run.http.SandboxHttpService._
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
+import org.json4s.JsonAST.JObject
+import org.json4s.JsonDSL._
+import org.json4s.native.JsonMethods._
 import scalaz.concurrent.Task
 import scalaz.syntax.either._
 import scalaz.{-\/, EitherT, \/, \/-}
@@ -16,7 +19,7 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
   val exec: Executor
 
   def createRoutes(dir: String): Route = getAssets ~ pathPrefix("sandbox") {
-     getSourcesRoute(dir) ~ getOneSourceRoute ~ putOneSourceRoute ~ postBuildRequestRoute ~ postRunRequestRoute
+     getSourcesRoute(dir) ~ getOneSourceRoute ~ putOneSourceRoute ~ putVarsRoute ~ postBuildRequestRoute ~ postRunRequestRoute
   }
 
   private def getAssets = {
@@ -32,7 +35,7 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
         for {
           list <- listSourceFiles(dir)
           vars <- extractVarsForDir(dir)
-        } yield GetSourcesResponse(list, vars)
+        } yield GetSourcesResponse(dir, list, vars)
       }
     }
   }
@@ -53,6 +56,21 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
           completeTask {
             updateFile(filePath, source.content).map(_ => PutOneSourceResponse(filePath))
               }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private def putVarsRoute = path ("sources" / "vars" / Segment) { dir => {
+    put {
+      entity(as[PutVarsRequest]) { r => {
+        completeTask {
+            for {
+                  varsFile <- findVarsFile(dir)
+                  _ <- updateFile(varsFile.get, pretty(render((r.vars.foldLeft(JObject())((js, v) => js ~ (v.name -> v.value))))))
+                } yield PutVarsResponse(varsFile.get)
             }
           }
         }
@@ -101,17 +119,20 @@ object SandboxHttpService {
   case class BuildErrorResponse(startOffset: Int, endOffset: Int, message: String)
   def mapBuildError(e: BuildError): BuildErrorResponse = BuildErrorResponse(e.startOffset, e.endOffset, e.message)
 
-  case class GetSourcesResponse(list: List[String], vars: List[(String, String)])
+  case class GetSourcesResponse(dir: String, list: List[String], vars: List[Variable[String]])
   case class GetOneSourceResponse(filePath: String, content: String)
 
   case class PutOneSourceRequest(content: String)
   case class PutOneSourceResponse(updated: String)
 
-  case class PostBuildRequest(content: String, vars: List[(String, String)])
+  case class PutVarsRequest(vars: List[Variable[String]])
+  case class PutVarsResponse(updated: String)
+
+  case class PostBuildRequest(content: String, vars: List[Variable[String]])
   case object PostBuildSuccessResponse
   case class PostBuildFailureResponse(errors: List[BuildErrorResponse], stage: String)
 
-  case class PostRunRequest(content: String, vars: List[(String, String)], run: HttpRequest)
+  case class PostRunRequest(content: String, vars: List[Variable[String]], run: HttpRequest)
   case class PostRunSuccessResponse(result: String)
   case class PostRunFailureResponse(errors: List[BuildErrorResponse], stage: String)
 }

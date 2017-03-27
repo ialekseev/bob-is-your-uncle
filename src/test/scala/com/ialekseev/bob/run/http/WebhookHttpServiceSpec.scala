@@ -25,7 +25,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
         val uri = "/example/1"
         val method = HttpMethod.GET
         val build = {
-          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some(uri), method, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
+          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", List(Variable("a", "1"), Variable("b", "2")), Webhook(HttpRequest(some(uri), method, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
           Build(analysisResult, "super", List(1,2,3))
         }
         val request = HttpRequest(some(uri), method, Map.empty, Map.empty, none)
@@ -48,7 +48,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
         val method = HttpMethod.POST
         val headers = Map("h1" -> "super", "head2" -> "cool")
         val build = {
-          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("/example/1"), method, headers, Map.empty, none[Body])), ScalaCode("do()"))
+          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", List(Variable("a", "1"), Variable("b", "2")), Webhook(HttpRequest(some("/example/1"), method, headers, Map.empty, none[Body])), ScalaCode("do()"))
           Build(analysisResult, "super", List(1,2,3))
         }
         val request = HttpRequest(some(uri), method, headers, Map.empty, none)
@@ -72,7 +72,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
         val method = HttpMethod.PUT
         val queryString = Map("q1" -> "super", "query2" -> "cool")
         val build = {
-          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("/example/1"), method, Map.empty, queryString, none[Body])), ScalaCode("do()"))
+          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", List(Variable("a", "1"), Variable("b", "2")), Webhook(HttpRequest(some("/example/1"), method, Map.empty, queryString, none[Body])), ScalaCode("do()"))
           Build(analysisResult, "super", List(1,2,3))
         }
         val request = HttpRequest(some(path), method, Map.empty, queryString, none)
@@ -94,7 +94,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
         val uri = "/example/1"
         val method = HttpMethod.GET
         val build = {
-          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("/example/2"), method, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
+          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", List(Variable("a", "1"), Variable("b", "2")), Webhook(HttpRequest(some("/example/2"), method, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
           Build(analysisResult, "super", List(1,2,3))
         }
         val request = HttpRequest(some(uri), method, Map.empty, Map.empty, none)
@@ -118,7 +118,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
         val method = HttpMethod.PUT
         val queryString = Map("q1" -> "super", "query2" -> "cool")
         val build = {
-          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", List("a" -> "1", "b" -> "2"), Webhook(HttpRequest(some("/example/1"), method, Map.empty, queryString, none[Body])), ScalaCode("do()"))
+          val analysisResult = AnalysisResult(Namespace("com", "create"), "cool", List(Variable("a", "1"), Variable("b", "2")), Webhook(HttpRequest(some("/example/1"), method, Map.empty, queryString, none[Body])), ScalaCode("do()"))
           Build(analysisResult, "super", List(1,2,3))
         }
         val request = HttpRequest(some(path), method, Map.empty, queryString, none)
