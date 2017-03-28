@@ -14,15 +14,20 @@
             <div class="row">
                 <form *ngFor="let variable of variables" class="form-inline">
                     <div class="form-group">
-                        <input type="text" [(ngModel)]="variable.name" style="width:100px">
+                        <input type="text" [(ngModel)]="variable.name" required style="width:100px">
                     </div>
                     <div class="form-group">=</div>
                     <div class="form-group">
-                        <input type="text" [(ngModel)]="variable.value" style="width:100px">
+                        <input type="text" [(ngModel)]="variable.value" required style="width:100px">
+                    </div>
+                    <div class="form-group">
+                        <button type="button" (click)="onRemoveVariableClick(variable)" class="btn btn-default btn-xs">X</button>
                     </div>
                 </form>
                 <div style="margin-top: 5px">
+                    <button type="button" (click)="onAddVariableClick()" class="btn btn-success btn-xs">+</button>
                     <button type="button" (click)="onSaveVariablesClick()" class="btn btn-primary btn-xs">Save variables</button>
+                    <span *ngIf="variablesSaved" class="alert alert-success fade in">saved</span>
                 </div>
             </div>
 
@@ -34,6 +39,7 @@
                             <textarea [(ngModel)]="selectedSourceContent" class="form-control" rows="15"></textarea>
                             <div style="margin-top: 5px">
                                 <button type="button" (click)="onSaveSelectedSourceClick()" class="btn btn-primary btn-lg">Save</button>
+                                <span *ngIf="sourceSaved" class="alert alert-success fade in">saved</span>
                             </div>
                         </div>
                     </div>

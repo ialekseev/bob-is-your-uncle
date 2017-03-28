@@ -20,13 +20,11 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
   val exec: Executor = mock[Executor]
   override def beforeEach(): Unit = { reset(exec); super.beforeEach()}
 
-  private var findVarsFileFunc: String => Task[Option[String]] = null
   private var listSourceFilesFunc: String => Task[List[String]] = null
   private var extractVarsForDirFunc: String => Task[List[Variable[String]]] = null
   private var readFileFunc: String => Task[String] = null
   private var updateFileFunc: (String, String) => Task[Unit] = null
 
-  override def findVarsFile(dir: String): Task[Option[String]] = findVarsFileFunc(dir)
   override def listSourceFiles(dir: String): Task[List[String]] = listSourceFilesFunc(dir)
   override def extractVarsForDir(dir: String): Task[List[Variable[String]]] = extractVarsForDirFunc(dir)
   override def readFile(filePath: String): Task[String] = readFileFunc(filePath)
@@ -188,9 +186,6 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
       "return 'OK' with the file" in {
         //arrange
         val put = parse("""{"vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
-        findVarsFileFunc = {
-          case "\\test\\" => Task.now(some("\\test\\_vars.json"))
-        }
 
         updateFileFunc = {
           case ("\\test\\_vars.json", "{\n  \"a\":\"1\",\n  \"b\":\"2\"\n}") => Task.now((): Unit)
@@ -206,8 +201,22 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
       }
     }
 
-    //todo: more specs + Integration specs
+    "IO fails" should {
+      "return 'InternalServerError'" in {
+        //arrange
+        val put = parse("""{"vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
+        updateFileFunc = {
+          case ("\\test\\_vars.json", "{\n  \"a\":\"1\",\n  \"b\":\"2\"\n}") => Task.fail(new FileNotFoundException("bad!"))
+        }
 
+        //act
+        Put("/sandbox/sources/vars/%5Ctest%5C", put) ~> createRoutes("\\test\\") ~> check {
+
+          //assert
+          response.status should be(StatusCodes.InternalServerError)
+        }
+      }
+    }
   }
 
 

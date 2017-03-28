@@ -9,17 +9,22 @@ import 'rxjs/Rx'
 })
 export class App {
     http: Http
+    dir: string;
     sources: Array<string>;
     variables: Array<Variable>;
 
     selectedSourceFilePath: string;
     selectedSourceContent: string;
 
+    variablesSaved = false;
+    sourceSaved = false;
+
     private headers = new Headers({'Content-Type': 'application/json'});
 
     constructor(http: Http) {
         this.http = http;
         http.get('sandbox/sources').map(r => JSON.parse(r._body)).subscribe(sources => {
+            this.dir = sources.dir;
             this.sources = sources.list;
             this.variables = sources.vars;
         });
@@ -34,17 +39,25 @@ export class App {
 
     onSaveSelectedSourceClick(): void {
         this.http.put(encodeURI('sandbox/sources/' + this.selectedSourceFilePath), JSON.stringify({"content": this.selectedSourceContent}), {headers: this.headers}).subscribe(res => {
-            console.log("Updated:");
-            console.log(res);
+            this.sourceSaved = true;
+            setTimeout(function() {this.sourceSaved = false;}.bind(this), 500); //todo: refactor
         });
     }
 
     onSaveVariablesClick(): void {
-        let variablesObj: any = {};
-        this.variables.forEach(v => variablesObj[v.name] = v.value);
+        this.variables = this.variables.filter(v => v.name);
+        this.http.put(encodeURI('sandbox/sources/vars/' + this.dir), JSON.stringify({"vars": this.variables}), {headers: this.headers}).subscribe(res => {
+            this.variablesSaved = true;
+            setTimeout(function() {this.variablesSaved = false;}.bind(this), 500); //todo: refactor
+        });
+    }
 
-        console.log(variablesObj);
-        //todo: implement
+    onAddVariableClick(): void {
+        this.variables.push(new Variable("", ""));
+    }
+
+    onRemoveVariableClick(variableToDelete: Variable): void {
+        this.variables = this.variables.filter(v => v.name != variableToDelete.name)
     }
 }
 

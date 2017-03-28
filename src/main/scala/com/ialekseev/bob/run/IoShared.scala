@@ -1,19 +1,17 @@
 package com.ialekseev.bob.run
 
-import java.nio.file.{Files, Paths}
+import java.nio.file.{FileSystems, Files, Paths}
 import com.ialekseev.bob._
-import com.ialekseev.bob.run._
 import com.ialekseev.bob.exec.Executor._
 import com.ialekseev.bob.exec.analyzer.Analyzer.AnalysisResult
-import scala.io.{Codec, Source, StdIn}
+import scala.io.{StdIn}
 import scala.language.reflectiveCalls
-import scala.util.Try
 import scala.collection.JavaConverters._
 import scalaz.Scalaz._
 import scalaz.effect.IO
 import scalaz.effect.IO._
 import scalaz.concurrent.Task
-import scalaz.{-\/, EitherT, \/, \/-}
+import scalaz.{-\/, \/, \/-}
 import fs2.interop.scalaz._
 
 trait IoShared {
@@ -21,6 +19,19 @@ trait IoShared {
   val defaultSourcesLocation = "bobs"
   val varsFileName = "_vars.json"
   val fileExtension = ".bob"
+
+  def normalizeDirPath(dir: String): String = {
+    require(dir.nonEmpty)
+
+    val separator = FileSystems.getDefault.getSeparator
+    if (dir.endsWith(separator)) dir else dir + separator
+  }
+
+  def getVarsFilePath(dir: String): String = {
+    require(dir.nonEmpty)
+
+    normalizeDirPath(dir) + varsFileName
+  }
 
   def listFiles(dir: String): Task[List[String]] = {
     require(dir.nonEmpty)
@@ -31,17 +42,21 @@ trait IoShared {
   }
 
   def listSourceFiles(dir: String): Task[List[String]] = {
+    require(dir.nonEmpty)
+
     for {
       files <- listFiles(dir)
-      sourceFiles <- Task.now(files.filter(_.endsWith(fileExtension)))
+      sourceFiles <- Task(files.filter(_.endsWith(fileExtension)))
     } yield sourceFiles
   }
 
   def findVarsFile(dir: String): Task[Option[String]] = {
-    for {
-      files <- listFiles(dir)
-      varsFile <- Task.now(files.find(f => Paths.get(f).getFileName.toString == varsFileName))
-    } yield varsFile
+    require(dir.nonEmpty)
+
+    Task {
+      val varsFilePath = getVarsFilePath(dir)
+      Files.exists(Paths.get(varsFilePath)) option  varsFilePath
+    }
   }
 
   def readFile(filePath: String): Task[String] = {
@@ -50,12 +65,18 @@ trait IoShared {
     fs2.io.file.readAll[Task](Paths.get(filePath), 4096).through(fs2.text.utf8Decode).through(fs2.text.lines).intersperse("\n").runFold("")(_ + _)
   }
 
+  def deleteIfExists(filePath: String): Task[Boolean] = {
+    require(filePath.nonEmpty)
+
+    Task(Files.deleteIfExists(Paths.get(filePath)))
+  }
+
   def updateFile(filePath: String, content: String): Task[Unit] = {
     require(filePath.nonEmpty)
     require(content.nonEmpty)
 
     for {
-      _ <- Task(Files.deleteIfExists(Paths.get(filePath)))
+      _ <- deleteIfExists(filePath)
       _ <- fs2.Stream.eval(Task.now(content)).through(fs2.text.utf8Encode).through(fs2.io.file.writeAll(Paths.get(filePath))).run
     } yield (): Unit
   }

@@ -67,10 +67,8 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
     put {
       entity(as[PutVarsRequest]) { r => {
         completeTask {
-            for {
-                  varsFile <- findVarsFile(dir)
-                  _ <- updateFile(varsFile.get, pretty(render((r.vars.foldLeft(JObject())((js, v) => js ~ (v.name -> v.value))))))
-                } yield PutVarsResponse(varsFile.get)
+          val varsFilePath = getVarsFilePath(dir)
+              updateFile(varsFilePath, pretty(render((r.vars.foldLeft(JObject())((js, v) => js ~ (v.name -> v.value)))))).map(_ => PutVarsResponse(varsFilePath))
             }
           }
         }
