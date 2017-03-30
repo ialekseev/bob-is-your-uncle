@@ -2,6 +2,8 @@ import {Component} from 'angular2/core';
 import {Http, Headers, HTTP_PROVIDERS} from 'angular2/http'
 import 'rxjs/Rx'
 
+//todo: find out some decent way of using code contracts in TS
+
 @Component({
     selector: 'sandbox-app',
     templateUrl: 'app/app.html' ,

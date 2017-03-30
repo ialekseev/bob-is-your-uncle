@@ -22,13 +22,15 @@ trait Service extends WebhookHttpService {
 
   def serviceCommand(dirs: List[String] = List.empty): Task[Unit] = {
 
-    def build(sources: List[InputSource]): Task[List[BuildFailed \/ Build]] = {
-      sources.map(source => {
-        for {
-          built <- exec.build(source.content, source.vars)
-          _ <- showResult(source.path, source.content, built).toTask
-        } yield built
-      }).sequenceU
+    def build(inputDirs: List[InputDir]): Task[List[BuildFailed \/ Build]] = {
+      inputDirs.map(inputDir => {
+        inputDir.sources.map(inputSource => {
+          for {
+            built <- exec.build(inputSource.content, inputDir.vars)
+            _ <- showResult(inputSource.path, inputSource.content, built).toTask
+          } yield built
+        })
+      }).flatten.sequenceU
     }
 
     def runService(builds: List[Build]): IO[Unit] = {
@@ -52,11 +54,11 @@ trait Service extends WebhookHttpService {
 
     val targetDirectories = if (dirs.nonEmpty) dirs else List(defaultSourcesLocation)
 
-    val result: Task[Unit] = readSources(targetDirectories).flatMap(sources => {
+    val result: Task[Unit] = readSources(targetDirectories).flatMap(inputDirs => {
         for {
           _ <- show("building...").toTask
           _ <- {
-            build(sources).flatMap(builds => {
+            build(inputDirs).flatMap(builds => {
               builds.sequenceU match {
                 case \/-(builds: List[Build]) => {
                   val duplicateNamespaces = builds.groupBy(_.analysisResult.namespace).collect {case (x, List(_,_,_*)) => x}.toVector

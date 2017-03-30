@@ -115,46 +115,19 @@ trait IoShared {
   def readSource(sourceFilePath: String): Task[InputSource] = {
     require(sourceFilePath.nonEmpty)
 
-    for {
-      content <- readFile(sourceFilePath)
-      vars <- extractVarsForFile(sourceFilePath)
-    } yield InputSource(sourceFilePath, content, vars)
+    readFile(sourceFilePath).map(content => InputSource(sourceFilePath, content))
   }
 
-  def readSources(dirs: List[String]): Task[List[InputSource]] = {
+  def readSources(dirs: List[String]): Task[List[InputDir]] = {
     require(dirs.nonEmpty)
 
-    case class FileWithVars(filePath: String, vars: List[Variable[String]])
-
-    def getFilesWithVars: Task[List[FileWithVars]] = {
-      dirs.map(dir => {
-        for {
-          sourceFiles <- listSourceFiles(dir)
-          vars <- extractVarsForDir(dir)
-        } yield sourceFiles.map(f => FileWithVars(f, vars))
-      }).sequenceU.map(_.flatten)
-    }
-
-    def mapToInputSources(files: List[FileWithVars]): Task[List[InputSource]] = {
-      files.map(file => {
-        readFile(file.filePath).map(l => InputSource(file.filePath, l, file.vars))
-      }).sequenceU
-    }
-
-    for {
-      sourceFiles <- getFilesWithVars
-      sources <- mapToInputSources(sourceFiles)
-    } yield sources
-  }
-
-  def updateSource(sourceFilePath: String, content: String): Task[InputSource] = {
-    require(sourceFilePath.nonEmpty)
-    require(content.nonEmpty)
-
-    for {
-      _ <- updateFile(sourceFilePath, content)
-      source <- readSource(sourceFilePath)
-    } yield source
+    dirs.map(dir => {
+      for {
+        sourceFiles <- listSourceFiles(dir)
+        vars <- extractVarsForDir(dir)
+        inputSources <- sourceFiles.map(sourceFilePath => readSource(sourceFilePath)).sequenceU
+      } yield InputDir(dir, inputSources, vars)
+    }).sequenceU
   }
 
   def show(message: String = ""): IO[Unit] = putStrLn(message)
