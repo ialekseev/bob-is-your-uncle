@@ -5,16 +5,16 @@ import 'rxjs/Rx'
 @Component({
     selector: 'sandbox-app',
     templateUrl: 'app/app.html' ,
+    styleUrls: ['app/app.css'],
     providers: [HTTP_PROVIDERS] //todo: remove?
 })
 export class App {
     http: Http
     dir: string;
-    sources: Array<string>;
+    sources: Array<Source>;
     variables: Array<Variable>;
 
-    selectedSourceFilePath: string;
-    selectedSourceContent: string;
+    selectedSourceIndex: number | null = null;
 
     variablesSaved = false;
     sourceSaved = false;
@@ -23,32 +23,40 @@ export class App {
 
     constructor(http: Http) {
         this.http = http;
-        http.get('sandbox/sources').map(r => JSON.parse(r._body)).subscribe(sources => {
+        http.get('sandbox/sources').map(r => r.json()).subscribe(sources => {
             this.dir = sources.dir;
-            this.sources = sources.list;
+            this.sources = (sources.list as Array<string>).map(s => new Source(s, ""))
             this.variables = sources.vars;
         });
     }
 
-    onSourceClick(source: string): void {
-        this.http.get(encodeURI('sandbox/sources/' + source)).map(r => JSON.parse(r._body)).subscribe(source => {
-            this.selectedSourceFilePath = source.filePath;
-            this.selectedSourceContent = source.content;
-        });
+    onSourceClick(index: number): void {
+        let filePath = this.sources[index].filePath;
+        this.http.get(encodeURI('sandbox/sources/' + filePath)).map(r => r.json()).subscribe(res => {
+            this.selectedSourceIndex = index;
+            this.sources[index] = new Source(res.filePath, res.content)
+            console.log(res);
+         });
+    }
+
+    onAddSourceClick(): void {
+        //todo: implement
+        //this.sources.push(new Variable("", ""));
     }
 
     onSaveSelectedSourceClick(): void {
-        this.http.put(encodeURI('sandbox/sources/' + this.selectedSourceFilePath), JSON.stringify({"content": this.selectedSourceContent}), {headers: this.headers}).subscribe(res => {
-            this.sourceSaved = true;
-            setTimeout(function() {this.sourceSaved = false;}.bind(this), 500); //todo: refactor
+        let filePath = this.sources[this.selectedSourceIndex].filePath;
+        let content = this.sources[this.selectedSourceIndex].content;
+
+        this.http.put(encodeURI('sandbox/sources/' + filePath), JSON.stringify({"content": content}), {headers: this.headers}).subscribe(res => {
+            this.flash(a => this.sourceSaved = a);
         });
     }
 
     onSaveVariablesClick(): void {
         this.variables = this.variables.filter(v => v.name);
         this.http.put(encodeURI('sandbox/sources/vars/' + this.dir), JSON.stringify({"vars": this.variables}), {headers: this.headers}).subscribe(res => {
-            this.variablesSaved = true;
-            setTimeout(function() {this.variablesSaved = false;}.bind(this), 500); //todo: refactor
+            this.flash(a => this.variablesSaved = a);
         });
     }
 
@@ -59,6 +67,17 @@ export class App {
     onRemoveVariableClick(variableToDelete: Variable): void {
         this.variables = this.variables.filter(v => v.name != variableToDelete.name)
     }
+
+    private flash(set: (v: boolean) => void) {
+        set(true);
+        setTimeout(function() {set(false);}.bind(this), 500);
+    }
+}
+
+export class Source {
+    filePath: string;
+    content: string;
+    constructor(f: string, c: string) { this.filePath = f; this.content = c; }
 }
 
 export class Variable {
