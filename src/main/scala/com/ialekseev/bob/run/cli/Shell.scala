@@ -1,5 +1,7 @@
 package com.ialekseev.bob.run.cli
 
+import java.nio.file.Paths
+
 import scalaz._
 import Scalaz._
 import scalaz.effect.IO
@@ -48,9 +50,9 @@ trait Shell {
        str <- read(color + "bob> ").toTask
       _ <- parser.parse(str.split(" +").toSeq, Config())  match {
          case Some(Config(true,_,_,_,_,_,_)) => show("you are already in the shell\n").toTask.flatMap(_ => Task.suspend(shell()))
-         case Some(Config(_,true,_,_,_,_,Arguments(Some(path)))) if path.nonEmpty => checkCommand(path).flatMap(_ => Task.suspend(shell()))
-         case Some(Config(_,_,true,_,_,_,Arguments(path))) => serviceCommand(path.toList).flatMap(_ => Task.suspend(shell()))
-         case Some(Config(_,_,_,true,_,_,Arguments(path))) => sandboxCommand(path).flatMap(_ => Task.suspend(shell()))
+         case Some(Config(_,true,_,_,_,_,Arguments(Some(path)))) if path.nonEmpty => checkCommand(Paths.get(path)).flatMap(_ => Task.suspend(shell()))
+         case Some(Config(_,_,true,_,_,_,Arguments(path))) => serviceCommand(path.map(Paths.get(_)).toList).flatMap(_ => Task.suspend(shell()))
+         case Some(Config(_,_,_,true,_,_,Arguments(path))) => sandboxCommand(path.map(Paths.get(_))).flatMap(_ => Task.suspend(shell()))
          case Some(Config(_,_,_,_,true,_,_)) => showHelp().toTask.flatMap(_ => Task.suspend(shell()))
          case Some(Config(_,_,_,_,_,true,_)) => show("quitting...").toTask
          case _ => showHelp().toTask.flatMap(_ => Task.suspend(shell()))

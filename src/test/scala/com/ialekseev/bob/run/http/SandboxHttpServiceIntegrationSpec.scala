@@ -1,10 +1,10 @@
 package com.ialekseev.bob.run.http
 
 import java.net.URLEncoder
+import java.nio.file.Paths
 
 import akka.actor.Props
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.Route
 import com.ialekseev.bob._
 import com.ialekseev.bob.exec.{CompilerActor, EvaluatorActor, Executor}
 import com.ialekseev.bob.exec.analyzer.DefaultAnalyzer
@@ -18,127 +18,41 @@ class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServ
     val compilerActor = system.actorOf(Props[CompilerActor])
     val evaluatorActor = system.actorOf(Props[EvaluatorActor])
   }
-  val tempDir = normalizeDirPath(System.getProperty("java.io.tmpdir"))
-  val tempDirEncoded = URLEncoder.encode(tempDir, "UTF-8")
+  val tempDir = Paths.get(System.getProperty("java.io.tmpdir"))
+  val tempDirEncoded = URLEncoder.encode(tempDir.toString, "UTF-8")
   val varsFilePath = getVarsFilePath(tempDir)
 
-  "PUT one source request" when {
+  "PUT sources request" when {
 
-    "IO updates file" should {
-      "return 'OK' with the file" in {
+    "IO updates sources" should {
+      "return 'OK'" in {
         //arrange
-        val put = parse("""{"content":"content1"}""")
+        val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"path": "\test\file1.bob", "content": "content1"}, {"path": "\test\file2.bob", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
 
         //act
-        Put(s"/sandbox/sources/${tempDirEncoded}file1.bob", put) ~> createRoutes(tempDir) ~> check {
+        Put(s"/sandbox/sources", put) ~> createRoutes(tempDir) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[PutOneSourceResponse] should be(PutOneSourceResponse(tempDir + "file1.bob"))
         }
       }
     }
   }
 
-  "GET one source request" when {
+  "GET sources request" when {
 
     "IO returns file" should {
       "return 'OK' with the file" in {
         //arrange
-        Put(s"/sandbox/sources/${tempDirEncoded}file1.bob", parse("""{"content":"content1"}""")) ~> createRoutes(tempDir) ~> check { response.status should be(StatusCodes.OK) }
-        Put(s"/sandbox/sources/${tempDirEncoded}file2.bob", parse("""{"content":"content2"}""")) ~> createRoutes(tempDir) ~> check { response.status should be(StatusCodes.OK) }
-        Put(s"/sandbox/sources/${tempDirEncoded}file3.bob", parse("""{"content":"content3"}""")) ~> createRoutes(tempDir) ~> check { response.status should be(StatusCodes.OK) }
+        Put(s"/sandbox/sources", parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"path": "\test\file1.bob", "content": "content1"}, {"path": "\test\file2.bob", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")) ~> createRoutes(tempDir) ~> check { response.status should be(StatusCodes.OK) }
+
 
         //act
-        Get(s"/sandbox/sources/${tempDirEncoded}file2.bob") ~> createRoutes(tempDir) ~> check {
+        Get(s"/sandbox/sources") ~> createRoutes(tempDir) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[GetOneSourceResponse] should be(GetOneSourceResponse(tempDir + "file2.bob", "content2"))
-        }
-      }
-    }
-  }
-
-  "GET list of all files request" when {
-
-    "IO returns list of files" should {
-      "return 'OK' with the files" in {
-        //arrange
-        Put(s"/sandbox/sources/${tempDirEncoded}_vars.json", parse("""{"content": "{\"a\": \"1\", \"b\": \"2\"}" }""")) ~> createRoutes(tempDir) ~> check { response.status should be(StatusCodes.OK) }
-        Put(s"/sandbox/sources/${tempDirEncoded}file1.bob", parse("""{"content":"content1"}""")) ~> createRoutes(tempDir) ~> check { response.status should be(StatusCodes.OK) }
-        Put(s"/sandbox/sources/${tempDirEncoded}file2.bob", parse("""{"content":"content2"}""")) ~> createRoutes(tempDir) ~> check { response.status should be(StatusCodes.OK) }
-        Put(s"/sandbox/sources/${tempDirEncoded}file3.bob", parse("""{"content":"content3"}""")) ~> createRoutes(tempDir) ~> check { response.status should be(StatusCodes.OK) }
-
-        //act
-        Get("/sandbox/sources") ~> createRoutes(tempDir) ~> check {
-
-          //assert
-          response.status should be(StatusCodes.OK)
-          responseAs[GetSourcesResponse] should be(GetSourcesResponse(tempDir, List(tempDir + "file1.bob", tempDir + "file2.bob", tempDir + "file3.bob"), List(Variable("a", "1"), Variable("b", "2"))))
-        }
-      }
-    }
-  }
-
-  "PUT vars request" when {
-
-    "IO updates vars file (when exists)" should {
-      "return 'OK' with the file" in {
-        //arrange
-        updateFile(varsFilePath, "{}").unsafePerformSync
-
-        assume(findVarsFile(tempDir).unsafePerformSync.isDefined, "Vars file should exist for this test to make sense")
-
-        val put = parse("""{"vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
-
-        //act
-        Put(s"/sandbox/sources/vars/${tempDirEncoded}", put) ~> createRoutes(tempDir) ~> check {
-
-          //assert
-          response.status should be(StatusCodes.OK)
-          responseAs[PutVarsResponse] should be(PutVarsResponse(tempDir + "_vars.json"))
-        }
-      }
-    }
-
-    "IO creates vars file (when doesn't exist)" should {
-      "return 'OK' with the file" in {
-        //arrange
-        deleteIfExists(varsFilePath).unsafePerformSync
-
-        assume(findVarsFile(tempDir).unsafePerformSync.isEmpty, "Vars file should NOT exist for this test to make sense")
-
-        val put = parse("""{"vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
-
-        //act
-        Put(s"/sandbox/sources/vars/${tempDirEncoded}", put) ~> createRoutes(tempDir) ~> check {
-
-          //assert
-          response.status should be(StatusCodes.OK)
-          responseAs[PutVarsResponse] should be(PutVarsResponse(tempDir + "_vars.json"))
-        }
-      }
-    }
-
-    "passing wrong JSON (array without 'vars' wrapping)" should {
-      "return 'OK' with the file. But all variables in the file have been erased. This is json4s's behaviour of not failing when there is no matching field: https://github.com/json4s/json4s/issues/375" in {
-        //arrange
-        val put = parse("""[{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]""")
-
-        //act
-        Put(s"/sandbox/sources/vars/${tempDirEncoded}", put) ~> Route.seal(createRoutes(tempDir)) ~> check {
-
-          //assert
-          response.status should be(StatusCodes.OK)
-          responseAs[PutVarsResponse] should be(PutVarsResponse(tempDir + "_vars.json"))
-        }
-
-        Get("/sandbox/sources") ~> createRoutes(tempDir) ~> check {
-
-          //assert
-          response.status should be(StatusCodes.OK)
-          responseAs[GetSourcesResponse].vars should be(List.empty)
+          responseAs[GetSourcesResponse] should be(GetSourcesResponse(List(InputDirModel("\\test\\", List(InputSourceModel("\\test\\file1.bob", "content1"), InputSourceModel("\\test\\file2.bob", "content2")), List(Variable("a", "1"), Variable("b", "2"))))))
         }
       }
     }

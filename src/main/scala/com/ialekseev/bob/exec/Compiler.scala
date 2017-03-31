@@ -3,11 +3,9 @@ package com.ialekseev.bob.exec
 import java.io.File
 import java.net.URLClassLoader
 import java.nio.file.Paths
-
 import akka.actor.Actor
 import com.ialekseev.bob.{CompilationError, Variable}
 import com.ialekseev.bob.exec.Compiler._
-
 import scala.collection.mutable.ListBuffer
 import scala.reflect.internal.util.{AbstractFileClassLoader, BatchSourceFile, Position, ScalaClassLoader}
 import scala.tools.nsc.{Global, Settings}

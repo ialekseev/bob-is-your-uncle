@@ -1,5 +1,7 @@
 package com.ialekseev.bob.run.cli
 
+import java.nio.file.Path
+
 import akka.http.scaladsl.server.ExceptionHandler
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
@@ -10,6 +12,7 @@ import StatusCodes._
 import Directives._
 import com.ialekseev.bob.run.http.{BaseHttpService, SandboxHttpService}
 import com.ialekseev.bob.run._
+
 import scalaz._
 import Scalaz._
 import scalaz.concurrent.Task
@@ -18,7 +21,7 @@ import scalaz.effect.IO
 trait Sandbox extends SandboxHttpService {
   this: BaseCommand with BaseHttpService =>
 
-  def sandboxCommand(dir: Option[String] = none): Task[Unit] = {
+  def sandboxCommand(dir: Option[Path] = none): Task[Unit] = {
     val targetDirectory = dir.getOrElse(defaultSourcesLocation)
 
     val exceptionHandler = ExceptionHandler {

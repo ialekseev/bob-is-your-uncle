@@ -1,5 +1,7 @@
 package com.ialekseev.bob.run.http
 
+import java.nio.file.{Files, Path}
+
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.ialekseev.bob._
@@ -11,6 +13,7 @@ import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import org.json4s.JsonAST.JObject
 import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods._
+
 import scalaz.concurrent.Task
 import scalaz.syntax.either._
 import scalaz.{-\/, EitherT, \/, \/-}
@@ -19,8 +22,13 @@ import com.bfil.automapper._
 trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShared {
   val exec: Executor
 
-  def createRoutes(dir: String): Route = getAssets ~ pathPrefix("sandbox") {
-     getSourcesRoute(dir) ~ putSourcesRoute ~ postBuildRequestRoute ~ postRunRequestRoute
+  implicit val mapping1 = generateMapping[List[InputDir], List[InputDirModel]]
+  implicit val mapping2 = generateMapping[List[InputDirModel], List[InputDir]]
+
+  def createRoutes(dir: Path): Route = getAssets ~ pathPrefix("sandbox") {
+    require(Files.isDirectory(dir))
+
+    getSourcesRoute(dir) ~ putSourcesRoute ~ postBuildRequestRoute ~ postRunRequestRoute
   }
 
   private def getAssets = {
@@ -32,10 +40,10 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
 
   //todo: load & update all sources as a whole. This will make client-side experience better
 
-  private def getSourcesRoute(dir: String) = path("sources") {
+  private def getSourcesRoute(dir: Path) = path("sources") {
     get {
       completeTask {
-        readSources(List(dir)).map(d => GetSourcesResponse(automap(d).to[List[InputDirModel]]))
+        readSources(List(dir)).map(d => GetSourcesResponse(d.map(automap(_).to[InputDirModel])))
       }
     }
   }
@@ -44,8 +52,19 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
   private def putSourcesRoute = path ("sources") {
     put {
       entity(as[PutSourcesRequest]) { r => {
-          //todo: implement with validation etc
-          ???
+        val dirs = r.dirs
+        val sources = r.dirs.flatMap(_.sources)
+        validate(dirs.forall(_.path.nonEmpty), "Dir path can't be empty") {
+          validate(sources.forall(_.path.nonEmpty), "File path can't be empty") {
+            validate(sources.forall(_.content.nonEmpty), "File content can't be empty") {
+              validate(dirs.flatMap(_.vars).forall(_.name.nonEmpty), "Variable name can't be empty") {
+                completeTask {
+                  updateSources(r.dirs.map(automap(_).to[InputDir])).map(_ => PutSourcesResponse)
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -57,7 +76,7 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
         validate(request.content.nonEmpty, "Content can't be empty") {
           completeTask {
             exec.build(request.content, request.vars).map {
-              case \/-(build) => PostBuildSuccessResponse
+              case \/-(_) => PostBuildSuccessResponse
               case -\/(buildFailed) => PostBuildFailureResponse(buildFailed.errors.map(mapBuildError(_)), buildFailed.stage)
               }
             }
@@ -96,10 +115,9 @@ object SandboxHttpService {
   case class InputDirModel(path: String, sources: List[InputSourceModel], vars: List[Variable[String]])
 
   case class GetSourcesResponse(dirs: List[InputDirModel])
-  case class GetOneSourceResponse(filePath: String, content: String)
 
   case class PutSourcesRequest(dirs: List[InputDirModel])
-  case class PutSourcesResponse(updated: String)
+  case object PutSourcesResponse
 
   case class PostBuildRequest(content: String, vars: List[Variable[String]])
   case object PostBuildSuccessResponse

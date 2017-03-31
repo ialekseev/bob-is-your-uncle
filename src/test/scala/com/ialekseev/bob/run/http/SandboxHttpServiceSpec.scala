@@ -1,17 +1,21 @@
 package com.ialekseev.bob.run.http
 
-import java.io.{FileNotFoundException}
-import akka.http.scaladsl.model.{StatusCodes}
-import akka.http.scaladsl.server.{Route}
-import com.ialekseev.bob.exec.Executor.{SuccessfulRun, RunResult, Build}
-import com.ialekseev.bob.exec.analyzer.Analyzer.{ScalaCode, Webhook, Namespace, AnalysisResult}
+import java.io.FileNotFoundException
+import java.nio.file.{Path, Paths}
+
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.Route
+import com.ialekseev.bob.exec.Executor.{Build, RunResult, SuccessfulRun}
+import com.ialekseev.bob.exec.analyzer.Analyzer.{AnalysisResult, Namespace, ScalaCode, Webhook}
 import com.ialekseev.bob.run.boot.HttpServiceUnsafe
 import com.ialekseev.bob._
 import com.ialekseev.bob.exec.Executor
+import com.ialekseev.bob.run.{InputDir, InputSource}
 import com.ialekseev.bob.run.http.SandboxHttpService._
-import org.json4s.JsonAST.{JString, JField, JObject}
+import org.json4s.JsonAST.{JField, JObject, JString}
 import org.mockito.Mockito._
 import org.json4s.native.JsonMethods._
+
 import scalaz.concurrent.Task
 import scalaz.std.option._
 import scalaz.syntax.either._
@@ -20,92 +24,30 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
   val exec: Executor = mock[Executor]
   override def beforeEach(): Unit = { reset(exec); super.beforeEach()}
 
-  private var listSourceFilesFunc: String => Task[List[String]] = null
-  private var extractVarsForDirFunc: String => Task[List[Variable[String]]] = null
-  private var readFileFunc: String => Task[String] = null
-  private var updateFileFunc: (String, String) => Task[Unit] = null
+  private var readSourcesFunc: List[Path] => Task[List[InputDir]] = null
+  private var updateSourcesFunc: List[InputDir] => Task[Unit] = null
 
-  override def listSourceFiles(dir: String): Task[List[String]] = listSourceFilesFunc(dir)
-  override def extractVarsForDir(dir: String): Task[List[Variable[String]]] = extractVarsForDirFunc(dir)
-  override def readFile(filePath: String): Task[String] = readFileFunc(filePath)
-  override def updateFile(filePath: String, content: String): Task[Unit] = updateFileFunc(filePath, content)
+  override def readSources(dirs: List[Path]): Task[List[InputDir]] = readSourcesFunc(dirs)
+  override def updateSources(dirs: List[InputDir]): Task[Unit] = updateSourcesFunc(dirs)
 
-  "GET list of all files request" when {
+  val dir = Paths.get("\\test\\")
 
-    "IO returns list of files" should {
-      "return 'OK' with the files" in {
+  "GET sources request" when {
 
+    "IO returns sources" should {
+      "return 'OK' with the sources" in {
         //arrange
-        listSourceFilesFunc = {
-          case "\\test\\" => Task.now(List("\\test\\file1.bob", "\\test\\file2.bob"))
-        }
-
-        extractVarsForDirFunc = {
-          case "\\test\\" => Task.now(List(Variable("a", "1"), Variable("b", "2")))
+        val sourcesToReturn = List(InputDir("\\test\\", List(InputSource("\\test\\file1.bob", "content1"), InputSource("\\test\\file2.bob", "content2")), List(Variable("a", "1"), Variable("b", "2"))))
+        readSourcesFunc = {
+          case path if path.map(_.getFileName) == "\\test\\" :: Nil => Task.now(sourcesToReturn)
         }
 
         //act
-        Get("/sandbox/sources") ~> createRoutes("\\test\\") ~> check {
+        Get("/sandbox/sources") ~> createRoutes(dir) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[GetSourcesResponse] should be(GetSourcesResponse("\\test\\", List("\\test\\file1.bob", "\\test\\file2.bob"), List(Variable("a", "1"), Variable("b", "2"))))
-        }
-      }
-    }
-
-    "IO fails to list files" should {
-      "return 'InternalServerError'" in {
-        //arrange
-        listSourceFilesFunc = {
-          case "\\test\\" => Task.fail(new FileNotFoundException("bad list!"))
-        }
-
-        //act
-        Get("/sandbox/sources") ~> createRoutes("\\test\\") ~> check {
-
-          //assert
-          response.status should be(StatusCodes.InternalServerError)
-        }
-      }
-    }
-
-    "IO fails to provide vars" should {
-      "return 'InternalServerError'" in {
-        //arrange
-        listSourceFilesFunc = {
-          case "\\test\\" => Task.now(List("\\test\\file1.bob", "\\test\\file2.bob"))
-        }
-
-        extractVarsForDirFunc = {
-          case "\\test\\" => Task.fail(new FileNotFoundException("bad var!"))
-        }
-
-        //act
-        Get("/sandbox/sources") ~> createRoutes("\\test\\") ~> check {
-
-          //assert
-          response.status should be(StatusCodes.InternalServerError)
-        }
-      }
-    }
-  }
-
-  "GET one source request" when {
-
-    "IO returns file" should {
-      "return 'OK' with the file" in {
-        //arrange
-        readFileFunc = {
-          case "\\test\\file1.bob" => Task.now("content")
-        }
-
-        //act
-        Get("/sandbox/sources/%5Ctest%5Cfile1.bob") ~> createRoutes("\\test\\") ~> check {
-
-          //assert
-          response.status should be(StatusCodes.OK)
-          responseAs[GetOneSourceResponse] should be(GetOneSourceResponse("\\test\\file1.bob", "content"))
+          responseAs[GetSourcesResponse] should be(GetSourcesResponse(List(InputDirModel("\\test\\", List(InputSourceModel("\\test\\file1.bob", "content1"), InputSourceModel("\\test\\file2.bob", "content2")), List(Variable("a", "1"), Variable("b", "2"))))))
         }
       }
     }
@@ -113,12 +55,12 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
     "IO fails" should {
       "return 'InternalServerError'" in {
         //arrange
-        readFileFunc = {
-          case "\\test\\file1.bob" => Task.fail(new FileNotFoundException("bad!"))
+        readSourcesFunc = {
+          case path if path.map(_.getFileName) == "\\test\\" :: Nil => Task.fail(new FileNotFoundException("bad!"))
         }
 
         //act
-        Get("/sandbox/sources/%5Ctest%5Cfile1.bob") ~> createRoutes("\\test\\") ~> check {
+        Get("/sandbox/sources") ~> createRoutes(dir) ~> check {
 
           //assert
           response.status should be(StatusCodes.InternalServerError)
@@ -127,37 +69,83 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
     }
   }
 
-  "PUT one source request" when {
+  "PUT sources request" when {
 
-    "IO updates file" should {
-      "return 'OK' with the file" in {
+    "IO updates sources" should {
+      "return 'OK'" in {
         //arrange
-        val put = parse("""{"content":"content1"}""")
-        updateFileFunc = {
-          case ("\\test\\file1.bob", "content1") => Task.now((): Unit)
+        val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"path": "\test\file1.bob", "content": "content1"}, {"path": "\test\file2.bob", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
+
+        updateSourcesFunc = {
+          case InputDir("\\test\\", List(InputSource("\\test\\file1.bob", "content1"), InputSource("\\test\\file2.bob", "content2")), List(Variable("a", "1"), Variable("b", "2"))) :: Nil => Task.now((): Unit)
         }
 
         //act
-        Put("/sandbox/sources/%5Ctest%5Cfile1.bob", put) ~> createRoutes("\\test\\") ~> check {
+        Put("/sandbox/sources", put) ~> createRoutes(dir) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[PutOneSourceResponse] should be(PutOneSourceResponse("\\test\\file1.bob"))
+          responseAs[PutSourcesResponse.type] should be(PutSourcesResponse)
         }
       }
     }
 
-    "Client sends empty content" should {
+    "Client sends empty dir path" should {
       "return 'BadRequest'" in {
         //arrange
-        val put = parse("""{"content":""}""")
+        val put = parse(""" {"dirs": [{ "path": "", "sources": [{"path": "\test\file1.bob", "content": "content1"}, {"path": "\test\file2.bob", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
 
         //act
-        Put("/sandbox/sources/%5Ctest%5Cfile1.bob", put) ~> Route.seal(createRoutes("\\test\\")) ~> check {
+        Put("/sandbox/sources", put) ~> Route.seal(createRoutes(dir)) ~> check {
 
           //assert
           response.status should be(StatusCodes.BadRequest)
-          responseAsString should be ("Content can't be empty")
+          responseAsString should be ("Dir path can't be empty")
+        }
+      }
+    }
+
+    "Client sends empty file path" should {
+      "return 'BadRequest'" in {
+        //arrange
+        val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"path": "\test\file1.bob", "content": "content1"}, {"path": "", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
+
+        //act
+        Put("/sandbox/sources", put) ~> Route.seal(createRoutes(dir)) ~> check {
+
+          //assert
+          response.status should be(StatusCodes.BadRequest)
+          responseAsString should be ("File path can't be empty")
+        }
+      }
+    }
+
+    "Client sends empty file content" should {
+      "return 'BadRequest'" in {
+        //arrange
+        val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"path": "\test\file1.bob", "content": ""}, {"path": "\test\file2.bob", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
+
+        //act
+        Put("/sandbox/sources", put) ~> Route.seal(createRoutes(dir)) ~> check {
+
+          //assert
+          response.status should be(StatusCodes.BadRequest)
+          responseAsString should be ("File content can't be empty")
+        }
+      }
+    }
+
+    "Client sends a variable with empty name" should {
+      "return 'BadRequest'" in {
+        //arrange
+        val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"path": "\test\file1.bob", "content": "content1"}, {"path": "\test\file2.bob", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "", "value": "2"}] }]  }""")
+
+        //act
+        Put("/sandbox/sources", put) ~> Route.seal(createRoutes(dir)) ~> check {
+
+          //assert
+          response.status should be(StatusCodes.BadRequest)
+          responseAsString should be ("Variable name can't be empty")
         }
       }
     }
@@ -165,13 +153,14 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
     "IO fails" should {
       "return 'InternalServerError'" in {
         //arrange
-        val put = parse("""{"content":"content1"}""")
-        updateFileFunc = {
-          case ("\\test\\file1.bob", "content1") => Task.fail(new FileNotFoundException("bad!"))
+        val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"path": "\test\file1.bob", "content": "content1"}, {"path": "\test\file2.bob", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
+
+        updateSourcesFunc = {
+          case InputDir("\\test\\", List(InputSource("\\test\\file1.bob", "content1"), InputSource("\\test\\file2.bob", "content2")), List(Variable("a", "1"), Variable("b", "2"))) :: Nil => Task.now((): Unit)
         }
 
         //act
-        Put("/sandbox/sources/%5Ctest%5Cfile1.bob", put) ~> createRoutes("\\test\\") ~> check {
+        Put("/sandbox/sources", put) ~> createRoutes(dir) ~> check {
 
           //assert
           response.status should be(StatusCodes.InternalServerError)
@@ -179,46 +168,6 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
       }
     }
   }
-
-  "PUT vars request" when {
-
-    "IO updates file" should {
-      "return 'OK' with the file" in {
-        //arrange
-        val put = parse("""{"vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
-
-        updateFileFunc = {
-          case ("\\test\\_vars.json", "{\n  \"a\":\"1\",\n  \"b\":\"2\"\n}") => Task.now((): Unit)
-        }
-
-        //act
-        Put("/sandbox/sources/vars/%5Ctest%5C", put) ~> createRoutes("\\test\\") ~> check {
-
-          //assert
-          response.status should be(StatusCodes.OK)
-          responseAs[PutVarsResponse] should be(PutVarsResponse("\\test\\_vars.json"))
-        }
-      }
-    }
-
-    "IO fails" should {
-      "return 'InternalServerError'" in {
-        //arrange
-        val put = parse("""{"vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
-        updateFileFunc = {
-          case ("\\test\\_vars.json", "{\n  \"a\":\"1\",\n  \"b\":\"2\"\n}") => Task.fail(new FileNotFoundException("bad!"))
-        }
-
-        //act
-        Put("/sandbox/sources/vars/%5Ctest%5C", put) ~> createRoutes("\\test\\") ~> check {
-
-          //assert
-          response.status should be(StatusCodes.InternalServerError)
-        }
-      }
-    }
-  }
-
 
   "POST build request" when {
 
@@ -231,7 +180,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
         val post = parse("""{"content":"content1", "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
 
         //act
-        Post("/sandbox/sources/compile", post) ~> createRoutes("\\test\\") ~> check {
+        Post("/sandbox/sources/compile", post) ~> createRoutes(dir) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
@@ -249,7 +198,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
         val post = parse("""{"content":"content1", "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
 
         //act
-        Post("/sandbox/sources/compile", post) ~> createRoutes("\\test\\") ~> check {
+        Post("/sandbox/sources/compile", post) ~> createRoutes(dir) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
@@ -264,7 +213,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
         val post = parse("""{"content":"", "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
 
         //act
-        Post("/sandbox/sources/compile", post) ~> Route.seal(createRoutes("\\test\\")) ~> check {
+        Post("/sandbox/sources/compile", post) ~> Route.seal(createRoutes(dir)) ~> check {
 
           //assert
           response.status should be(StatusCodes.BadRequest)
@@ -280,7 +229,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
         when(exec.build("content1", List(Variable("a", "1"), Variable("b", "2")))).thenReturn(Task.fail(new FileNotFoundException("bad!")))
 
         //act
-        Post("/sandbox/sources/compile", post) ~> createRoutes("\\test\\") ~> check {
+        Post("/sandbox/sources/compile", post) ~> createRoutes(dir) ~> check {
 
           //assert
           response.status should be(StatusCodes.InternalServerError)
@@ -300,7 +249,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
         when(exec.run(HttpRequest(some("/hello/"), HttpMethod.GET, Map("h1" -> "1"), Map("q2" -> "2"), some(StringLiteralBody("body!"))), List(buildToBeReturned))).thenReturn(Task.now(RunResult(List(SuccessfulRun(buildToBeReturned, "done!")))))
 
         //act
-        Post("/sandbox/sources/run", post) ~> createRoutes("\\test\\") ~> check {
+        Post("/sandbox/sources/run", post) ~> createRoutes(dir) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
@@ -318,7 +267,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
         when(exec.run(HttpRequest(some("/hello/"), HttpMethod.GET, Map("h1" -> "1"), Map("q2" -> "2"), some(DictionaryBody(Map("par1"->"val1", "par2"->"val2")))), List(buildToBeReturned))).thenReturn(Task.now(RunResult(List(SuccessfulRun(buildToBeReturned, "done!")))))
 
         //act
-        Post("/sandbox/sources/run", post) ~> createRoutes("\\test\\") ~> check {
+        Post("/sandbox/sources/run", post) ~> createRoutes(dir) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
@@ -336,7 +285,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
         when(exec.run(HttpRequest(some("/hello/"), HttpMethod.GET, Map("h1" -> "1"), Map("q2" -> "2"), some(JsonBody(JObject(JField("f1", JString("val1")) :: JField("f2", JString("val2")) :: Nil)))), List(buildToBeReturned))).thenReturn(Task.now(RunResult(List(SuccessfulRun(buildToBeReturned, "done!")))))
 
         //act
-        Post("/sandbox/sources/run", post) ~> createRoutes("\\test\\") ~> check {
+        Post("/sandbox/sources/run", post) ~> createRoutes(dir) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
@@ -354,7 +303,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
         when(exec.build("content1", List(Variable("a", "1"), Variable("b", "2")))).thenReturn(Task.now(resultToBeReturned.left))
 
         //act
-        Post("/sandbox/sources/run", post) ~> createRoutes("\\test\\") ~> check {
+        Post("/sandbox/sources/run", post) ~> createRoutes(dir) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
@@ -370,7 +319,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
         when(exec.build("content1", List(Variable("a", "1"), Variable("b", "2")))).thenReturn(Task.fail(new FileNotFoundException("bad!")))
 
         //act
-        Post("/sandbox/sources/run", post) ~> createRoutes("\\test\\") ~> check {
+        Post("/sandbox/sources/run", post) ~> createRoutes(dir) ~> check {
 
           //assert
           response.status should be(StatusCodes.InternalServerError)

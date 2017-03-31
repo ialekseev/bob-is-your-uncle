@@ -1,13 +1,10 @@
 package com.ialekseev.bob.run.cli
 
+import java.nio.file.Path
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
-import com.ialekseev.bob._
-import com.ialekseev.bob.exec.Executor.Build
-import com.ialekseev.bob.run.boot.HttpServiceUnsafe
 import com.ialekseev.bob.run.http.WebhookHttpService
-import com.ialekseev.bob.run.InputSource
 import com.ialekseev.bob.BuildFailed
 import com.ialekseev.bob.exec.Executor.Build
 import com.ialekseev.bob.run._
@@ -20,7 +17,7 @@ import scalaz.concurrent.Task
 trait Service extends WebhookHttpService {
   this: BaseCommand with BaseHttpService =>
 
-  def serviceCommand(dirs: List[String] = List.empty): Task[Unit] = {
+  def serviceCommand(dirs: List[Path] = List.empty): Task[Unit] = {
 
     def build(inputDirs: List[InputDir]): Task[List[BuildFailed \/ Build]] = {
       inputDirs.map(inputDir => {
