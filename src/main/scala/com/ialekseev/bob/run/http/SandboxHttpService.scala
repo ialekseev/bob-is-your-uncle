@@ -1,7 +1,6 @@
 package com.ialekseev.bob.run.http
 
-import java.nio.file.{Files, Path}
-
+import java.nio.file.{Path}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.ialekseev.bob._
@@ -10,10 +9,6 @@ import com.ialekseev.bob.exec.Executor.{Build, RunResult, SuccessfulRun}
 import com.ialekseev.bob.run.{InputDir, IoShared}
 import com.ialekseev.bob.run.http.SandboxHttpService._
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
-import org.json4s.JsonAST.JObject
-import org.json4s.JsonDSL._
-import org.json4s.native.JsonMethods._
-
 import scalaz.concurrent.Task
 import scalaz.syntax.either._
 import scalaz.{-\/, EitherT, \/, \/-}
@@ -26,8 +21,6 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
   implicit val mapping2 = generateMapping[List[InputDirModel], List[InputDir]]
 
   def createRoutes(dir: Path): Route = getAssets ~ pathPrefix("sandbox") {
-    require(Files.isDirectory(dir))
-
     getSourcesRoute(dir) ~ putSourcesRoute ~ postBuildRequestRoute ~ postRunRequestRoute
   }
 
@@ -37,8 +30,6 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
     } ~
     getFromResourceDirectory("sandbox")
   }
-
-  //todo: load & update all sources as a whole. This will make client-side experience better
 
   private def getSourcesRoute(dir: Path) = path("sources") {
     get {
@@ -55,11 +46,11 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
         val dirs = r.dirs
         val sources = r.dirs.flatMap(_.sources)
         validate(dirs.forall(_.path.nonEmpty), "Dir path can't be empty") {
-          validate(sources.forall(_.path.nonEmpty), "File path can't be empty") {
-            validate(sources.forall(_.content.nonEmpty), "File content can't be empty") {
+          validate(sources.forall(_.name.nonEmpty), "Source name can't be empty") {
+            validate(sources.forall(_.content.nonEmpty), "Source content can't be empty") {
               validate(dirs.flatMap(_.vars).forall(_.name.nonEmpty), "Variable name can't be empty") {
                 completeTask {
-                  updateSources(r.dirs.map(automap(_).to[InputDir])).map(_ => PutSourcesResponse)
+                  saveSources(r.dirs.map(automap(_).to[InputDir])).map(_ => PutSourcesResponse)
                   }
                 }
               }
@@ -111,7 +102,7 @@ object SandboxHttpService {
   case class BuildErrorResponse(startOffset: Int, endOffset: Int, message: String)
   def mapBuildError(e: BuildError): BuildErrorResponse = BuildErrorResponse(e.startOffset, e.endOffset, e.message)
 
-  case class InputSourceModel(path: String, content: String)
+  case class InputSourceModel(name: String, content: String)
   case class InputDirModel(path: String, sources: List[InputSourceModel], vars: List[Variable[String]])
 
   case class GetSourcesResponse(dirs: List[InputDirModel])

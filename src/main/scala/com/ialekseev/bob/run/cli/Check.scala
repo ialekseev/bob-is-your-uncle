@@ -10,7 +10,6 @@ trait Check {
   this: BaseCommand =>
 
   def checkCommand(filePath: Path): Task[Unit] = {
-    require(Files.isRegularFile(filePath))
 
     val result: Task[Unit] = for {
       input <- ((readFile(filePath) |@| extractVarsForFile(filePath))((_, _)))

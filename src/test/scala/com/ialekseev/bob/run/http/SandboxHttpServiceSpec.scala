@@ -2,7 +2,6 @@ package com.ialekseev.bob.run.http
 
 import java.io.FileNotFoundException
 import java.nio.file.{Path, Paths}
-
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Route
 import com.ialekseev.bob.exec.Executor.{Build, RunResult, SuccessfulRun}
@@ -15,7 +14,6 @@ import com.ialekseev.bob.run.http.SandboxHttpService._
 import org.json4s.JsonAST.{JField, JObject, JString}
 import org.mockito.Mockito._
 import org.json4s.native.JsonMethods._
-
 import scalaz.concurrent.Task
 import scalaz.std.option._
 import scalaz.syntax.either._
@@ -28,18 +26,18 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
   private var updateSourcesFunc: List[InputDir] => Task[Unit] = null
 
   override def readSources(dirs: List[Path]): Task[List[InputDir]] = readSourcesFunc(dirs)
-  override def updateSources(dirs: List[InputDir]): Task[Unit] = updateSourcesFunc(dirs)
+  override def saveSources(dirs: List[InputDir]): Task[Unit] = updateSourcesFunc(dirs)
 
-  val dir = Paths.get("\\test\\")
+  val dir = Paths.get("\\test")
 
   "GET sources request" when {
 
     "IO returns sources" should {
       "return 'OK' with the sources" in {
         //arrange
-        val sourcesToReturn = List(InputDir("\\test\\", List(InputSource("\\test\\file1.bob", "content1"), InputSource("\\test\\file2.bob", "content2")), List(Variable("a", "1"), Variable("b", "2"))))
+        val sourcesToReturn = List(InputDir("\\test\\", List(InputSource("file1", "content1"), InputSource("file2", "content2")), List(Variable("a", "1"), Variable("b", "2"))))
         readSourcesFunc = {
-          case path if path.map(_.getFileName) == "\\test\\" :: Nil => Task.now(sourcesToReturn)
+          case path if path.head.toString == "\\test" => Task.now(sourcesToReturn)
         }
 
         //act
@@ -47,7 +45,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[GetSourcesResponse] should be(GetSourcesResponse(List(InputDirModel("\\test\\", List(InputSourceModel("\\test\\file1.bob", "content1"), InputSourceModel("\\test\\file2.bob", "content2")), List(Variable("a", "1"), Variable("b", "2"))))))
+          responseAs[GetSourcesResponse] should be(GetSourcesResponse(List(InputDirModel("\\test\\", List(InputSourceModel("file1", "content1"), InputSourceModel("file2", "content2")), List(Variable("a", "1"), Variable("b", "2"))))))
         }
       }
     }
@@ -74,10 +72,10 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
     "IO updates sources" should {
       "return 'OK'" in {
         //arrange
-        val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"path": "\test\file1.bob", "content": "content1"}, {"path": "\test\file2.bob", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
+        val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
 
         updateSourcesFunc = {
-          case InputDir("\\test\\", List(InputSource("\\test\\file1.bob", "content1"), InputSource("\\test\\file2.bob", "content2")), List(Variable("a", "1"), Variable("b", "2"))) :: Nil => Task.now((): Unit)
+          case InputDir("\\test\\", List(InputSource("file1", "content1"), InputSource("file2", "content2")), List(Variable("a", "1"), Variable("b", "2"))) :: Nil => Task.now((): Unit)
         }
 
         //act
@@ -93,7 +91,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
     "Client sends empty dir path" should {
       "return 'BadRequest'" in {
         //arrange
-        val put = parse(""" {"dirs": [{ "path": "", "sources": [{"path": "\test\file1.bob", "content": "content1"}, {"path": "\test\file2.bob", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
+        val put = parse(""" {"dirs": [{ "path": "", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
 
         //act
         Put("/sandbox/sources", put) ~> Route.seal(createRoutes(dir)) ~> check {
@@ -105,32 +103,32 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
       }
     }
 
-    "Client sends empty file path" should {
+    "Client sends empty source name" should {
       "return 'BadRequest'" in {
         //arrange
-        val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"path": "\test\file1.bob", "content": "content1"}, {"path": "", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
+        val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"name": "file1", "content": "content1"}, {"name": "", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
 
         //act
         Put("/sandbox/sources", put) ~> Route.seal(createRoutes(dir)) ~> check {
 
           //assert
           response.status should be(StatusCodes.BadRequest)
-          responseAsString should be ("File path can't be empty")
+          responseAsString should be ("Source name can't be empty")
         }
       }
     }
 
-    "Client sends empty file content" should {
+    "Client sends empty source content" should {
       "return 'BadRequest'" in {
         //arrange
-        val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"path": "\test\file1.bob", "content": ""}, {"path": "\test\file2.bob", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
+        val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"name": "file1", "content": ""}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
 
         //act
         Put("/sandbox/sources", put) ~> Route.seal(createRoutes(dir)) ~> check {
 
           //assert
           response.status should be(StatusCodes.BadRequest)
-          responseAsString should be ("File content can't be empty")
+          responseAsString should be ("Source content can't be empty")
         }
       }
     }
@@ -138,7 +136,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
     "Client sends a variable with empty name" should {
       "return 'BadRequest'" in {
         //arrange
-        val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"path": "\test\file1.bob", "content": "content1"}, {"path": "\test\file2.bob", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "", "value": "2"}] }]  }""")
+        val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "", "value": "2"}] }]  }""")
 
         //act
         Put("/sandbox/sources", put) ~> Route.seal(createRoutes(dir)) ~> check {
@@ -153,7 +151,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
     "IO fails" should {
       "return 'InternalServerError'" in {
         //arrange
-        val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"path": "\test\file1.bob", "content": "content1"}, {"path": "\test\file2.bob", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
+        val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
 
         updateSourcesFunc = {
           case InputDir("\\test\\", List(InputSource("\\test\\file1.bob", "content1"), InputSource("\\test\\file2.bob", "content2")), List(Variable("a", "1"), Variable("b", "2"))) :: Nil => Task.now((): Unit)

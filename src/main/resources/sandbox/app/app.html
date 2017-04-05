@@ -3,19 +3,42 @@
 
         <div class="col-md-2 sidebar">
             <ul class="nav nav-sidebar">
-                <li *ngFor="let source of sources; let i = index" (click)="onSourceClick(i)">
-                    <a href="javascript:void(0);">{{source.filePath}}</a>
+                <li *ngFor="let dir of dirs">
+                    <a href="javascript:void(0);" (click)="onDirClick(dir)">{{dir.path}}</a>
+                    <ul>
+                        <li *ngFor="let source of dir.sources">
+                            <a href="javascript:void(0);" (click)="onSourceClick(dir, source)">{{source.name}}</a>
+                        </li>
+                    </ul>
+                    <div class="top-buffer-5">
+                        <button type="button" (click)="onAddSourceClick(dir)" class="btn btn-success btn-xs">+</button>
+                    </div>
                 </li>
             </ul>
-            <div class="top-buffer-5">
-                <button type="button" (click)="onAddSourceClick()" class="btn btn-success btn-xs">+</button>
-            </div>
         </div>
 
         <div class="col-md-10">
-
-            <div class="row">
-                <form *ngFor="let variable of variables" class="form-inline">
+            <div *ngIf="selectedSource != null" class="row top-buffer-10">
+                <div class="col-md-5">
+                    <div class="form-horizontal">
+                        <div class="form-group">
+                            <input type="text" [(ngModel)]="selectedSource[1].name" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <textarea [(ngModel)]="selectedSource[1].content" class="form-control" rows="15"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <ul>
+                        <li *ngFor="let variable of selectedSource[0].vars">
+                            {{variable.name}}={{variable.value}}
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div *ngIf="selectedDir != null" class="row top-buffer-10">
+                <form *ngFor="let variable of selectedDir.vars" class="form-inline">
                     <div class="form-group">
                         <input type="text" [(ngModel)]="variable.name" required style="width:100px">
                     </div>
@@ -24,30 +47,11 @@
                         <input type="text" [(ngModel)]="variable.value" required style="width:100px">
                     </div>
                     <div class="form-group">
-                        <button type="button" (click)="onRemoveVariableClick(variable)" class="btn btn-default btn-xs">X</button>
+                        <button type="button" (click)="onRemoveVariableClick(selectedDir, variable)" class="btn btn-default btn-xs">X</button>
                     </div>
                 </form>
                 <div class="top-buffer-5">
-                    <button type="button" (click)="onAddVariableClick()" class="btn btn-success btn-xs">+</button>
-                    <button type="button" (click)="onSaveVariablesClick()" class="btn btn-primary btn-xs">Save variables</button>
-                    <span *ngIf="variablesSaved" class="alert alert-success fade in">saved</span>
-                </div>
-            </div>
-
-            <div *ngIf="selectedSourceIndex != null" class="row top-buffer-10">
-                <div class="col-md-5">
-                    <div class="form-horizontal">
-                        <div class="form-group">
-                            <input type="text" [(ngModel)]="sources[selectedSourceIndex].filePath" class="form-control">
-                        </div>
-                        <div class="form-group">
-                            <textarea [(ngModel)]="sources[selectedSourceIndex].content" class="form-control" rows="15"></textarea>
-                            <div class="top-buffer-5">
-                                <button type="button" (click)="onSaveSelectedSourceClick()" class="btn btn-primary btn-lg">Save</button>
-                                <span *ngIf="sourceSaved" class="alert alert-success fade in">saved</span>
-                            </div>
-                        </div>
-                    </div>
+                    <button type="button" (click)="onAddVariableClick(selectedDir)" class="btn btn-success btn-xs">+</button>
                 </div>
             </div>
         </div>

@@ -4,7 +4,7 @@ import scalaz.effect.IO
 import scalaz.concurrent.Task
 
 package object run {
-  case class InputSource(path: String, content: String)
+  case class InputSource(name: String, content: String)
   case class InputDir(path: String, sources: List[InputSource], vars: List[Variable[String]])
 
   implicit class IOWrapper[T](io: IO[T]){

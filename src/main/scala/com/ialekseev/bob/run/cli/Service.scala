@@ -24,7 +24,7 @@ trait Service extends WebhookHttpService {
         inputDir.sources.map(inputSource => {
           for {
             built <- exec.build(inputSource.content, inputDir.vars)
-            _ <- showResult(inputSource.path, inputSource.content, built).toTask
+            _ <- showResult(inputSource.name, inputSource.content, built).toTask
           } yield built
         })
       }).flatten.sequenceU

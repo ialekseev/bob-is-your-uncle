@@ -13,6 +13,9 @@ import scalaz.effect.IO._
 import scalaz.concurrent.Task
 import scalaz.{-\/, \/, \/-}
 import fs2.interop.scalaz._
+import org.json4s.JsonAST.JObject
+import org.json4s.JsonDSL._
+import org.json4s.native.JsonMethods._
 
 trait IoShared {
 
@@ -22,27 +25,36 @@ trait IoShared {
 
   def using[A <: {def close(): Unit}, B](param: A)(f: A => B): B = try { f(param) } finally { param.close() }
 
+  def getFilePath(dir: Path, fileName: String): Path = {
+    require(Files.isDirectory(dir))
+
+    Paths.get(dir.toString, fileName)
+  }
+
+  def getFileNameWithoutExtension(filePath: Path): String = {
+    val fileName = filePath.getFileName.toString
+    val pos = fileName.lastIndexOf(".")
+    if (pos > 0) fileName.substring(0, pos) else fileName
+  }
+
   def getVarsFilePath(dir: Path): Path = {
     require(Files.isDirectory(dir))
 
-    Paths.get(dir.toString, varsFileName.toString)
-  }
-
-  def listFiles(dir: Path): Task[List[Path]] = {
-    require(Files.isDirectory(dir))
-
-    Task {
-      using(Files.newDirectoryStream(dir))(_.iterator().asScala.filter(p => !Files.isDirectory(p)).toList)
-    }
+    getFilePath(dir, varsFileName.toString)
   }
 
   def listSourceFiles(dir: Path): Task[List[Path]] = {
     require(Files.isDirectory(dir))
 
-    for {
-      files <- listFiles(dir)
-      sourceFiles <- Task(files.filter(_.getFileName.endsWith(fileExtension)))
-    } yield sourceFiles
+    Task {
+      using(Files.newDirectoryStream(dir))(_.iterator().asScala.filter(p => !Files.isDirectory(p) && p.getFileName.toString.endsWith(fileExtension)).toList)
+    }
+  }
+
+  def readFile(filePath: Path): Task[String] = {
+    require(Files.isRegularFile(filePath))
+
+    fs2.io.file.readAll[Task](filePath, 4096).through(fs2.text.utf8Decode).through(fs2.text.lines).intersperse("\n").runFold("")(_ + _)
   }
 
   def findVarsFile(dir: Path): Task[Option[Path]] = {
@@ -54,26 +66,10 @@ trait IoShared {
     }
   }
 
-  def readFile(filePath: Path): Task[String] = {
-    require(Files.isRegularFile(filePath))
+  def readSource(sourceFilePath: Path): Task[InputSource] = {
+    require(Files.isRegularFile(sourceFilePath))
 
-    fs2.io.file.readAll[Task](filePath, 4096).through(fs2.text.utf8Decode).through(fs2.text.lines).intersperse("\n").runFold("")(_ + _)
-  }
-
-  def deleteIfExists(filePath: Path): Task[Boolean] = {
-    require(Files.isRegularFile(filePath))
-
-    Task(Files.deleteIfExists(filePath))
-  }
-
-  def updateFile(filePath: Path, content: String): Task[Unit] = {
-    require(Files.isRegularFile(filePath))
-    require(content.nonEmpty)
-
-    for {
-      _ <- deleteIfExists(filePath)
-      _ <- fs2.Stream.eval(Task.now(content)).through(fs2.text.utf8Encode).through(fs2.io.file.writeAll(filePath)).run
-    } yield (): Unit
+    readFile(sourceFilePath).map(content => InputSource(getFileNameWithoutExtension(sourceFilePath), content))
   }
 
   def extractVarsFromVarsFile(varsFilePath: Path): Task[List[Variable[String]]] = {
@@ -107,12 +103,6 @@ trait IoShared {
     extractVarsForDir(filePath.getParent)
   }
 
-  def readSource(sourceFilePath: Path): Task[InputSource] = {
-    require(Files.isRegularFile(sourceFilePath))
-
-    readFile(sourceFilePath).map(content => InputSource(sourceFilePath.toString, content))
-  }
-
   def readSources(dirs: List[Path]): Task[List[InputDir]] = {
     require(dirs.nonEmpty)
     require(dirs.forall(Files.isDirectory(_)))
@@ -126,14 +116,36 @@ trait IoShared {
     }).sequenceU
   }
 
-  def updateSources(dirs: List[InputDir]): Task[Unit] = {
+  def delete(filePath: Path): Task[Boolean] = Task(Files.deleteIfExists(filePath))
 
-    /*dirs.map(dir => {
-      assume(dir.path.nonEmpty, "Directory path can't be empty")
+  def saveFile(filePath: Path, content: String): Task[Unit] = {
+    require(content.nonEmpty)
 
-    })*/
-    ???
+    for {
+      _ <- delete(filePath)
+      _ <- fs2.Stream.eval(Task.now(content)).through(fs2.text.utf8Encode).through(fs2.io.file.writeAll(filePath)).run
+    } yield (): Unit
+  }
 
+  def saveVarsForDir(dir: Path, vars: List[Variable[String]]): Task[Unit] = {
+    require(Files.isDirectory(dir))
+
+    val content = pretty(render((vars.foldLeft(JObject())((js, v) => js ~ (v.name -> v.value)))))
+    saveFile(getVarsFilePath(dir), content)
+  }
+
+  def saveSources(dirs: List[InputDir]): Task[Unit] = {
+
+    dirs.map(inputDir => {
+      val dir = Paths.get(inputDir.path)
+      assume(Files.isDirectory(dir), "The Input Directory you've specified doesn't look like a directory")
+
+      for {
+        _ <- listSourceFiles(dir).flatMap(sources => sources.map(delete(_)).sequenceU)
+        _ <- inputDir.sources.map(inputSource => saveFile(Paths.get(dir.toString, inputSource.name + fileExtension), inputSource.content)).sequenceU
+        _ <- saveVarsForDir(dir, inputDir.vars)
+      } yield (): Unit
+    }).sequenceU.map(_ => ())
   }
 
   def show(message: String = ""): IO[Unit] = putStrLn(message)

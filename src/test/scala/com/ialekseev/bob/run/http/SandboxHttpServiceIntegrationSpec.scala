@@ -1,8 +1,6 @@
 package com.ialekseev.bob.run.http
 
-import java.net.URLEncoder
-import java.nio.file.Paths
-
+import java.nio.file.{Path, Paths}
 import akka.actor.Props
 import akka.http.scaladsl.model.StatusCodes
 import com.ialekseev.bob._
@@ -19,21 +17,38 @@ class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServ
     val evaluatorActor = system.actorOf(Props[EvaluatorActor])
   }
   val tempDir = Paths.get(System.getProperty("java.io.tmpdir"))
-  val tempDirEncoded = URLEncoder.encode(tempDir.toString, "UTF-8")
-  val varsFilePath = getVarsFilePath(tempDir)
+  def escape(path: Path) = path.toString.replace("\\", "\\\\")
 
   "PUT sources request" when {
 
-    "IO updates sources" should {
+    "IO saves sources" should {
       "return 'OK'" in {
         //arrange
-        val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"path": "\test\file1.bob", "content": "content1"}, {"path": "\test\file2.bob", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
+        val put = parse(s""" {"dirs": [{ "path": "${escape(tempDir)}", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
 
         //act
         Put(s"/sandbox/sources", put) ~> createRoutes(tempDir) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
+        }
+      }
+    }
+
+    "IO saves sources (removes sources & vars actually)" should {
+      "remove sources and vars & return 'OK'" in {
+        //arrange
+        val put0 = parse(s""" {"dirs": [{ "path": "${escape(tempDir)}", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
+        Put(s"/sandbox/sources", put0) ~> createRoutes(tempDir) ~> check { response.status should be(StatusCodes.OK)}
+
+        //act
+        val put = parse(s""" {"dirs": [{ "path": "${escape(tempDir)}", "sources": [], "vars": [] }] }""")
+        Put(s"/sandbox/sources", put) ~> createRoutes(tempDir) ~> check {response.status should be(StatusCodes.OK)}
+
+        //assert
+        Get(s"/sandbox/sources") ~> createRoutes(tempDir) ~> check {
+          response.status should be(StatusCodes.OK)
+          responseAs[GetSourcesResponse] should be(GetSourcesResponse(List(InputDirModel(tempDir.toString, List.empty, List.empty))))
         }
       }
     }
@@ -44,7 +59,7 @@ class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServ
     "IO returns file" should {
       "return 'OK' with the file" in {
         //arrange
-        Put(s"/sandbox/sources", parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"path": "\test\file1.bob", "content": "content1"}, {"path": "\test\file2.bob", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")) ~> createRoutes(tempDir) ~> check { response.status should be(StatusCodes.OK) }
+        Put(s"/sandbox/sources", parse(s""" {"dirs": [{ "path": "${escape(tempDir)}", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")) ~> createRoutes(tempDir) ~> check { response.status should be(StatusCodes.OK) }
 
 
         //act
@@ -52,7 +67,7 @@ class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServ
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[GetSourcesResponse] should be(GetSourcesResponse(List(InputDirModel("\\test\\", List(InputSourceModel("\\test\\file1.bob", "content1"), InputSourceModel("\\test\\file2.bob", "content2")), List(Variable("a", "1"), Variable("b", "2"))))))
+          responseAs[GetSourcesResponse] should be(GetSourcesResponse(List(InputDirModel(tempDir.toString, List(InputSourceModel("file1", "content1"), InputSourceModel("file2", "content2")), List(Variable("a", "1"), Variable("b", "2"))))))
         }
       }
     }

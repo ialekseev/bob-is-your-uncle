@@ -3,7 +3,7 @@ import {Http, Headers, HTTP_PROVIDERS} from 'angular2/http'
 import 'rxjs/Rx'
 
 //todo: find out some decent way of using code contracts in TS
-
+//todo: validation
 @Component({
     selector: 'sandbox-app',
     templateUrl: 'app/app.html' ,
@@ -11,63 +11,52 @@ import 'rxjs/Rx'
     providers: [HTTP_PROVIDERS] //todo: remove?
 })
 export class App {
-    http: Http
-    dir: string;
-    sources: Array<Source>;
-    variables: Array<Variable>;
+    http: Http;
 
-    selectedSourceIndex: number | null = null;
+    dirs: Array<Dir>;
 
-    variablesSaved = false;
-    sourceSaved = false;
+    selectedDir: Dir;
+    selectedSource: [Dir, Source];
 
     private headers = new Headers({'Content-Type': 'application/json'});
 
     constructor(http: Http) {
         this.http = http;
-        http.get('sandbox/sources').map(r => r.json()).subscribe(sources => {
-            this.dir = sources.dir;
-            this.sources = (sources.list as Array<string>).map(s => new Source(s, ""))
-            this.variables = sources.vars;
+        http.get('sandbox/sources').map(r => r.json()).subscribe(r => {
+            this.dirs = r.dirs;
         });
     }
 
-    onSourceClick(index: number): void {
-        let filePath = this.sources[index].filePath;
-        this.http.get(encodeURI('sandbox/sources/' + filePath)).map(r => r.json()).subscribe(res => {
-            this.selectedSourceIndex = index;
-            this.sources[index] = new Source(res.filePath, res.content)
-            console.log(res);
-         });
+    private selectSource(dir: Dir, source: Source): void {
+        this.selectedSource = [dir, source];
+        this.selectedDir = null;
     }
 
-    onAddSourceClick(): void {
-        //todo: implement
-        //this.sources.push(new Variable("", ""));
+    private selectDir(dir: Dir) {
+        this.selectedDir = dir;
+        this.selectedSource = null;
     }
 
-    onSaveSelectedSourceClick(): void {
-        let filePath = this.sources[this.selectedSourceIndex].filePath;
-        let content = this.sources[this.selectedSourceIndex].content;
-
-        this.http.put(encodeURI('sandbox/sources/' + filePath), JSON.stringify({"content": content}), {headers: this.headers}).subscribe(res => {
-            this.flash(a => this.sourceSaved = a);
-        });
+    onDirClick(dir: Dir): void {
+        this.selectDir(dir);
     }
 
-    onSaveVariablesClick(): void {
-        this.variables = this.variables.filter(v => v.name);
-        this.http.put(encodeURI('sandbox/sources/vars/' + this.dir), JSON.stringify({"vars": this.variables}), {headers: this.headers}).subscribe(res => {
-            this.flash(a => this.variablesSaved = a);
-        });
+    onSourceClick(dir: Dir, source: Source): void {
+        this.selectSource(dir, source);
     }
 
-    onAddVariableClick(): void {
-        this.variables.push(new Variable("", ""));
+    onAddSourceClick(dir: Dir): void {
+        let newSource = new Source("new", "");
+        dir.sources.push(newSource);
+        this.selectSource(dir, newSource);
     }
 
-    onRemoveVariableClick(variableToDelete: Variable): void {
-        this.variables = this.variables.filter(v => v.name != variableToDelete.name)
+    onAddVariableClick(dir: Dir): void {
+        dir.vars.push(new Variable("", ""));
+    }
+
+    onRemoveVariableClick(dir: Dir, variableToDelete: Variable): void {
+        dir.vars = dir.vars.filter(v => v.name != variableToDelete.name)
     }
 
     private flash(set: (v: boolean) => void) {
@@ -76,14 +65,21 @@ export class App {
     }
 }
 
-export class Source {
-    filePath: string;
-    content: string;
-    constructor(f: string, c: string) { this.filePath = f; this.content = c; }
-}
-
 export class Variable {
     name: string;
     value: string;
     constructor(n: string, v: string) { this.name = n; this.value = v; }
+}
+
+export class Source {
+    name: string;
+    content: string;
+    constructor(n: string, c: string) { this.name = n; this.content = c; }
+}
+
+export class Dir {
+    path: string;
+    sources: Array<Source>;
+    vars: Array<Variable>;
+    constructor(p: string, s: Array<Source>, v: Array<Variable>) { this.path = p; this.sources = s; this.vars = v; }
 }
