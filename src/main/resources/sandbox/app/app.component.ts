@@ -1,16 +1,16 @@
-import {Component} from 'angular2/core';
-import {Http, Headers, HTTP_PROVIDERS} from 'angular2/http'
-import 'rxjs/Rx'
+import {Component, VERSION, ViewChild} from '@angular/core'
+import {Http, Response} from '@angular/http';
+import 'rxjs/Rx';
+import {ContextMenuComponent } from 'angular2-contextmenu';
 
 //todo: find out some decent way of using code contracts in TS
 //todo: validation
 @Component({
     selector: 'sandbox-app',
     templateUrl: 'app/app.html' ,
-    styleUrls: ['app/app.css'],
-    providers: [HTTP_PROVIDERS] //todo: remove?
+    styleUrls: ['app/app.css']
 })
-export class App {
+export class AppComponent {
     http: Http;
 
     dirs: Array<Dir>;
@@ -21,7 +21,7 @@ export class App {
     private headers = new Headers({'Content-Type': 'application/json'});
 
     constructor(http: Http) {
-        this.http = http;
+        console.log(`angular v${VERSION.full}`);
         http.get('sandbox/sources').map(r => r.json()).subscribe(r => {
             this.dirs = r.dirs;
         });
@@ -32,8 +32,13 @@ export class App {
         this.selectedDir = null;
     }
 
-    private selectDir(dir: Dir) {
+    private selectDir(dir: Dir): void {
         this.selectedDir = dir;
+        this.selectedSource = null;
+    }
+
+    private unselect() {
+        this.selectedDir = null;
         this.selectedSource = null;
     }
 
@@ -49,6 +54,11 @@ export class App {
         let newSource = new Source("new", "");
         dir.sources.push(newSource);
         this.selectSource(dir, newSource);
+    }
+
+    onRemoveSourceClick(dir: Dir, source: Source): void {
+        dir.sources = dir.sources.filter(s => s.name != source.name);
+        this.unselect();
     }
 
     onAddVariableClick(dir: Dir): void {
