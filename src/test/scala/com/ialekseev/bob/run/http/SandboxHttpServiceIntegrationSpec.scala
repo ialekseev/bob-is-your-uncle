@@ -95,7 +95,7 @@ class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServ
         val post = parse(s"""{"content":"$content", "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
 
         //act
-        Post("/sandbox/sources/compile", post) ~> createRoutes(tempDir) ~> check {
+        Post("/sandbox/sources/build", post) ~> createRoutes(tempDir) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
@@ -124,7 +124,7 @@ class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServ
         val post = parse(s"""{"content":"$content", "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
 
         //act
-        Post("/sandbox/sources/compile", post) ~> createRoutes(tempDir) ~> check {
+        Post("/sandbox/sources/build", post) ~> createRoutes(tempDir) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
@@ -154,7 +154,7 @@ class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServ
         val post = parse(s"""{"content":"$content", "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
 
         //act
-        Post("/sandbox/sources/compile", post) ~> createRoutes(tempDir) ~> check {
+        Post("/sandbox/sources/build", post) ~> createRoutes(tempDir) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)

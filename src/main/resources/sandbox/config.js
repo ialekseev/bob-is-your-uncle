@@ -37,6 +37,10 @@ System.config({
 
         'angular2-contextmenu': 'npm:angular2-contextmenu@latest/angular2-contextmenu.js',
 
+        'ng2-ace-editor': 'npm:ng2-ace-editor@latest/ng2-ace-editor.js',
+        'brace': 'npm:brace',
+        'w3c-blob': 'npm:w3c-blob',
+
         'rxjs': 'npm:rxjs',
         'typescript': 'npm:typescript@2.2.1/lib/typescript.js'
     },

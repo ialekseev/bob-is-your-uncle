@@ -9,7 +9,7 @@ import com.ialekseev.bob.exec.analyzer.Analyzer.{AnalysisResult, Namespace, Scal
 import com.ialekseev.bob.run.boot.HttpServiceUnsafe
 import com.ialekseev.bob._
 import com.ialekseev.bob.exec.Executor
-import com.ialekseev.bob.run.{InputDir, InputSource}
+import com.ialekseev.bob.run.{ErrorCoordinates, InputDir, InputSource}
 import com.ialekseev.bob.run.http.SandboxHttpService._
 import org.json4s.JsonAST.{JField, JObject, JString}
 import org.mockito.Mockito._
@@ -178,7 +178,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
         val post = parse("""{"content":"content1", "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
 
         //act
-        Post("/sandbox/sources/compile", post) ~> createRoutes(dir) ~> check {
+        Post("/sandbox/sources/build", post) ~> createRoutes(dir) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
@@ -196,11 +196,11 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
         val post = parse("""{"content":"content1", "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
 
         //act
-        Post("/sandbox/sources/compile", post) ~> createRoutes(dir) ~> check {
+        Post("/sandbox/sources/build", post) ~> createRoutes(dir) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[PostBuildFailureResponse] should be(PostBuildFailureResponse(List(BuildErrorResponse(1, 2, "Bad!")), "syntax"))
+          responseAs[PostBuildFailureResponse] should be(PostBuildFailureResponse(List(BuildErrorModel(1, 2, ErrorCoordinates(1, 2), ErrorCoordinates(1, 3), "Bad!")), "syntax"))
         }
       }
     }
@@ -211,7 +211,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
         val post = parse("""{"content":"", "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
 
         //act
-        Post("/sandbox/sources/compile", post) ~> Route.seal(createRoutes(dir)) ~> check {
+        Post("/sandbox/sources/build", post) ~> Route.seal(createRoutes(dir)) ~> check {
 
           //assert
           response.status should be(StatusCodes.BadRequest)
@@ -227,7 +227,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
         when(exec.build("content1", List(Variable("a", "1"), Variable("b", "2")))).thenReturn(Task.fail(new FileNotFoundException("bad!")))
 
         //act
-        Post("/sandbox/sources/compile", post) ~> createRoutes(dir) ~> check {
+        Post("/sandbox/sources/build", post) ~> createRoutes(dir) ~> check {
 
           //assert
           response.status should be(StatusCodes.InternalServerError)
@@ -305,7 +305,7 @@ class SandboxHttpServiceSpec extends SandboxHttpService with HttpServiceUnsafe w
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[PostRunFailureResponse] shouldBe PostRunFailureResponse(List(BuildErrorResponse(1, 2, "Bad!")), "syntax")
+          responseAs[PostRunFailureResponse] shouldBe PostRunFailureResponse(List(BuildErrorModel(1, 2, ErrorCoordinates(1, 2), ErrorCoordinates(1, 3), "Bad!")), "syntax")
         }
       }
     }

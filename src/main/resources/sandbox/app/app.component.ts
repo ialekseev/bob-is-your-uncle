@@ -1,26 +1,28 @@
-import {Component, VERSION, ViewChild} from '@angular/core'
-import {Http, Response} from '@angular/http';
+import {AfterViewInit, Component, VERSION, ViewChild, ViewContainerRef} from '@angular/core'
+import {Http, Headers} from '@angular/http';
 import 'rxjs/Rx';
-import {ContextMenuComponent } from 'angular2-contextmenu';
 
 //todo: find out some decent way of using code contracts in TS
 //todo: validation
+//todo: configure https://github.com/fxmontigny/ng2-ace-editor
 @Component({
     selector: 'sandbox-app',
     templateUrl: 'app/app.html' ,
     styleUrls: ['app/app.css']
 })
 export class AppComponent {
-    http: Http;
-
     dirs: Array<Dir>;
 
     selectedDir: Dir;
     selectedSource: [Dir, Source];
 
+    lastCheckError: BuildError;
+
     private headers = new Headers({'Content-Type': 'application/json'});
 
-    constructor(http: Http) {
+    //todo: set editor.$blockScrolling from the component. Is the problem here(https://github.com/fxmontigny/ng2-ace-editor/issues/12) due to "ngIf" directive?
+
+    constructor(private http: Http) {
         console.log(`angular v${VERSION.full}`);
         http.get('sandbox/sources').map(r => r.json()).subscribe(r => {
             this.dirs = r.dirs;
@@ -69,27 +71,33 @@ export class AppComponent {
         dir.vars = dir.vars.filter(v => v.name != variableToDelete.name)
     }
 
-    private flash(set: (v: boolean) => void) {
-        set(true);
-        setTimeout(function() {set(false);}.bind(this), 500);
+    onCheckSourceClick(dir: Dir, source: Source): void {
+        this.lastCheckError = null;
+        this.http.post('sandbox/sources/build', JSON.stringify({"content": source.content, "vars": dir.vars}), {headers: this.headers}).map(r => r.json()).subscribe(res => {
+            console.log(res);
+            if (res.errors) {
+                this.lastCheckError = (res.errors as Array<BuildError>)[0];
+            }
+        });
     }
 }
 
 export class Variable {
-    name: string;
-    value: string;
-    constructor(n: string, v: string) { this.name = n; this.value = v; }
+    constructor(public name: string, public value: string) {}
 }
 
 export class Source {
-    name: string;
-    content: string;
-    constructor(n: string, c: string) { this.name = n; this.content = c; }
+    constructor(public name: string, public content: string) {}
 }
 
 export class Dir {
-    path: string;
-    sources: Array<Source>;
-    vars: Array<Variable>;
-    constructor(p: string, s: Array<Source>, v: Array<Variable>) { this.path = p; this.sources = s; this.vars = v; }
+    constructor(public path: string, public sources: Array<Source>, public vars: Array<Variable>) {}
+}
+
+export class ErrorCoordinates {
+    constructor(public x: number, public y: number) {}
+}
+
+export class BuildError {
+    constructor(public startOffset: number, public endOffset: number, public startCoordinates: ErrorCoordinates, public endCoordinates: ErrorCoordinates, public message: string) {}
 }

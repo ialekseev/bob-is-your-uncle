@@ -1,12 +1,12 @@
 package com.ialekseev.bob.run.http
 
-import java.nio.file.{Path}
+import java.nio.file.Path
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.ialekseev.bob._
 import com.ialekseev.bob.exec.Executor
 import com.ialekseev.bob.exec.Executor.{Build, RunResult, SuccessfulRun}
-import com.ialekseev.bob.run.{InputDir, IoShared}
+import com.ialekseev.bob.run._
 import com.ialekseev.bob.run.http.SandboxHttpService._
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import scalaz.concurrent.Task
@@ -61,14 +61,14 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
     }
   }
 
-  private def postBuildRequestRoute = path ("sources" / "compile") {
+  private def postBuildRequestRoute = path ("sources" / "build") {
     post {
       entity(as[PostBuildRequest]) { request => {
         validate(request.content.nonEmpty, "Content can't be empty") {
           completeTask {
             exec.build(request.content, request.vars).map {
               case \/-(_) => PostBuildSuccessResponse
-              case -\/(buildFailed) => PostBuildFailureResponse(buildFailed.errors.map(mapBuildError(_)), buildFailed.stage)
+              case -\/(buildFailed) => PostBuildFailureResponse(buildFailed.errors.map(e => mapBuildError(e, request.content)), buildFailed.stage)
               }
             }
           }
@@ -88,7 +88,7 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
 
             done.map {
               case \/-(RunResult(SuccessfulRun(_, result) :: Nil)) => PostRunSuccessResponse(result.toString)
-              case -\/(buildFailed) => PostRunFailureResponse(buildFailed.errors.map(mapBuildError), buildFailed.stage)
+              case -\/(buildFailed) => PostRunFailureResponse(buildFailed.errors.map(e => mapBuildError(e, request.content)), buildFailed.stage)
               case _ => sys.error("Sandbox: Not supposed to be here")
             }
           }
@@ -99,8 +99,8 @@ trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShare
 }
 
 object SandboxHttpService {
-  case class BuildErrorResponse(startOffset: Int, endOffset: Int, message: String)
-  def mapBuildError(e: BuildError): BuildErrorResponse = BuildErrorResponse(e.startOffset, e.endOffset, e.message)
+  case class BuildErrorModel(startOffset: Int, endOffset: Int, startCoordinates: ErrorCoordinates, endCoordinates: ErrorCoordinates, message: String)
+  def mapBuildError(e: BuildError, content: String): BuildErrorModel = BuildErrorModel(e.startOffset, e.endOffset, errorCoordinates(content, e.startOffset), errorCoordinates(content, e.endOffset), e.message)
 
   case class InputSourceModel(name: String, content: String)
   case class InputDirModel(path: String, sources: List[InputSourceModel], vars: List[Variable[String]])
@@ -112,11 +112,11 @@ object SandboxHttpService {
 
   case class PostBuildRequest(content: String, vars: List[Variable[String]])
   case object PostBuildSuccessResponse
-  case class PostBuildFailureResponse(errors: List[BuildErrorResponse], stage: String)
+  case class PostBuildFailureResponse(errors: List[BuildErrorModel], stage: String)
 
   case class PostRunRequest(content: String, vars: List[Variable[String]], run: HttpRequest)
   case class PostRunSuccessResponse(result: String)
-  case class PostRunFailureResponse(errors: List[BuildErrorResponse], stage: String)
+  case class PostRunFailureResponse(errors: List[BuildErrorModel], stage: String)
 }
 
 

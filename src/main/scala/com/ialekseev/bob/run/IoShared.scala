@@ -200,24 +200,10 @@ trait IoShared {
       } yield ()
     }
 
-    def errorCoordinate(source: String, offset: Int): (Int, Int) = {
-      require(offset >= 0)
-
-      if (source.isEmpty || offset == 0) (1, 1)
-      else {
-        val beforeOffset = source.take(offset)
-        val nlIndex = beforeOffset.reverse.indexWhere(_ == '\n')
-
-        val column = if (nlIndex >= 0) nlIndex + 1 else offset + 1
-        val line = beforeOffset.count(_ == '\n') + 1
-        (line, column)
-      }
-    }
-
     for {
       _ <- show()
       _ <- showFileName(filename)
-      _ <- show(Console.RED + s"Error position: ${errorCoordinate(source, startOffset)}" + Console.RESET)
+      _ <- show(Console.RED + s"Error position: ${errorCoordinates(source, startOffset)}" + Console.RESET)
       _ <- show(Console.RED + s"Message: $message" + Console.RESET)
       _ <- showErrorContext(source, startOffset, endOffset)
       _ <- show()
