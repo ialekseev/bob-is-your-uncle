@@ -6,6 +6,7 @@ import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { AppComponent } from './app.component';
 import {ContextMenuModule } from 'angular2-contextmenu';
 import { AceEditorModule } from 'ng2-ace-editor';
+import {InlineEditorModule} from 'ng2-inline-editor';
 
 @NgModule({
     imports: [
@@ -16,7 +17,8 @@ import { AceEditorModule } from 'ng2-ace-editor';
         ContextMenuModule.forRoot({
             useBootstrap4: true
         }),
-        AceEditorModule
+        AceEditorModule,
+        InlineEditorModule
     ],
     declarations: [ AppComponent ],
     bootstrap:    [ AppComponent ]

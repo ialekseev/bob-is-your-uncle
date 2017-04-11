@@ -17,9 +17,6 @@ import com.bfil.automapper._
 trait SandboxHttpService extends BaseHttpService with Json4sSupport with IoShared {
   val exec: Executor
 
-  implicit val mapping1 = generateMapping[List[InputDir], List[InputDirModel]]
-  implicit val mapping2 = generateMapping[List[InputDirModel], List[InputDir]]
-
   def createRoutes(dir: Path): Route = getAssets ~ pathPrefix("sandbox") {
     getSourcesRoute(dir) ~ putSourcesRoute ~ postBuildRequestRoute ~ postRunRequestRoute
   }

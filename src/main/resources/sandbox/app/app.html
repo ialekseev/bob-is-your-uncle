@@ -1,13 +1,13 @@
 <div class="container-fluid">
-    <div class="row">
+    <div class="row top-buffer-10">
 
         <div class="col-2">
-            <ul class="list-group">
-                <li *ngFor="let dir of dirs" [contextMenu]="dirContextMenu" [contextMenuSubject]="dir" class="list-group-item">
-                    <a href="javascript:void(0);" (click)="onDirClick(dir)">{{dir.path}}</a>
-                    <ul>
-                        <li *ngFor="let source of dir.sources" [contextMenu]="sourceContextMenu" [contextMenuSubject]="[dir, source]">
-                            <a href="javascript:void(0);" (click)="onSourceClick(dir, source)">{{source.name}}</a>
+            <ul class="nav flex-column">
+                <li *ngFor="let dir of dirs" [contextMenu]="dirContextMenu" [contextMenuSubject]="dir" class="nav-item">
+                    <a href="javascript:void(0);" (click)="onDirClick(dir)" class="nav-link" [ngClass]="{'alert-info': isActiveDir(dir) }">{{dir.path}}</a>
+                    <ul class="nav flex-column left-buffer-10">
+                        <li *ngFor="let source of dir.sources" [contextMenu]="sourceContextMenu" [contextMenuSubject]="[dir, source]" class="nav-item">
+                            <a href="javascript:void(0);" (click)="onSourceClick(dir, source)" class="nav-link" [ngClass]="{'alert-info': isActiveSource(source) }">{{source.name}}</a>
                         </li>
                     </ul>
                 </li>
@@ -25,7 +25,7 @@
         </div>
 
         <div class="col-10">
-            <div *ngIf="selectedSource != null" class="row top-buffer-10">
+            <div *ngIf="selectedSource != null" class="row">
                 <div class="col-4">
                     <div class="form-horizontal">
                         <div class="form-group">
@@ -45,11 +45,18 @@
                     </div>
                 </div>
                 <div class="col">
-                     <ul>
-                        <li *ngFor="let variable of selectedSource[0].vars">
-                            {{variable.name}}={{variable.value}}
-                        </li>
-                    </ul>
+                    <strong>Global variables</strong>
+                    <div *ngFor="let variable of selectedSource[0].vars" class="row">
+                        <div class="col-1">
+                            <inline-editor type="text" [(ngModel)]="variable.name" size="1"></inline-editor>
+                        </div>
+                        <div class="col-auto">
+                            =
+                        </div>
+                        <div class="col-1">
+                            <inline-editor type="text" [(ngModel)]="variable.value" size="1"></inline-editor>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div *ngIf="selectedDir != null" class="row">

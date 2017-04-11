@@ -41,6 +41,8 @@ System.config({
         'brace': 'npm:brace',
         'w3c-blob': 'npm:w3c-blob',
 
+        'ng2-inline-editor': 'npm:ng2-inline-editor@latest/dist/index.js',
+
         'rxjs': 'npm:rxjs',
         'typescript': 'npm:typescript@2.2.1/lib/typescript.js'
     },
@@ -55,24 +57,3 @@ System.config({
         }
     }
 });
-
-/*
-System.config({
-  //use typescript for compilation
-  transpiler: 'typescript',
-  //typescript compiler options
-  typescriptOptions: {
-    emitDecoratorMetadata: true
-  },
-  //map tells the System loader where to look for things
-  map: {
-    app: "./app"
-  },
-  //packages defines our app package
-  packages: {
-    app: {
-      main: './main.ts',
-      defaultExtension: 'ts'
-    }
-  }
-});*/

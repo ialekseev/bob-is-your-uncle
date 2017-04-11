@@ -1,10 +1,12 @@
-import {AfterViewInit, Component, VERSION, ViewChild, ViewContainerRef} from '@angular/core'
+import {Component, VERSION} from '@angular/core'
 import {Http, Headers} from '@angular/http';
 import 'rxjs/Rx';
+//import {InlineEditorDirectives} from 'ng2-inline-editor';
 
 //todo: find out some decent way of using code contracts in TS
 //todo: validation
 //todo: configure https://github.com/fxmontigny/ng2-ace-editor
+//todo: set editor.$blockScrolling from the component. Is the problem here(https://github.com/fxmontigny/ng2-ace-editor/issues/12) due to "ngIf" directive?
 @Component({
     selector: 'sandbox-app',
     templateUrl: 'app/app.html' ,
@@ -19,8 +21,6 @@ export class AppComponent {
     lastCheckError: BuildError;
 
     private headers = new Headers({'Content-Type': 'application/json'});
-
-    //todo: set editor.$blockScrolling from the component. Is the problem here(https://github.com/fxmontigny/ng2-ace-editor/issues/12) due to "ngIf" directive?
 
     constructor(private http: Http) {
         console.log(`angular v${VERSION.full}`);
@@ -79,6 +79,14 @@ export class AppComponent {
                 this.lastCheckError = (res.errors as Array<BuildError>)[0];
             }
         });
+    }
+
+    isActiveDir(dir: Dir): boolean {
+        return this.selectedDir != null && this.selectedDir.path == dir.path;
+    }
+
+    isActiveSource(source: Source): boolean {
+        return this.selectedSource != null && this.selectedSource[1].name == source.name;
     }
 }
 
