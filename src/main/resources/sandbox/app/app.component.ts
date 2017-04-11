@@ -1,12 +1,10 @@
 import {Component, VERSION} from '@angular/core'
 import {Http, Headers} from '@angular/http';
 import 'rxjs/Rx';
-//import {InlineEditorDirectives} from 'ng2-inline-editor';
 
 //todo: find out some decent way of using code contracts in TS
 //todo: validation
 //todo: configure https://github.com/fxmontigny/ng2-ace-editor
-//todo: set editor.$blockScrolling from the component. Is the problem here(https://github.com/fxmontigny/ng2-ace-editor/issues/12) due to "ngIf" directive?
 @Component({
     selector: 'sandbox-app',
     templateUrl: 'app/app.html' ,

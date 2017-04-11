@@ -30,13 +30,14 @@ trait Service extends WebhookHttpService {
       }).flatten.sequenceU
     }
 
-    def runService(builds: List[Build]): IO[Unit] = {
+    def runService(dirs: List[Path], builds: List[Build]): IO[Unit] = {
       for {
+        _ <- show(s"Using builds: ${builds.map(_.analysisResult.namespace).mkString("[", ",", "]")}")
         context <- IO {
           implicit val system = ActorSystem("service-system")
           implicit val materializer = ActorMaterializer()
           implicit val executionContext = system.dispatcher
-          (system, executionContext, Http().bindAndHandle(createRoute(builds), "localhost", 8080)) //todo: move to the config
+          (system, executionContext, Http().bindAndHandle(createRoutes(dirs, builds), "localhost", 8080)) //todo: move to the config
         }
         _ <- show(s"The Service is online at http://localhost:8080/\nPress RETURN to stop...") //todo: from config
         _ <- read()
@@ -55,15 +56,11 @@ trait Service extends WebhookHttpService {
         for {
           _ <- show("building...").toTask
           _ <- {
-            build(inputDirs).flatMap(builds => {
-              builds.sequenceU match {
-                case \/-(builds: List[Build]) => {
-                  val duplicateNamespaces = builds.groupBy(_.analysisResult.namespace).collect {case (x, List(_,_,_*)) => x}.toVector
-                  if (duplicateNamespaces.length > 0) showError("Please use different names for the duplicate namespaces: " + duplicateNamespaces).toTask
-                  else runService(builds).toTask
-                }
-                case -\/(_) => showError("Please fix the failed sources before starting the service").toTask
-              }
+            build(inputDirs).flatMap(built => {
+              val succeededBuilds = built.filter(_.isRight).map(_.toEither.right.get)
+              val duplicateNamespaces = succeededBuilds.groupBy(_.analysisResult.namespace).collect {case (x, List(_,_,_*)) => x}.toVector
+              if (duplicateNamespaces.length > 0) showError("Please use different names for the duplicate namespaces: " + duplicateNamespaces).toTask //todo: validation doesn't feel right here. Plus, where to check it after builds get updated?
+              else runService(targetDirectories, succeededBuilds).toTask
             })
           }
         } yield ()

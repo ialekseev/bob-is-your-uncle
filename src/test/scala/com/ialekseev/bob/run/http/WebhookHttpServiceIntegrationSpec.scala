@@ -7,15 +7,19 @@ import com.ialekseev.bob._
 import com.ialekseev.bob.exec.{CompilerActor, EvaluatorActor, Executor}
 import com.ialekseev.bob.exec.analyzer.DefaultAnalyzer
 import com.ialekseev.bob.run.boot.HttpServiceUnsafe
-import com.ialekseev.bob.run.http.SandboxHttpService._
+import WebhookHttpService._
 import org.json4s.native.JsonMethods._
 
-class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServiceUnsafe with HttpServiceBaseSpec {
+class WebhookHttpServiceIntegrationSpec extends WebhookHttpService with HttpServiceUnsafe with HttpServiceBaseSpec {
+  val sandboxPathPrefix = "sandbox"
+  val hookPathPrefix = "hook"
+
   val exec: Executor = new Executor {
     val analyzer = DefaultAnalyzer
     val compilerActor = system.actorOf(Props[CompilerActor])
     val evaluatorActor = system.actorOf(Props[EvaluatorActor])
   }
+
   val tempDir = Paths.get(System.getProperty("java.io.tmpdir"))
   def escape(path: Path) = path.toString.replace("\\", "\\\\")
 
@@ -27,7 +31,7 @@ class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServ
         val put = parse(s""" {"dirs": [{ "path": "${escape(tempDir)}", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
 
         //act
-        Put(s"/sandbox/sources", put) ~> createRoutes(tempDir) ~> check {
+        Put(s"/sandbox/sources", put) ~> createRoutes(List(tempDir), builds) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
@@ -39,14 +43,14 @@ class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServ
       "remove sources and vars & return 'OK'" in {
         //arrange
         val put0 = parse(s""" {"dirs": [{ "path": "${escape(tempDir)}", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
-        Put(s"/sandbox/sources", put0) ~> createRoutes(tempDir) ~> check { response.status should be(StatusCodes.OK)}
+        Put(s"/sandbox/sources", put0) ~> createRoutes(List(tempDir), builds) ~> check { response.status should be(StatusCodes.OK)}
 
         //act
         val put = parse(s""" {"dirs": [{ "path": "${escape(tempDir)}", "sources": [], "vars": [] }] }""")
-        Put(s"/sandbox/sources", put) ~> createRoutes(tempDir) ~> check {response.status should be(StatusCodes.OK)}
+        Put(s"/sandbox/sources", put) ~> createRoutes(List(tempDir), builds) ~> check {response.status should be(StatusCodes.OK)}
 
         //assert
-        Get(s"/sandbox/sources") ~> createRoutes(tempDir) ~> check {
+        Get(s"/sandbox/sources") ~> createRoutes(List(tempDir), builds) ~> check {
           response.status should be(StatusCodes.OK)
           responseAs[GetSourcesResponse] should be(GetSourcesResponse(List(InputDirModel(tempDir.toString, List.empty, List.empty))))
         }
@@ -59,11 +63,11 @@ class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServ
     "IO returns file" should {
       "return 'OK' with the file" in {
         //arrange
-        Put(s"/sandbox/sources", parse(s""" {"dirs": [{ "path": "${escape(tempDir)}", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")) ~> createRoutes(tempDir) ~> check { response.status should be(StatusCodes.OK) }
+        Put(s"/sandbox/sources", parse(s""" {"dirs": [{ "path": "${escape(tempDir)}", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")) ~> createRoutes(List(tempDir), builds) ~> check { response.status should be(StatusCodes.OK) }
 
 
         //act
-        Get(s"/sandbox/sources") ~> createRoutes(tempDir) ~> check {
+        Get(s"/sandbox/sources") ~> createRoutes(List(tempDir), builds) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
@@ -95,7 +99,7 @@ class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServ
         val post = parse(s"""{"content":"$content", "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
 
         //act
-        Post("/sandbox/sources/build", post) ~> createRoutes(tempDir) ~> check {
+        Post("/sandbox/sources/build", post) ~> createRoutes(List(tempDir), builds) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
@@ -124,7 +128,7 @@ class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServ
         val post = parse(s"""{"content":"$content", "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
 
         //act
-        Post("/sandbox/sources/build", post) ~> createRoutes(tempDir) ~> check {
+        Post("/sandbox/sources/build", post) ~> createRoutes(List(tempDir), builds) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
@@ -154,7 +158,7 @@ class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServ
         val post = parse(s"""{"content":"$content", "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
 
         //act
-        Post("/sandbox/sources/build", post) ~> createRoutes(tempDir) ~> check {
+        Post("/sandbox/sources/build", post) ~> createRoutes(List(tempDir), builds) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
@@ -186,7 +190,7 @@ class SandboxHttpServiceIntegrationSpec extends SandboxHttpService with HttpServ
         val post = parse( s"""{"content":"$content", "vars": [], "run": {"uri": "com.ialekseev.core/ping", "method": "GET", "headers": {}, "queryString": {"q" : "777"} } }""")
 
         //act
-        Post("/sandbox/sources/run", post) ~> createRoutes(tempDir) ~> check {
+        Post("/sandbox/sources/run", post) ~> createRoutes(List(tempDir), builds) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
