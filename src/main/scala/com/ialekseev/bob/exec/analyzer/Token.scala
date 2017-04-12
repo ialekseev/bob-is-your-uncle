@@ -20,7 +20,7 @@ object Token {
     object Dictionary { val startChar = '['; val endChar = ']' }
     case class Dictionary(raw: String, dic: Map[String, String]) extends Token { val length = raw.length }
 
-    object Json { val char = '~' }
+    object Json { val startChar = '{'; val endChar = '}' }
     case class Json(raw: String, json: JValue) extends Token { val length = raw.length}
   }
 

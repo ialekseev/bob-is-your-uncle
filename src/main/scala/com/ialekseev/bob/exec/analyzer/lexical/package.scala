@@ -47,15 +47,15 @@ package object lexical {
     } else None
   }
 
-  def isJsonStartChar(char: Char) = char == Type.Json.char
-  def isJsonEndChar(char: Char) = char == Type.Json.char
+  def isJsonStartChar(char: Char) = char == Type.Json.startChar
+  def isJsonEndChar(char: Char) = char == Type.Json.endChar
   def json(str: String): Option[Token] = {
     if (str.length > 1) {
-      val (head, content, last) = str.dismantle3
+      val (head, _, last) = str.dismantle3
       if (isJsonStartChar(head) && isJsonEndChar(last)) {
         import org.json4s._, org.json4s.native.JsonMethods._
         implicit val formats = org.json4s.DefaultFormats
-        Try(parse(content)).toOption.map(Type.Json(str, _))
+        Try(parse(str)).toOption.map(Type.Json(str, _))
       } else None
     } else None
   }

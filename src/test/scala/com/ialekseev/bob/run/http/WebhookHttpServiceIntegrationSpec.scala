@@ -89,6 +89,7 @@ class WebhookHttpServiceIntegrationSpec extends WebhookHttpService with HttpServ
             |
             | @webhook
             |    queryString: [\"ping\": \"{$ping}\"]
+            |    body : {\"par1\": \"1\"}
             |
             | @process
             |   1 + 1

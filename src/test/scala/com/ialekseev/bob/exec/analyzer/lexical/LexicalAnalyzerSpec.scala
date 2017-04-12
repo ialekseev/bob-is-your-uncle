@@ -132,7 +132,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
             """@webhook """ + "\n\n  \n\n" +
               """ method : "get"""" + "\n" +
               """ queryString: ["a":"1", "b":"2"]""" + "\n" +
-              """body: ~{"c": "3", "d": "hi!"}~""" + "\n" +
+              """body: {"c": "3", "d": "hi!"}""" + "\n" +
               """  headers : ["h1": "a", "h2": "b"]"""
           )
 
@@ -154,12 +154,12 @@ class LexicalAnalyzerSpec extends BaseSpec {
             LexerToken(Token.INDENT(0), 64),
             LexerToken(Token.Keyword.`body`, 64),
             LexerToken(Token.Delimiter.`:`, 68),
-            LexerToken(Token.Type.Json("""~{"c": "3", "d": "hi!"}~""", ("c" -> "3") ~ ("d" -> "hi!") ), 70),
+            LexerToken(Token.Type.Json("""{"c": "3", "d": "hi!"}""", ("c" -> "3") ~ ("d" -> "hi!") ), 70),
 
-            LexerToken(Token.INDENT(2), 95),
-            LexerToken(Token.Keyword.`headers`, 97),
-            LexerToken(Token.Delimiter.`:`, 105),
-            LexerToken(Token.Type.Dictionary("""["h1": "a", "h2": "b"]""", Map("h1" -> "a", "h2"->"b")), 107)
+            LexerToken(Token.INDENT(2), 93),
+            LexerToken(Token.Keyword.`headers`, 95),
+            LexerToken(Token.Delimiter.`:`, 103),
+            LexerToken(Token.Type.Dictionary("""["h1": "a", "h2": "b"]""", Map("h1" -> "a", "h2"->"b")), 105)
           ))
         }
       }
