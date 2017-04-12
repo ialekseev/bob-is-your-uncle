@@ -190,7 +190,7 @@ trait IoShared {
         if (err.matches("\\s+")) "_" * err.length
         else err
       }
-      val after = if (endOffset + 1 < source.length - 1) some(source.substring(endOffset + 1)) else none
+      val after = if (endOffset + 1 < source.length) some(source.substring(endOffset + 1)) else none
 
       val context = (before, error, after)
       for {

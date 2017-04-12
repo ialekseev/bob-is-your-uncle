@@ -72,17 +72,13 @@ package object lexical {
       case l@Token.Keyword.`queryString`.word => some(Token.Keyword.`queryString`)
       case l@Token.Keyword.`body`.word => some(Token.Keyword.`body`)
 
-      case l@Token.Keyword.`@process`.word => some(Token.Keyword.`@process`)
-
       case _ => None
     }
   }
 
-  def isBlockWordStartChar(char: Char) = char == Block.wordStartChar
-  def isBlockWordEndChar(char: Char) = char == Block.wordEndChar
   def block(beginWord: String, content: String): Option[Token] = {
     beginWord match {
-      case Token.Block.`<scala>`.beginWord => some(Token.Block.`<scala>`(content))
+      case Token.Block.`@process`.beginWord => some(Token.Block.`@process`(content))
       case _ => none
     }
   }

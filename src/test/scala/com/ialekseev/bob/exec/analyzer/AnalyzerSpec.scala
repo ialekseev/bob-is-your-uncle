@@ -89,11 +89,8 @@ class AnalyzerSpec extends BaseSpec {
                     )
                   )
                 ),
-                nonTerminal("Process").node(
-                  terminal(LexerToken(Token.Keyword.`@process`, 1500)).leaf,
-                  nonTerminal("Block").node(
-                    terminal(LexerToken(Token.Block.`<scala>`("val a = 1"), 1600)).leaf
-                  )
+                nonTerminal("Block").node(
+                  terminal(LexerToken(Token.Block.`@process`("val a = 1"), 1500)).leaf
                 )
               )
             ).right
@@ -136,11 +133,8 @@ class AnalyzerSpec extends BaseSpec {
                 nonTerminal("Webhook").node(
                   terminal(LexerToken(Token.Keyword.`@webhook`, 800)).leaf
                 ),
-                nonTerminal("Process").node(
-                  terminal(LexerToken(Token.Keyword.`@process`, 1200)).leaf,
-                  nonTerminal("Block").node(
-                    terminal(LexerToken(Token.Block.`<scala>`("val a = 1"), 1300)).leaf
-                  )
+                nonTerminal("Block").node(
+                  terminal(LexerToken(Token.Block.`@process`("val a = 1"), 1200)).leaf
                 )
               )
             ).right
@@ -230,11 +224,8 @@ class AnalyzerSpec extends BaseSpec {
                     )
                   )
                 ),
-                nonTerminal("Process").node(
-                  terminal(LexerToken(Token.Keyword.`@process`, 3200)).leaf,
-                  nonTerminal("Block").node(
-                    terminal(LexerToken(Token.Block.`<scala>`("val a = 1"), 3300)).leaf
-                  )
+                nonTerminal("Block").node(
+                  terminal(LexerToken(Token.Block.`@process`("val a = 1"), 3200)).leaf
                 )
               )
             ).right

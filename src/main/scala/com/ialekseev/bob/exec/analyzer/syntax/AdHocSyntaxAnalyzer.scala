@@ -134,34 +134,24 @@ class AdHocSyntaxAnalyzer extends SyntaxAnalyzer with SyntaxAnalysisState {
     } yield List(webhookKeyword) |+| webhookSettings.toList
   }
 
-  //Block ::= INDENT(2) '<scala>...<end>'
+  //Block ::= INDENT(1) '@process'
   private def parseBlock: Parsed[ParseTree] = rule("Block") {
     for {
-      _ <- parse[Token.INDENT](2)
-      scala <- parse[Token.Block.`<scala>`]
-    } yield List(scala)
-  }
-
-  /*Process ::= INDENT(1) '@process'
-                          Block*/
-  private def parseProcess: Parsed[ParseTree] = rule("Process") {
-    for {
       _ <- parse[Token.INDENT](1)
-      process <- parse[Token.Keyword.`@process`.type]
-      block <- parseBlock
-    } yield List(process, block)
+      process <- parse[Token.Block.`@process`]
+    } yield List(process)
   }
 
   /*Rule ::= Description
              Constants
              Webhook
-             Process*/
+             Block*/
   private def parseRule: Parsed[ParseTree] = rule("Rule") {
     for {
       description <- parseDescription
       constants <- parseConstants
       webhook <- parseWebhook
-      process <- parseProcess
+      process <- parseBlock
     } yield List(description) |+| constants.toList |+| List(webhook) |+| List(process)
   }
 

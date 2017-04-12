@@ -39,23 +39,17 @@ object Token {
     case object `headers` extends KeywordToken { val word = "headers" }
     case object `queryString` extends KeywordToken { val word = "queryString" }
     case object `body` extends KeywordToken { val word = "body" }
-
-    case object `@process` extends KeywordToken { val word = "@process" }
   }
 
   object Block {
-    val wordStartChar = '<'
-    val wordEndChar = '>'
-    val endWord = wordStartChar + "end" + wordEndChar
-
     trait BlockToken extends Token {
       val beginWord: String
       val content: String
-      lazy val length = beginWord.length + content.length + endWord.length
+      lazy val length = beginWord.length + content.length
     }
 
-    object `<scala>` { val beginWord =  wordStartChar + "scala" + wordEndChar }
-    case class `<scala>`(content: String) extends BlockToken { val beginWord = `<scala>`.beginWord }
+    object `@process` { val beginWord =  "@process" }
+    case class `@process`(content: String) extends BlockToken { val beginWord = `@process`.beginWord }
   }
 
   object Delimiter {
@@ -79,7 +73,7 @@ object Token {
     case Token.Variable(name) => Token.Variable.char + name
     case Token.Type.StringLiteral(text) => Token.Type.StringLiteral.char + text + Token.Type.StringLiteral.char
     case keyword: Token.Keyword.KeywordToken => keyword.word
-    case block: Token.Block.BlockToken => block.beginWord + "..." + Token.Block.endWord
+    case block: Token.Block.BlockToken => block.beginWord + "..."
     case delimiter: Token.Delimiter.DelimiterToken => delimiter.char.toString
     case rest => rest.toString
   }
@@ -109,8 +103,7 @@ object TokenTag {
   implicit val queryStringKeywordTag = new TokenTag[Keyword.`queryString`.type] { def asString = Keyword.`queryString`.word}
   implicit val bodyKeywordTag = new TokenTag[Keyword.`body`.type] { def asString = Keyword.`body`.word}
 
-  implicit val processKeywordTag = new TokenTag[Keyword.`@process`.type] { def asString = Keyword.`@process`.word}
-  implicit val scalaBlockTag = new TokenTag[Block.`<scala>`] { def asString = Block.`<scala>`.beginWord + "..." + Block.endWord}
+  implicit val scalaBlockTag = new TokenTag[Block.`@process`] { def asString = Block.`@process`.beginWord + "..."}
 
   implicit val dotDelimiterTag = new TokenTag[Delimiter.`.`.type] { def asString = Delimiter.`.`.char.toString}
   implicit val poundDelimiterTag = new TokenTag[Delimiter.`#`.type] { def asString = Delimiter.`#`.char.toString}

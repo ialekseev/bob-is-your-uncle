@@ -71,7 +71,7 @@ private[lexical] trait LexicalAnalysisState {
 
   def takeTillStr(from: Int, str: String): LexerState[Option[String]] = {
     get[LexerStateInternal] >>= (s => {
-      (OptionT.optionT(lookAheadStr(Token.Block.endWord)) >>= (found => {
+      (OptionT.optionT(lookAheadStr(str)) >>= (found => {
         OptionT.optionT(some(s.input.substring(from, found._1)).point[LexerState])
       })).run
     })
@@ -86,7 +86,6 @@ private[lexical] trait LexicalAnalysisState {
   def currentIsStringLiteralStart: LexerState[Boolean] = currentChar.map(isStringLiteralChar(_))
   def currentIsDictionaryStart: LexerState[Boolean] = currentChar.map(isDictionaryStartChar(_))
   def currentIsJsonStart: LexerState[Boolean] = currentChar.map(isJsonStartChar(_))
-  def currentIsBlockStart: LexerState[Boolean] = currentChar.map(isBlockWordStartChar(_))
   def currentIsNL: LexerState[Boolean]  = currentChar.map(isNL(_))
   def currentIsWS: LexerState[Boolean]  = currentChar.map(isWS(_))
 

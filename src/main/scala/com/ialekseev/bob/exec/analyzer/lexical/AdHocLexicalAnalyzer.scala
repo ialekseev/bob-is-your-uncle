@@ -18,13 +18,13 @@ final class AdHocLexicalAnalyzer extends LexicalAnalyzer with LexicalAnalysisSta
   private def keywordStep: LexerState[Option[Tokenized]] = wordStep(currentIsId, takeAheadExcludingLast(isSeparator(_), isStringLiteralChar(_)), keyword(_))
 
   private def blockStep: LexerState[Option[Tokenized]] = {
-    currentIsBlockStart.ifM({
+    currentIsId.ifM({
       get[LexerStateInternal] >>= (state => {
         (for {
-          beginWord <- OptionT.optionT(takeAheadIncludingLast(isBlockWordEndChar(_)))
-          content <- OptionT.optionT(takeTillStr(state.position + beginWord.length, Token.Block.endWord))
+          beginWord <- OptionT.optionT(takeAheadExcludingLast(isSeparator(_)))
+          content <- OptionT.optionT(takeTillStr(state.position + beginWord.length, EOT.toString))
           blockToken <- OptionT.optionT(block(beginWord, content).point[LexerState])
-        } yield Tokenized(blockToken, state.position, beginWord.length + content.length + Token.Block.endWord.length)).run
+        } yield Tokenized(blockToken, state.position, beginWord.length + content.length)).run
       })
     },none[Tokenized].point[LexerState])
   }

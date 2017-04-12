@@ -23,8 +23,8 @@ import scalaz._
       dictionary ::= [...]
       json ::= ~...~
       type ::= stringLiteral | dictionary | json
-      keyword ::= 'namespace' | 'description' | '@webhook' | 'method' | 'uri' | 'queryString' | 'headers' | 'body' | @process
-      block ::= '<scala>...<end>'
+      keyword ::= 'namespace' | 'description' | '@webhook' | 'method' | 'uri' | 'queryString' | 'headers' | 'body'
+      block ::= '@process...'
       delimiter ::= '.' | '#' | ':'
       INDENT ::= NL{WS}
 */

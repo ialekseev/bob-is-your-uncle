@@ -91,9 +91,7 @@ class WebhookHttpServiceIntegrationSpec extends WebhookHttpService with HttpServ
             |    queryString: [\"ping\": \"{$ping}\"]
             |
             | @process
-            |    <scala>
-            |        1 + 1
-            |    <end>
+            |   1 + 1
           """.stripMargin
 
         val post = parse(s"""{"content":"$content", "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
@@ -120,9 +118,7 @@ class WebhookHttpServiceIntegrationSpec extends WebhookHttpService with HttpServ
             |    queryString: [\"ping\": \"{$ping}\"]
             |
             | @process
-            |    <scala>
-            |        1 + abc
-            |    <end>
+            |    1 + abc
           """.stripMargin
 
         val post = parse(s"""{"content":"$content", "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
@@ -142,17 +138,14 @@ class WebhookHttpServiceIntegrationSpec extends WebhookHttpService with HttpServ
       "return 'OK' with errors" in {
         //arrange
         val content =
-          """
-            |namespace com.ialekseev.core#ping
-            | description : \"ping\"
-            |
-            | @webhook
-            |    queryString: [\"ping\": \"{$ping}\"]
-            |
-            | @process
-            |    <scala>
-            |        1 + abc
-            |    <end>
+          """|namespace com.ialekseev.core#ping
+             | description : \"ping\"
+             |
+             | @webhook
+             |    queryString: [\"ping\": \"{$ping}\"]
+             |
+             | @process
+             |    1 + abc
           """.stripMargin
 
         val post = parse(s"""{"content":"$content", "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}]}""")
@@ -162,7 +155,7 @@ class WebhookHttpServiceIntegrationSpec extends WebhookHttpService with HttpServ
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[PostBuildFailureResponse].errors.head.startOffset shouldBe 149
+          responseAs[PostBuildFailureResponse].errors.head.startOffset shouldBe 130
         }
       }
     }
@@ -182,9 +175,7 @@ class WebhookHttpServiceIntegrationSpec extends WebhookHttpService with HttpServ
             |    queryString: [\"q\": \"{$q}\"]
             |
             | @process
-            |    <scala>
-            |        q
-            |    <end>
+            |    q
           """.stripMargin
 
         val post = parse( s"""{"content":"$content", "vars": [], "run": {"uri": "com.ialekseev.core/ping", "method": "GET", "headers": {}, "queryString": {"q" : "777"} } }""")

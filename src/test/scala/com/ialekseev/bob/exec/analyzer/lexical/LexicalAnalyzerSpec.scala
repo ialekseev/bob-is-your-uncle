@@ -169,17 +169,13 @@ class LexicalAnalyzerSpec extends BaseSpec {
           //act
           val result = lexer.tokenize(
             """ @process""" + "\n" +
-            """  <scala>""" + "\n" +
-            """ val a = 4 > 3""" + "\n" +
-            """<end>"""
+            """ val a = 4 > 3""" + "\n"
           )
 
           //assert
           result.toEither.right.get should be(List(
             LexerToken(Token.INDENT(1), 0),
-            LexerToken(Token.Keyword.`@process`, 1),
-            LexerToken(Token.INDENT(2), 10),
-            LexerToken(Token.Block.`<scala>`("\n val a = 4 > 3\n"), 12)
+            LexerToken(Token.Block.`@process`("\n val a = 4 > 3\n"), 1)
           ))
         }
       }
@@ -267,20 +263,6 @@ class LexicalAnalyzerSpec extends BaseSpec {
 
           //assert
           result.toEither.left.get.errors.head.startOffset should be (28)
-        }
-      }
-
-      "the source string has an error in @process (no end of the block)" should {
-        "fail" in {
-          //act
-          val result = lexer.tokenize(
-            """ @process""" + "\n" +
-              """  <scala>""" + "\n" +
-              """ val a = 4 > 3"""
-          )
-
-          //assert
-          result.toEither.left.get.errors.head.startOffset should be (12)
         }
       }
 
