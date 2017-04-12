@@ -132,7 +132,7 @@ class LexicalAnalyzerSpec extends BaseSpec {
             """@webhook """ + "\n\n  \n\n" +
               """ method : "get"""" + "\n" +
               """ queryString: ["a":"1", "b":"2"]""" + "\n" +
-              """body: ~{"c": "3", "d": "hi!"}~""" + "\n" +
+              """body: {"c": "3", "d": "hi!"}""" + "\n" +
               """  headers : ["h1": "a", "h2": "b"]"""
           )
 
@@ -154,12 +154,12 @@ class LexicalAnalyzerSpec extends BaseSpec {
             LexerToken(Token.INDENT(0), 64),
             LexerToken(Token.Keyword.`body`, 64),
             LexerToken(Token.Delimiter.`:`, 68),
-            LexerToken(Token.Type.Json("""~{"c": "3", "d": "hi!"}~""", ("c" -> "3") ~ ("d" -> "hi!") ), 70),
+            LexerToken(Token.Type.Json("""{"c": "3", "d": "hi!"}""", ("c" -> "3") ~ ("d" -> "hi!") ), 70),
 
-            LexerToken(Token.INDENT(2), 95),
-            LexerToken(Token.Keyword.`headers`, 97),
-            LexerToken(Token.Delimiter.`:`, 105),
-            LexerToken(Token.Type.Dictionary("""["h1": "a", "h2": "b"]""", Map("h1" -> "a", "h2"->"b")), 107)
+            LexerToken(Token.INDENT(2), 93),
+            LexerToken(Token.Keyword.`headers`, 95),
+            LexerToken(Token.Delimiter.`:`, 103),
+            LexerToken(Token.Type.Dictionary("""["h1": "a", "h2": "b"]""", Map("h1" -> "a", "h2"->"b")), 105)
           ))
         }
       }
@@ -169,17 +169,13 @@ class LexicalAnalyzerSpec extends BaseSpec {
           //act
           val result = lexer.tokenize(
             """ @process""" + "\n" +
-            """  <scala>""" + "\n" +
-            """ val a = 4 > 3""" + "\n" +
-            """<end>"""
+            """ val a = 4 > 3""" + "\n"
           )
 
           //assert
           result.toEither.right.get should be(List(
             LexerToken(Token.INDENT(1), 0),
-            LexerToken(Token.Keyword.`@process`, 1),
-            LexerToken(Token.INDENT(2), 10),
-            LexerToken(Token.Block.`<scala>`("\n val a = 4 > 3\n"), 12)
+            LexerToken(Token.Block.`@process`("\n val a = 4 > 3\n"), 1)
           ))
         }
       }
@@ -267,20 +263,6 @@ class LexicalAnalyzerSpec extends BaseSpec {
 
           //assert
           result.toEither.left.get.errors.head.startOffset should be (28)
-        }
-      }
-
-      "the source string has an error in @process (no end of the block)" should {
-        "fail" in {
-          //act
-          val result = lexer.tokenize(
-            """ @process""" + "\n" +
-              """  <scala>""" + "\n" +
-              """ val a = 4 > 3"""
-          )
-
-          //assert
-          result.toEither.left.get.errors.head.startOffset should be (12)
         }
       }
 

@@ -1,10 +1,10 @@
 package com.ialekseev.bob.run
 
-import java.nio.file.{FileSystems, Files, Paths}
+import java.nio.file.{Files, Path, Paths}
 import com.ialekseev.bob._
 import com.ialekseev.bob.exec.Executor._
 import com.ialekseev.bob.exec.analyzer.Analyzer.AnalysisResult
-import scala.io.{StdIn}
+import scala.io.StdIn
 import scala.language.reflectiveCalls
 import scala.collection.JavaConverters._
 import scalaz.Scalaz._
@@ -13,76 +13,67 @@ import scalaz.effect.IO._
 import scalaz.concurrent.Task
 import scalaz.{-\/, \/, \/-}
 import fs2.interop.scalaz._
+import org.json4s.JsonAST.JObject
+import org.json4s.JsonDSL._
+import org.json4s.native.JsonMethods._
 
 trait IoShared {
 
-  val defaultSourcesLocation = "bobs"
-  val varsFileName = "_vars.json"
+  val defaultSourcesLocation = Paths.get("bobs")
+  val varsFileName = Paths.get("_vars.json")
   val fileExtension = ".bob"
 
-  def normalizeDirPath(dir: String): String = {
-    require(dir.nonEmpty)
+  def using[A <: {def close(): Unit}, B](param: A)(f: A => B): B = try { f(param) } finally { param.close() }
 
-    val separator = FileSystems.getDefault.getSeparator
-    if (dir.endsWith(separator)) dir else dir + separator
+  def getFilePath(dir: Path, fileName: String): Path = {
+    require(Files.isDirectory(dir))
+
+    Paths.get(dir.toString, fileName)
   }
 
-  def getVarsFilePath(dir: String): String = {
-    require(dir.nonEmpty)
-
-    normalizeDirPath(dir) + varsFileName
+  def getFileNameWithoutExtension(filePath: Path): String = {
+    val fileName = filePath.getFileName.toString
+    val pos = fileName.lastIndexOf(".")
+    if (pos > 0) fileName.substring(0, pos) else fileName
   }
 
-  def listFiles(dir: String): Task[List[String]] = {
-    require(dir.nonEmpty)
+  def getVarsFilePath(dir: Path): Path = {
+    require(Files.isDirectory(dir))
+
+    getFilePath(dir, varsFileName.toString)
+  }
+
+  def listSourceFiles(dir: Path): Task[List[Path]] = {
+    require(Files.isDirectory(dir))
 
     Task {
-      Files.newDirectoryStream(Paths.get(dir)).iterator().asScala.map(_.toAbsolutePath.toString).toList
+      using(Files.newDirectoryStream(dir))(_.iterator().asScala.filter(p => !Files.isDirectory(p) && p.getFileName.toString.endsWith(fileExtension)).toList)
     }
   }
 
-  def listSourceFiles(dir: String): Task[List[String]] = {
-    require(dir.nonEmpty)
+  def readFile(filePath: Path): Task[String] = {
+    require(Files.isRegularFile(filePath))
 
-    for {
-      files <- listFiles(dir)
-      sourceFiles <- Task(files.filter(_.endsWith(fileExtension)))
-    } yield sourceFiles
+    fs2.io.file.readAll[Task](filePath, 4096).through(fs2.text.utf8Decode).through(fs2.text.lines).intersperse("\n").runFold("")(_ + _)
   }
 
-  def findVarsFile(dir: String): Task[Option[String]] = {
-    require(dir.nonEmpty)
+  def findVarsFile(dir: Path): Task[Option[Path]] = {
+    require(Files.isDirectory(dir))
 
     Task {
       val varsFilePath = getVarsFilePath(dir)
-      Files.exists(Paths.get(varsFilePath)) option  varsFilePath
+      Files.exists(varsFilePath) option  varsFilePath
     }
   }
 
-  def readFile(filePath: String): Task[String] = {
-    require(filePath.nonEmpty)
+  def readSource(sourceFilePath: Path): Task[InputSource] = {
+    require(Files.isRegularFile(sourceFilePath))
 
-    fs2.io.file.readAll[Task](Paths.get(filePath), 4096).through(fs2.text.utf8Decode).through(fs2.text.lines).intersperse("\n").runFold("")(_ + _)
+    readFile(sourceFilePath).map(content => InputSource(getFileNameWithoutExtension(sourceFilePath), content))
   }
 
-  def deleteIfExists(filePath: String): Task[Boolean] = {
-    require(filePath.nonEmpty)
-
-    Task(Files.deleteIfExists(Paths.get(filePath)))
-  }
-
-  def updateFile(filePath: String, content: String): Task[Unit] = {
-    require(filePath.nonEmpty)
-    require(content.nonEmpty)
-
-    for {
-      _ <- deleteIfExists(filePath)
-      _ <- fs2.Stream.eval(Task.now(content)).through(fs2.text.utf8Encode).through(fs2.io.file.writeAll(Paths.get(filePath))).run
-    } yield (): Unit
-  }
-
-  def extractVarsFromVarsFile(varsFilePath: String): Task[List[Variable[String]]] = {
-    require(varsFilePath.nonEmpty)
+  def extractVarsFromVarsFile(varsFilePath: Path): Task[List[Variable[String]]] = {
+    require(Files.isRegularFile(varsFilePath))
 
     import org.json4s._
     import org.json4s.native.JsonMethods._
@@ -94,8 +85,8 @@ trait IoShared {
     } yield vars
   }
 
-  def extractVarsForDir(dir: String): Task[List[Variable[String]]] = {
-    require(dir.nonEmpty)
+  def extractVarsForDir(dir: Path): Task[List[Variable[String]]] = {
+    require(Files.isDirectory(dir))
 
     for {
       varsFile <- findVarsFile(dir)
@@ -106,55 +97,55 @@ trait IoShared {
     } yield vars
   }
 
-  def extractVarsForFile(filePath: String): Task[List[Variable[String]]] = {
-    require(filePath.nonEmpty)
+  def extractVarsForFile(filePath: Path): Task[List[Variable[String]]] = {
+    require(Files.isRegularFile(filePath))
 
-    extractVarsForDir(Paths.get(filePath).getParent.toAbsolutePath.toString)
+    extractVarsForDir(filePath.getParent)
   }
 
-  def readSource(sourceFilePath: String): Task[InputSource] = {
-    require(sourceFilePath.nonEmpty)
-
-    for {
-      content <- readFile(sourceFilePath)
-      vars <- extractVarsForFile(sourceFilePath)
-    } yield InputSource(sourceFilePath, content, vars)
-  }
-
-  def readSources(dirs: List[String]): Task[List[InputSource]] = {
+  def readSources(dirs: List[Path]): Task[List[InputDir]] = {
     require(dirs.nonEmpty)
+    require(dirs.forall(Files.isDirectory(_)))
 
-    case class FileWithVars(filePath: String, vars: List[Variable[String]])
-
-    def getFilesWithVars: Task[List[FileWithVars]] = {
-      dirs.map(dir => {
-        for {
-          sourceFiles <- listSourceFiles(dir)
-          vars <- extractVarsForDir(dir)
-        } yield sourceFiles.map(f => FileWithVars(f, vars))
-      }).sequenceU.map(_.flatten)
-    }
-
-    def mapToInputSources(files: List[FileWithVars]): Task[List[InputSource]] = {
-      files.map(file => {
-        readFile(file.filePath).map(l => InputSource(file.filePath, l, file.vars))
-      }).sequenceU
-    }
-
-    for {
-      sourceFiles <- getFilesWithVars
-      sources <- mapToInputSources(sourceFiles)
-    } yield sources
+    dirs.map(dir => {
+      for {
+        sourceFiles <- listSourceFiles(dir)
+        vars <- extractVarsForDir(dir)
+        inputSources <- sourceFiles.map(sourceFilePath => readSource(sourceFilePath)).sequenceU
+      } yield InputDir(dir.toString, inputSources, vars)
+    }).sequenceU
   }
 
-  def updateSource(sourceFilePath: String, content: String): Task[InputSource] = {
-    require(sourceFilePath.nonEmpty)
+  def delete(filePath: Path): Task[Boolean] = Task(Files.deleteIfExists(filePath))
+
+  def saveFile(filePath: Path, content: String): Task[Unit] = {
     require(content.nonEmpty)
 
     for {
-      _ <- updateFile(sourceFilePath, content)
-      source <- readSource(sourceFilePath)
-    } yield source
+      _ <- delete(filePath)
+      _ <- fs2.Stream.eval(Task.now(content)).through(fs2.text.utf8Encode).through(fs2.io.file.writeAll(filePath)).run
+    } yield (): Unit
+  }
+
+  def saveVarsForDir(dir: Path, vars: List[Variable[String]]): Task[Unit] = {
+    require(Files.isDirectory(dir))
+
+    val content = pretty(render((vars.foldLeft(JObject())((js, v) => js ~ (v.name -> v.value)))))
+    saveFile(getVarsFilePath(dir), content)
+  }
+
+  def saveSources(dirs: List[InputDir]): Task[Unit] = {
+
+    dirs.map(inputDir => {
+      val dir = Paths.get(inputDir.path)
+      assume(Files.isDirectory(dir), "The Input Directory you've specified doesn't look like a directory")
+
+      for {
+        _ <- listSourceFiles(dir).flatMap(sources => sources.map(delete(_)).sequenceU)
+        _ <- inputDir.sources.map(inputSource => saveFile(Paths.get(dir.toString, inputSource.name + fileExtension), inputSource.content)).sequenceU
+        _ <- saveVarsForDir(dir, inputDir.vars)
+      } yield (): Unit
+    }).sequenceU.map(_ => ())
   }
 
   def show(message: String = ""): IO[Unit] = putStrLn(message)
@@ -199,7 +190,7 @@ trait IoShared {
         if (err.matches("\\s+")) "_" * err.length
         else err
       }
-      val after = if (endOffset + 1 < source.length - 1) some(source.substring(endOffset + 1)) else none
+      val after = if (endOffset + 1 < source.length) some(source.substring(endOffset + 1)) else none
 
       val context = (before, error, after)
       for {
@@ -209,24 +200,10 @@ trait IoShared {
       } yield ()
     }
 
-    def errorCoordinate(source: String, offset: Int): (Int, Int) = {
-      require(offset >= 0)
-
-      if (source.isEmpty || offset == 0) (1, 1)
-      else {
-        val beforeOffset = source.take(offset)
-        val nlIndex = beforeOffset.reverse.indexWhere(_ == '\n')
-
-        val column = if (nlIndex >= 0) nlIndex + 1 else offset + 1
-        val line = beforeOffset.count(_ == '\n') + 1
-        (line, column)
-      }
-    }
-
     for {
       _ <- show()
       _ <- showFileName(filename)
-      _ <- show(Console.RED + s"Error position: ${errorCoordinate(source, startOffset)}" + Console.RESET)
+      _ <- show(Console.RED + s"Error position: ${errorCoordinates(source, startOffset)}" + Console.RESET)
       _ <- show(Console.RED + s"Message: $message" + Console.RESET)
       _ <- showErrorContext(source, startOffset, endOffset)
       _ <- show()

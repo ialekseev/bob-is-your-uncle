@@ -1,19 +1,16 @@
 package com.ialekseev.bob.exec
 
-import com.ialekseev.bob.exec.analyzer.Analyzer
+import com.ialekseev.bob.exec.analyzer.{Analyzer, Token}
 import com.ialekseev.bob.exec.analyzer.Analyzer.{AnalysisResult, ScalaCode, Webhook}
 import com.ialekseev.bob.exec.Executor._
 import com.ialekseev.bob.exec.Compiler._
 import com.ialekseev.bob._
 import org.json4s.JsonAST.JValue
-import scala.util.Try
 import scala.util.matching.Regex
 import scalaz.Scalaz._
 import akka.actor.ActorRef
 import scalaz._
-import scalaz.effect.IO
 import scalaz.concurrent.Task
-import scala.concurrent.Future
 import akka.pattern.ask
 import akka.util.Timeout
 import scala.concurrent.duration._
@@ -78,8 +75,7 @@ abstract class Executor(implicit executionContext: ExecutionContext) {
         }
 
         def amend(pos: Int) = {
-          val compilerPositionAmendment = 93
-          val start = source.indexOf("<scala>") + 7
+          val start = source.indexOf(Token.Block.`@process`.beginWord) + Token.Block.`@process`.beginWord.length
           start + pos - compilerPositionAmendment - scalaVariables.length - scalaImport.length - scalaImplicits.length
         }
 
@@ -152,6 +148,8 @@ abstract class Executor(implicit executionContext: ExecutionContext) {
 }
 
 object Executor {
+  val compilerPositionAmendment = 93
+
   case class Build(analysisResult: AnalysisResult, className: String, bytes: List[Byte])
 
   sealed trait Run

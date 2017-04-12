@@ -86,8 +86,8 @@ trait Analyzer {
     }
 
     def extractCode: ValidationNel[SemanticError, Code] = {
-      (parseTree.loc.find(_.getLabel == nonTerminal("Process")) >>= (_.find(_.getLabel == nonTerminal("Block"))) >>= (_.firstChild.map(_.getLabel))).collect {
-        case Terminal(LexerToken(Token.Block.`<scala>`(s), _)) => ScalaCode(s)
+      (parseTree.loc.find(_.getLabel == nonTerminal("Block")) >>= (_.firstChild.map(_.getLabel))).collect {
+        case Terminal(LexerToken(Token.Block.`@process`(s), _)) => ScalaCode(s)
       }.get.successNel
     }
 

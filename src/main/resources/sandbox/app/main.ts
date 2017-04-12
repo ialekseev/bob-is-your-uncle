@@ -1,6 +1,5 @@
 //main entry point
-import {bootstrap} from 'angular2/platform/browser';
-import {HTTP_PROVIDERS} from 'angular2/http';
-import {App} from './app';
+import {platformBrowserDynamic} from '@angular/platform-browser-dynamic';
+import {AppModule} from './app.module';
 
-bootstrap(App, [HTTP_PROVIDERS]).catch(err => console.error(err));
+platformBrowserDynamic().bootstrapModule(AppModule)

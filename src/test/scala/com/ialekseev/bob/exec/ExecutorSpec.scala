@@ -55,13 +55,13 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
           val evaluatorActor = null
         }
         val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", List(Variable("a", "1"), Variable("b", "2")), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
-        Mockito.when(anal.analyze("<scala>do()<end>")).thenReturn(resultToBeReturned.right)
+        Mockito.when(anal.analyze("a @process b")).thenReturn(resultToBeReturned.right)
 
         //act
-        val result = executor.build("<scala>do()<end>").unsafePerformSync
+        val result = executor.build("a @process b").unsafePerformSync
 
         //assert
-        result.toEither.left.get should be  (CompilationFailed(List(CompilationError(128,128,128, "bad!"))))
+        result.toEither.left.get should be  (CompilationFailed(List(CompilationError(131,131,131, "bad!"))))
       }
     }
 

@@ -1,13 +1,10 @@
 package com.ialekseev.bob.run.cli
 
+import java.nio.file.Path
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
-import com.ialekseev.bob._
-import com.ialekseev.bob.exec.Executor.Build
-import com.ialekseev.bob.run.boot.HttpServiceUnsafe
 import com.ialekseev.bob.run.http.WebhookHttpService
-import com.ialekseev.bob.run.InputSource
 import com.ialekseev.bob.BuildFailed
 import com.ialekseev.bob.exec.Executor.Build
 import com.ialekseev.bob.run._
@@ -20,24 +17,27 @@ import scalaz.concurrent.Task
 trait Service extends WebhookHttpService {
   this: BaseCommand with BaseHttpService =>
 
-  def serviceCommand(dirs: List[String] = List.empty): Task[Unit] = {
+  def serviceCommand(dirs: List[Path] = List.empty): Task[Unit] = {
 
-    def build(sources: List[InputSource]): Task[List[BuildFailed \/ Build]] = {
-      sources.map(source => {
-        for {
-          built <- exec.build(source.content, source.vars)
-          _ <- showResult(source.path, source.content, built).toTask
-        } yield built
-      }).sequenceU
+    def build(inputDirs: List[InputDir]): Task[List[BuildFailed \/ Build]] = {
+      inputDirs.map(inputDir => {
+        inputDir.sources.map(inputSource => {
+          for {
+            built <- exec.build(inputSource.content, inputDir.vars)
+            _ <- showResult(inputSource.name, inputSource.content, built).toTask
+          } yield built
+        })
+      }).flatten.sequenceU
     }
 
-    def runService(builds: List[Build]): IO[Unit] = {
+    def runService(dirs: List[Path], builds: List[Build]): IO[Unit] = {
       for {
+        _ <- show(s"Using builds: ${builds.map(_.analysisResult.namespace).mkString("[", ",", "]")}")
         context <- IO {
           implicit val system = ActorSystem("service-system")
           implicit val materializer = ActorMaterializer()
           implicit val executionContext = system.dispatcher
-          (system, executionContext, Http().bindAndHandle(createRoute(builds), "localhost", 8080)) //todo: move to the config
+          (system, executionContext, Http().bindAndHandle(createRoutes(dirs, builds), "localhost", 8080)) //todo: move to the config
         }
         _ <- show(s"The Service is online at http://localhost:8080/\nPress RETURN to stop...") //todo: from config
         _ <- read()
@@ -52,19 +52,15 @@ trait Service extends WebhookHttpService {
 
     val targetDirectories = if (dirs.nonEmpty) dirs else List(defaultSourcesLocation)
 
-    val result: Task[Unit] = readSources(targetDirectories).flatMap(sources => {
+    val result: Task[Unit] = readSources(targetDirectories).flatMap(inputDirs => {
         for {
           _ <- show("building...").toTask
           _ <- {
-            build(sources).flatMap(builds => {
-              builds.sequenceU match {
-                case \/-(builds: List[Build]) => {
-                  val duplicateNamespaces = builds.groupBy(_.analysisResult.namespace).collect {case (x, List(_,_,_*)) => x}.toVector
-                  if (duplicateNamespaces.length > 0) showError("Please use different names for the duplicate namespaces: " + duplicateNamespaces).toTask
-                  else runService(builds).toTask
-                }
-                case -\/(_) => showError("Please fix the failed sources before starting the service").toTask
-              }
+            build(inputDirs).flatMap(built => {
+              val succeededBuilds = built.filter(_.isRight).map(_.toEither.right.get)
+              val duplicateNamespaces = succeededBuilds.groupBy(_.analysisResult.namespace).collect {case (x, List(_,_,_*)) => x}.toVector
+              if (duplicateNamespaces.length > 0) showError("Please use different names for the duplicate namespaces: " + duplicateNamespaces).toTask //todo: validation doesn't feel right here. Plus, where to check it after builds get updated?
+              else runService(targetDirectories, succeededBuilds).toTask
             })
           }
         } yield ()

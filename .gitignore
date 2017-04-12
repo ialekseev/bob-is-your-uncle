@@ -13,4 +13,5 @@
 #Project specific
 /bobs/
 /node_modules/
+package.json
 custom.sbt

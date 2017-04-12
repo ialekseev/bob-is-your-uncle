@@ -22,9 +22,7 @@ import scalaz._
       body: "..."
 
     @process
-      <scala>
-        ...
-      <end>
+      ...
 */
 
 /*[Syntax in EBNF form (LL Grammar)]
@@ -52,15 +50,12 @@ import scalaz._
     Webhook ::= INDENT(1) '@webhook'
                           WebhookSettings
 
-    Block ::= INDENT(2) '<scala>...<end>'
-
-    Process ::= INDENT(1) '@process'
-                          Block
+    Block ::= INDENT(1) '@process'
 
     Rule ::= Description
              Constants
              Webhook
-             Process
+             Block
 
     TopStat ::= Namespace
                 Rule

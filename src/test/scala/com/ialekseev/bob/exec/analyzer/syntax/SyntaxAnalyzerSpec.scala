@@ -32,9 +32,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
           LexerToken(Token.Keyword.`@webhook`, 800),
 
           LexerToken(Token.INDENT(3), 1150),
-          LexerToken(Token.Keyword.`@process`, 1200),
-            LexerToken(Token.INDENT(5), 1250),
-            LexerToken(Token.Block.`<scala>`("val a = 1"), 1300)
+          LexerToken(Token.Block.`@process`("val a = 1"), 1200)
         )
 
         //act
@@ -60,11 +58,8 @@ class SyntaxAnalyzerSpec extends BaseSpec {
               nonTerminal("Webhook").node(
                 terminal(LexerToken(Token.Keyword.`@webhook`, 800)).leaf
               ),
-              nonTerminal("Process").node(
-                terminal(LexerToken(Token.Keyword.`@process`, 1200)).leaf,
-                nonTerminal("Block").node(
-                  terminal(LexerToken(Token.Block.`<scala>`("val a = 1"), 1300)).leaf
-                )
+              nonTerminal("Block").node(
+                terminal(LexerToken(Token.Block.`@process`("val a = 1"), 1200)).leaf
               )
             )
           )
@@ -128,9 +123,7 @@ class SyntaxAnalyzerSpec extends BaseSpec {
             LexerToken(Token.Type.Dictionary("""["h1":"a"]""", Map("h1"->"a")), 3100),
 
           LexerToken(Token.INDENT(3), 3150),
-          LexerToken(Token.Keyword.`@process`, 3200),
-            LexerToken(Token.INDENT(5), 3250),
-            LexerToken(Token.Block.`<scala>`("val a = 1"), 3300)
+          LexerToken(Token.Block.`@process`("val a = 1"), 3200)
         )
 
         //act
@@ -203,11 +196,8 @@ class SyntaxAnalyzerSpec extends BaseSpec {
                   )
                 )
               ),
-              nonTerminal("Process").node(
-                terminal(LexerToken(Token.Keyword.`@process`, 3200)).leaf,
-                nonTerminal("Block").node(
-                  terminal(LexerToken(Token.Block.`<scala>`("val a = 1"), 3300)).leaf
-                )
+              nonTerminal("Block").node(
+                terminal(LexerToken(Token.Block.`@process`("val a = 1"), 3200)).leaf
               )
             )
           )
@@ -519,113 +509,6 @@ class SyntaxAnalyzerSpec extends BaseSpec {
 
         //assert
         result.toEither.left.get.errors should be (List(SyntaxError(69, 73, 18, "Expecting some valid Body type here")))
-      }
-    }
-
-    "there is an error (no block inside the '@process')" should {
-      "fail" in {
-        //arrange
-        val tokens = List(
-          LexerToken(Token.INDENT(0), 0),
-          LexerToken(Token.Keyword.`namespace`, 100),
-          LexerToken(Token.Identifier("com"), 200),
-          LexerToken(Token.Delimiter.`#`, 300),
-          LexerToken(Token.Identifier("create"), 400),
-
-          LexerToken(Token.INDENT(3), 450),
-          LexerToken(Token.Keyword.`description`, 500),
-          LexerToken(Token.Delimiter.`:`, 600),
-          LexerToken(Token.Type.StringLiteral("hello"), 700),
-
-          LexerToken(Token.INDENT(3), 750),
-          LexerToken(Token.Keyword.`@webhook`, 800),
-          LexerToken(Token.INDENT(5), 850),
-          LexerToken(Token.Keyword.`uri`, 900),
-          LexerToken(Token.Delimiter.`:`, 1000),
-          LexerToken(Token.Type.StringLiteral("/example"), 1100),
-
-          LexerToken(Token.INDENT(3), 1150),
-          LexerToken(Token.Keyword.`@process`, 1200),
-          LexerToken(Token.INDENT(5), 1250)
-        )
-
-        //act
-        val result = parser.parse(tokens)
-
-        //assert
-        result.toEither.left.get.errors should be (List(SyntaxError(1250, 1254, 18, "Unexpected end")))
-      }
-    }
-
-    "there is an error (an invalid token inside the '@process')" should {
-      "fail" in {
-        //arrange
-        val tokens = List(
-          LexerToken(Token.INDENT(0), 0),
-          LexerToken(Token.Keyword.`namespace`, 100),
-          LexerToken(Token.Identifier("com"), 200),
-          LexerToken(Token.Delimiter.`#`, 300),
-          LexerToken(Token.Identifier("create"), 400),
-
-          LexerToken(Token.INDENT(3), 450),
-          LexerToken(Token.Keyword.`description`, 500),
-          LexerToken(Token.Delimiter.`:`, 600),
-          LexerToken(Token.Type.StringLiteral("hello"), 700),
-
-          LexerToken(Token.INDENT(3), 750),
-          LexerToken(Token.Keyword.`@webhook`, 800),
-          LexerToken(Token.INDENT(5), 850),
-          LexerToken(Token.Keyword.`uri`, 900),
-          LexerToken(Token.Delimiter.`:`, 1000),
-          LexerToken(Token.Type.StringLiteral("/example"), 1100),
-
-          LexerToken(Token.INDENT(3), 1150),
-          LexerToken(Token.Keyword.`@process`, 1200),
-          LexerToken(Token.INDENT(5), 1250),
-          LexerToken(Token.Keyword.body, 1300)
-        )
-
-        //act
-        val result = parser.parse(tokens)
-
-        //assert
-        result.toEither.left.get.errors should be (List(SyntaxError(1300, 1303, 18, "Unexpected: 'body' (expecting: '<scala>...<end>')")))
-      }
-    }
-
-    "there is an error (an invalid indent inside the '@process')" should {
-      "fail" in {
-        //arrange
-        val tokens = List(
-          LexerToken(Token.INDENT(0), 0),
-          LexerToken(Token.Keyword.`namespace`, 100),
-          LexerToken(Token.Identifier("com"), 200),
-          LexerToken(Token.Delimiter.`#`, 300),
-          LexerToken(Token.Identifier("create"), 400),
-
-          LexerToken(Token.INDENT(3), 450),
-          LexerToken(Token.Keyword.`description`, 500),
-          LexerToken(Token.Delimiter.`:`, 600),
-          LexerToken(Token.Type.StringLiteral("hello"), 700),
-
-          LexerToken(Token.INDENT(3), 750),
-          LexerToken(Token.Keyword.`@webhook`, 800),
-          LexerToken(Token.INDENT(5), 850),
-          LexerToken(Token.Keyword.`uri`, 900),
-          LexerToken(Token.Delimiter.`:`, 1000),
-          LexerToken(Token.Type.StringLiteral("/example"), 1100),
-
-          LexerToken(Token.INDENT(3), 1150),
-          LexerToken(Token.Keyword.`@process`, 1200),
-          LexerToken(Token.INDENT(4), 1250),
-          LexerToken(Token.Block.`<scala>`("val a = 1"), 1300)
-        )
-
-        //act
-        val result = parser.parse(tokens)
-
-        //assert
-        result.toEither.left.get.errors should be (List(SyntaxError(1250, 1253, 17, "Unexpected indent width: 4. Expected: 5")))
       }
     }
   }

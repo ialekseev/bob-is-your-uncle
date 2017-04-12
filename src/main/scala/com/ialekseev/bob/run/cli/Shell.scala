@@ -1,5 +1,6 @@
 package com.ialekseev.bob.run.cli
 
+import java.nio.file.Paths
 import scalaz._
 import Scalaz._
 import scalaz.effect.IO
@@ -7,9 +8,9 @@ import scalaz.concurrent.Task
 import com.ialekseev.bob.run._
 
 trait Shell {
-  this: BaseCommand with Check with Service with Sandbox =>
+  this: BaseCommand with Check with Service =>
 
-  case class Config(shell: Boolean = false, check: Boolean = false, service: Boolean = false, sandbox: Boolean = false, help: Boolean = false, quit: Boolean = false, arguments: Arguments = Arguments(path = none))
+  case class Config(shell: Boolean = false, check: Boolean = false, service: Boolean = false, help: Boolean = false, quit: Boolean = false, arguments: Arguments = Arguments(path = none))
   case class Arguments(path: Option[String] = none)
 
   val parser = new scopt.OptionParser[Config]("bob") {
@@ -29,11 +30,6 @@ trait Shell {
         opt[String]("path").action((x, c) => c.copy(arguments = Arguments(path = some(x)))).text("path to the folder with bob-files")
       )
     note("\n")
-    cmd("sandbox").action((x, c) => c.copy(sandbox = true)).text("[run the http sandbox]").
-      children(
-        opt[String]("path").action((x, c) => c.copy(arguments = Arguments(path = some(x)))).text("path to the folder with bob-files")
-      )
-    note("\n")
     cmd("help").optional().action((_, c) => c.copy(help = true)).text("[show help]")
     note("\n")
     cmd("quit").action((_, c) => c.copy(quit = true)).text("[exit the shell]")
@@ -47,12 +43,11 @@ trait Shell {
       (for {
        str <- read(color + "bob> ").toTask
       _ <- parser.parse(str.split(" +").toSeq, Config())  match {
-         case Some(Config(true,_,_,_,_,_,_)) => show("you are already in the shell\n").toTask.flatMap(_ => Task.suspend(shell()))
-         case Some(Config(_,true,_,_,_,_,Arguments(Some(path)))) if path.nonEmpty => checkCommand(path).flatMap(_ => Task.suspend(shell()))
-         case Some(Config(_,_,true,_,_,_,Arguments(path))) => serviceCommand(path.toList).flatMap(_ => Task.suspend(shell()))
-         case Some(Config(_,_,_,true,_,_,Arguments(path))) => sandboxCommand(path).flatMap(_ => Task.suspend(shell()))
-         case Some(Config(_,_,_,_,true,_,_)) => showHelp().toTask.flatMap(_ => Task.suspend(shell()))
-         case Some(Config(_,_,_,_,_,true,_)) => show("quitting...").toTask
+         case Some(Config(true,_,_,_,_,_)) => show("you are already in the shell\n").toTask.flatMap(_ => Task.suspend(shell()))
+         case Some(Config(_,true,_,_,_,Arguments(Some(path)))) if path.nonEmpty => checkCommand(Paths.get(path)).flatMap(_ => Task.suspend(shell()))
+         case Some(Config(_,_,true,_,_,Arguments(path))) => serviceCommand(path.map(Paths.get(_)).toList).flatMap(_ => Task.suspend(shell()))
+         case Some(Config(_,_,_,true,_,_)) => showHelp().toTask.flatMap(_ => Task.suspend(shell()))
+         case Some(Config(_,_,_,_,true,_)) => show("quitting...").toTask
          case _ => showHelp().toTask.flatMap(_ => Task.suspend(shell()))
        }
       } yield ()).handle {

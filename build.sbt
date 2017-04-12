@@ -15,7 +15,8 @@ scalacOptions ++= Seq(
 )
 
 resolvers ++= Seq(
-  "Maven central http" at "http://repo1.maven.org/maven2"
+  "Maven central http" at "http://repo1.maven.org/maven2",
+  "BFil Nexus Releases" at "http://nexus.b-fil.com/nexus/content/repositories/releases/"
 )
 
 libraryDependencies ++= Seq(
@@ -31,6 +32,8 @@ libraryDependencies ++= Seq(
   "co.fs2" %% "fs2-io" % "0.9.4",
   "co.fs2" %% "fs2-scalaz" % "0.2.0",
   "io.verizon.delorean" %% "core" % "1.2.41-scalaz-7.1",
+
+  "com.bfil" %% "automapper" % "0.4.0",
 
   "org.json4s" %% "json4s-native" % "3.4.0",
   "org.json4s" %% "json4s-ext" % "3.4.0",
