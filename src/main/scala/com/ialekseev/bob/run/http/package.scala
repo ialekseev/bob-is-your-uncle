@@ -2,17 +2,18 @@ package com.ialekseev.bob.run
 
 import com.ialekseev.bob._
 import akka.http.scaladsl.marshalling._
-import akka.http.scaladsl.server.{RouteResult, RequestContext, StandardRoute}
+import akka.http.scaladsl.server.{RequestContext, Route, RouteResult}
 import org.json4s.ext.EnumNameSerializer
-import org.json4s.{native, DefaultFormats, CustomSerializer}
+import org.json4s.{CustomSerializer, DefaultFormats, native}
 import org.json4s.native.JsonMethods._
-import org.json4s.JsonAST.{JString, JField, JObject}
+import org.json4s.JsonAST.{JField, JObject, JString}
+
 import scala.concurrent.Future
 import scalaz.concurrent.Task
 
 package object http {
   trait BaseHttpService {
-    def completeTask[T : ToResponseMarshaller](task: Task[T]): StandardRoute
+    def completeTask[T : ToResponseMarshaller](task: Task[T]): Route
     def completeTask[T : ToResponseMarshaller](ctx: RequestContext, task: Task[T]): Future[RouteResult]
   }
 

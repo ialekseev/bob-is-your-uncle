@@ -4,7 +4,7 @@ import java.io.FileNotFoundException
 import java.nio.file.{Path, Paths}
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.headers.RawHeader
-import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.{Route}
 import com.ialekseev.bob.exec.analyzer.Analyzer.{AnalysisResult, Namespace, ScalaCode, Webhook}
 import com.ialekseev.bob.exec.Executor
 import com.ialekseev.bob.exec.Executor.{Build, FailedRun, RunResult, SuccessfulRun}
@@ -28,10 +28,10 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
   override def beforeEach(): Unit = { reset(exec); super.beforeEach()}
 
   private var readSourcesFunc: List[Path] => Task[List[InputDir]] = null
-  private var updateSourcesFunc: List[InputDir] => Task[Unit] = null
+  private var saveSourcesFunc: List[InputDir] => Task[Unit] = null
 
   override def readSources(dirs: List[Path]): Task[List[InputDir]] = readSourcesFunc(dirs)
-  override def saveSources(dirs: List[InputDir]): Task[Unit] = updateSourcesFunc(dirs)
+  override def saveSources(dirs: List[InputDir]): Task[Unit] = saveSourcesFunc(dirs)
 
   val dirs = List(Paths.get("\\test"))
 
@@ -42,7 +42,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
         //arrange
         val sourcesToReturn = List(InputDir("\\test\\", List(InputSource("file1", "content1"), InputSource("file2", "content2")), List(Variable("a", "1"), Variable("b", "2"))))
         readSourcesFunc = {
-          case path if path.head.toString == "\\test" => Task.now(sourcesToReturn)
+          case paths if paths.head.toString == "\\test" => Task.now(sourcesToReturn)
         }
 
         //act
@@ -59,7 +59,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
       "return 'InternalServerError'" in {
         //arrange
         readSourcesFunc = {
-          case path if path.map(_.getFileName) == "\\test\\" :: Nil => Task.fail(new FileNotFoundException("bad!"))
+          case paths if paths.head.toString == "\\test" => Task.fail(new FileNotFoundException("bad!"))
         }
 
         //act
@@ -67,6 +67,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
 
           //assert
           response.status should be(StatusCodes.InternalServerError)
+          responseAsString should be ("bad!")
         }
       }
     }
@@ -79,7 +80,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
         //arrange
         val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
 
-        updateSourcesFunc = {
+        saveSourcesFunc = {
           case InputDir("\\test\\", List(InputSource("file1", "content1"), InputSource("file2", "content2")), List(Variable("a", "1"), Variable("b", "2"))) :: Nil => Task.now((): Unit)
         }
 
@@ -158,8 +159,8 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
         //arrange
         val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
 
-        updateSourcesFunc = {
-          case InputDir("\\test\\", List(InputSource("\\test\\file1.bob", "content1"), InputSource("\\test\\file2.bob", "content2")), List(Variable("a", "1"), Variable("b", "2"))) :: Nil => Task.now((): Unit)
+        saveSourcesFunc = {
+          case InputDir("\\test\\", List(InputSource("file1", "content1"), InputSource("file2", "content2")), List(Variable("a", "1"), Variable("b", "2"))) :: Nil => Task.fail(new FileNotFoundException("bad!"))
         }
 
         //act
@@ -167,6 +168,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
 
           //assert
           response.status should be(StatusCodes.InternalServerError)
+          responseAsString should be ("bad!")
         }
       }
     }
@@ -236,6 +238,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
 
           //assert
           response.status should be(StatusCodes.InternalServerError)
+          responseAsString should be ("bad!")
         }
       }
     }
@@ -326,6 +329,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
 
           //assert
           response.status should be(StatusCodes.InternalServerError)
+          responseAsString should be ("bad!")
         }
       }
     }
