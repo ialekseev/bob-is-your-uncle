@@ -8,11 +8,15 @@ import com.ialekseev.bob.exec.{CompilerActor, EvaluatorActor, Executor}
 import com.ialekseev.bob.exec.analyzer.DefaultAnalyzer
 import com.ialekseev.bob.run.boot.HttpServiceUnsafe
 import WebhookHttpService._
+import com.ialekseev.bob.exec.Executor.Build
+import com.ialekseev.bob.run.BuildStateActor
 import org.json4s.native.JsonMethods._
 
 class WebhookHttpServiceIntegrationSpec extends WebhookHttpService with HttpServiceUnsafe with HttpServiceBaseSpec {
+  val executionContext = system.dispatcher
   val sandboxPathPrefix = "sandbox"
   val hookPathPrefix = "hook"
+  val buildStateActor = system.actorOf(Props[BuildStateActor])
 
   val exec: Executor = new Executor {
     val analyzer = DefaultAnalyzer
@@ -22,6 +26,8 @@ class WebhookHttpServiceIntegrationSpec extends WebhookHttpService with HttpServ
 
   val tempDir = Paths.get(System.getProperty("java.io.tmpdir"))
   def escape(path: Path) = path.toString.replace("\\", "\\\\")
+
+  val builds: List[Build] = List.empty
 
   "PUT sources request" when {
 

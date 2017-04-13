@@ -1,6 +1,6 @@
 package com.ialekseev.bob.run.http
 
-import com.ialekseev.bob.exec.Executor.{FailedRun}
+import com.ialekseev.bob.exec.Executor.FailedRun
 import com.ialekseev.bob.exec.analyzer.Analyzer.Namespace
 import com.ialekseev.bob.run.{ErrorCoordinates, InputDir, errorCoordinates}
 import com.ialekseev.bob.run.http.WebhookHttpService.{HttpResponse, HttpResponseRun}
@@ -12,24 +12,34 @@ import com.ialekseev.bob.exec.Executor
 import com.ialekseev.bob.exec.Executor.{Build, RunResult, SuccessfulRun}
 import com.ialekseev.bob.run._
 import WebhookHttpService._
+import akka.actor.ActorRef
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import scalaz.concurrent.Task
 import scalaz.syntax.either._
+import scalaz.std.list._
+import scalaz.syntax.traverse._
 import scalaz.std.option._
 import scalaz.{-\/, EitherT, \/, \/-}
-import com.bfil.automapper._
+import com.bfil.automapper.{automap, _}
+import delorean._
+import akka.pattern.ask
+import akka.util.Timeout
+import scala.concurrent.duration._
+import com.ialekseev.bob.run.BuildStateActor.{GetBuildStateRequestMessage, GetBuildStateResponseMessage, SetBuildStateRequestMessage}
 
 trait WebhookHttpService extends BaseHttpService with Json4sSupport with IoShared {
   val sandboxPathPrefix: String
   val hookPathPrefix: String
   val exec: Executor
+  val buildStateActor: ActorRef
 
-  var builds: List[Build] = List.empty
+  implicit val timeout = Timeout(5 seconds) //todo: move somewhere along with Executor's one
 
   def createRoutes(dirs: List[Path], builds: List[Build]) = {
     require(dirs.nonEmpty)
 
-    this.builds = builds
+    buildStateActor ! SetBuildStateRequestMessage(builds) //todo: ask?
+
     getAssets ~ pathPrefix(sandboxPathPrefix) {
       getSourcesRoute(dirs) ~ putSourcesRoute ~ postBuildRequestRoute ~ postRunRequestRoute
     } ~ pathPrefix(hookPathPrefix) {
@@ -63,14 +73,35 @@ trait WebhookHttpService extends BaseHttpService with Json4sSupport with IoShare
             validate(sources.forall(_.content.nonEmpty), "Source content can't be empty") {
               validate(dirs.flatMap(_.vars).forall(_.name.nonEmpty), "Variable name can't be empty") {
                 completeTask {
-                  saveSources(r.dirs.map(automap(_).to[InputDir])).map(_ => PutSourcesResponse)
-                  //todo: readSources -> build, then updates builds
+                  saveSources(r.dirs.map(automap(_).to[InputDir])).map(_ => PutSourcesResponse(List.empty))
+
+                  //todo: write specs and uncomment
+                  /*case class BuildWithContext(build: Build, dir: InputDirModel, source: InputSourceModel)
+                    def build(): Task[List[BuildWithContext]] = {
+                        for {
+                          results <- dirs.flatMap(dir => dir.sources.map(source => {
+                            exec.build(source.content, dir.vars).flatMap(b => Task.now(b.map(s => BuildWithContext(s, dir, source))))
+                          })).sequenceU
+                          builds <- Task.now(results.map(_.toOption).flatten)
+                        } yield builds
+                    }
+
+                    for {
+                      _ <- saveSources(r.dirs.map(automap(_).to[InputDir]))
+                      updatedBuilds <- if (r.updateBuilds) {
+                        build().flatMap(builds => {
+                          (buildStateActor ? SetBuildStateRequestMessage(builds.map(_.build))).toTask.map(_ => {
+                            builds.map(b => BuildModel(b.dir.path, b.source.name, b.build.analysisResult.namespace.toString))
+                          })
+                        })
+                      } else Task.now(List.empty)
+                    } yield PutSourcesResponse(updatedBuilds)*/
+                  }
                 }
               }
             }
           }
         }
-      }
       }
     }
   }
@@ -95,18 +126,18 @@ trait WebhookHttpService extends BaseHttpService with Json4sSupport with IoShare
     post {
       entity(as[PostRunRequest]) { request => {
         completeTask {
-          val done: Task[BuildFailed \/ RunResult] = (for {
-            build <- EitherT.eitherT[Task, BuildFailed, Build](exec.build(request.content, request.vars))
-            run <- EitherT.eitherT[Task, BuildFailed, RunResult](exec.run(request.run, List(build)).map(_.right))
-          } yield run).run
+            val done: Task[BuildFailed \/ RunResult] = (for {
+              build <- EitherT.eitherT[Task, BuildFailed, Build](exec.build(request.content, request.vars))
+              run <- EitherT.eitherT[Task, BuildFailed, RunResult](exec.run(request.run, List(build)).map(_.right))
+            } yield run).run
 
-          done.map {
-            case \/-(RunResult(SuccessfulRun(_, result) :: Nil)) => PostRunSuccessResponse(result.toString)
-            case -\/(buildFailed) => PostRunFailureResponse(buildFailed.errors.map(e => mapBuildError(e, request.content)), buildFailed.stage)
-            case _ => sys.error("Sandbox: Not supposed to be here")
+            done.map {
+              case \/-(RunResult(SuccessfulRun(_, result) :: Nil)) => PostRunSuccessResponse(result.toString)
+              case -\/(buildFailed) => PostRunFailureResponse(buildFailed.errors.map(e => mapBuildError(e, request.content)), buildFailed.stage)
+              case _ => sys.error("Sandbox: Not supposed to be here")
+            }
           }
         }
-      }
       }
     }
   }
@@ -119,18 +150,22 @@ trait WebhookHttpService extends BaseHttpService with Json4sSupport with IoShare
     val queryString = ctx.request.uri.query().toMap
     val request = HttpRequest(some(uri), method, headers, queryString, none)
 
-    val res = exec.run(request, builds).map(r => {
-      HttpResponse(request, r.runs.map {
-        case SuccessfulRun(build, result) => {
-          println(Console.GREEN + s"[Done] ${build.analysisResult.namespace.path}#${build.analysisResult.namespace.name}" + Console.RESET)
-          HttpResponseRun(build.analysisResult.namespace, true)
-        }
-        case FailedRun(build) => {
-          println(Console.RED + s"[Errors] ${build.analysisResult.namespace.path}#${build.analysisResult.namespace.name}:" + Console.RESET + " " + "failed")
-          HttpResponseRun(build.analysisResult.namespace, false)
-        }
+    val res = for {
+      builds <- (buildStateActor ? GetBuildStateRequestMessage).mapTo[GetBuildStateResponseMessage].map(_.builds).toTask
+      res <- exec.run(request, builds).map(r => {
+        HttpResponse(request, r.runs.map {
+          case SuccessfulRun(build, result) => {
+            println(Console.GREEN + s"[Done] ${build.analysisResult.namespace.path}#${build.analysisResult.namespace.name}" + Console.RESET)
+            HttpResponseRun(build.analysisResult.namespace, true)
+          }
+          case FailedRun(build) => {
+            println(Console.RED + s"[Errors] ${build.analysisResult.namespace.path}#${build.analysisResult.namespace.name}:" + Console.RESET + " " + "failed")
+            HttpResponseRun(build.analysisResult.namespace, false)
+          }
+        })
       })
-    })
+    } yield res
+
     completeTask(ctx, res)
   }
 }
@@ -144,11 +179,12 @@ object WebhookHttpService {
 
   case class InputSourceModel(name: String, content: String)
   case class InputDirModel(path: String, sources: List[InputSourceModel], vars: List[Variable[String]])
+  case class BuildModel(dir: String, fileName: String, namespace: String)
 
   case class GetSourcesResponse(dirs: List[InputDirModel])
 
-  case class PutSourcesRequest(dirs: List[InputDirModel])
-  case object PutSourcesResponse
+  case class PutSourcesRequest(dirs: List[InputDirModel], updateBuilds: Boolean = false)
+  case class PutSourcesResponse(updatedBuilds: List[BuildModel])
 
   case class PostBuildRequest(content: String, vars: List[Variable[String]])
   case object PostBuildSuccessResponse

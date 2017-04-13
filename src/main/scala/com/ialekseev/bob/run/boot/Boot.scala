@@ -14,6 +14,7 @@ object Boot extends App with BaseCommand with BaseHttpService with HttpServiceUn
 
   val sandboxPathPrefix = "sandbox"
   val hookPathPrefix = "hook"
+  val buildStateActor = system.actorOf(Props[BuildStateActor])
 
   val exec = new Executor {
     val analyzer = DefaultAnalyzer

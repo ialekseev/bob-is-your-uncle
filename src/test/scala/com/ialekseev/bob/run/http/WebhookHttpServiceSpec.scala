@@ -4,25 +4,29 @@ import java.io.FileNotFoundException
 import java.nio.file.{Path, Paths}
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.headers.RawHeader
-import akka.http.scaladsl.server.{Route}
+import akka.http.scaladsl.server.Route
 import com.ialekseev.bob.exec.analyzer.Analyzer.{AnalysisResult, Namespace, ScalaCode, Webhook}
 import com.ialekseev.bob.exec.Executor
 import com.ialekseev.bob.exec.Executor.{Build, FailedRun, RunResult, SuccessfulRun}
 import com.ialekseev.bob.run.boot.HttpServiceUnsafe
 import com.ialekseev.bob.run.http.WebhookHttpService.{HttpResponse, HttpResponseRun}
 import com.ialekseev.bob._
-import com.ialekseev.bob.run.{ErrorCoordinates, InputDir, InputSource}
+import com.ialekseev.bob.run.{BuildStateActor, ErrorCoordinates, InputDir, InputSource}
 import WebhookHttpService._
+import akka.actor.Props
 import org.json4s.JsonAST.{JField, JObject, JString}
 import org.json4s.native.JsonMethods.parse
 import org.mockito.Mockito._
+
 import scalaz.concurrent.Task
 import scalaz.std.option._
 import scalaz.syntax.either._
 
 class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe with HttpServiceBaseSpec {
+  val executionContext = system.dispatcher
   val sandboxPathPrefix = "sandbox"
   val hookPathPrefix = "hook"
+  val buildStateActor = system.actorOf(Props[BuildStateActor])
   val exec = mock[Executor]
 
   override def beforeEach(): Unit = { reset(exec); super.beforeEach()}
@@ -34,6 +38,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
   override def saveSources(dirs: List[InputDir]): Task[Unit] = saveSourcesFunc(dirs)
 
   val dirs = List(Paths.get("\\test"))
+  val builds: List[Build] = List.empty
 
   "GET sources request" when {
 
@@ -89,7 +94,7 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[PutSourcesResponse.type] should be(PutSourcesResponse)
+          responseAs[PutSourcesResponse] should be(PutSourcesResponse(List.empty))
         }
       }
     }

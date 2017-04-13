@@ -7,12 +7,12 @@ import org.json4s.ext.EnumNameSerializer
 import org.json4s.{CustomSerializer, DefaultFormats, native}
 import org.json4s.native.JsonMethods._
 import org.json4s.JsonAST.{JField, JObject, JString}
-
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scalaz.concurrent.Task
 
 package object http {
   trait BaseHttpService {
+    implicit val executionContext: ExecutionContext
     def completeTask[T : ToResponseMarshaller](task: Task[T]): Route
     def completeTask[T : ToResponseMarshaller](ctx: RequestContext, task: Task[T]): Future[RouteResult]
   }
