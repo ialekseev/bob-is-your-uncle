@@ -62,6 +62,8 @@ trait WebhookHttpService extends BaseHttpService with Json4sSupport with IoShare
     }
   }
 
+  //todo: !!! move IO operations being used here (readSources & saveSources) to the SourceStateActor + get rid of IoShared here
+
 
   private def putSourcesRoute = path ("sources") {
     put {
@@ -75,7 +77,6 @@ trait WebhookHttpService extends BaseHttpService with Json4sSupport with IoShare
                 completeTask {
                   saveSources(r.dirs.map(automap(_).to[InputDir])).map(_ => PutSourcesResponse(List.empty))
 
-                  //todo: write specs and uncomment
                   /*case class BuildWithContext(build: Build, dir: InputDirModel, source: InputSourceModel)
                     def build(): Task[List[BuildWithContext]] = {
                         for {
