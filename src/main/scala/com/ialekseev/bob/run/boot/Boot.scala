@@ -6,15 +6,17 @@ import com.ialekseev.bob.exec.analyzer.DefaultAnalyzer
 import com.ialekseev.bob.exec.{CompilerActor, EvaluatorActor, Executor}
 import com.ialekseev.bob.run._
 import com.ialekseev.bob.run.cli._
+import com.ialekseev.bob.run.TaskConversions._
 import com.ialekseev.bob.run.http.BaseHttpService
 
-object Boot extends App with BaseCommand with BaseHttpService with HttpServiceUnsafe with Check with Shell with Service {
+object Boot extends App with BaseCommand with BaseHttpService with Check with Shell with Service {
   val system = ActorSystem("bob-system")
   implicit val executionContext = system.dispatcher
 
   val sandboxPathPrefix = "sandbox"
   val hookPathPrefix = "hook"
   val buildStateActor = system.actorOf(Props[BuildStateActor])
+  val sourceStateActor = system.actorOf(Props(new SourceStateActor()))
 
   val exec = new Executor {
     val analyzer = DefaultAnalyzer

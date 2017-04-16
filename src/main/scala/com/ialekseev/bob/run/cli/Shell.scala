@@ -5,7 +5,7 @@ import scalaz._
 import Scalaz._
 import scalaz.effect.IO
 import scalaz.concurrent.Task
-import com.ialekseev.bob.run._
+import com.ialekseev.bob.run.TaskConversions._
 
 trait Shell {
   this: BaseCommand with Check with Service =>

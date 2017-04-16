@@ -4,7 +4,7 @@ import java.nio.file.{Files, Path}
 import scalaz._
 import Scalaz._
 import scalaz.concurrent.Task
-import com.ialekseev.bob.run._
+import com.ialekseev.bob.run.TaskConversions._
 
 trait Check {
   this: BaseCommand =>

@@ -5,21 +5,21 @@ import com.ialekseev.bob.exec.analyzer.Analyzer.{AnalysisResult, ScalaCode, Webh
 import com.ialekseev.bob.exec.Executor._
 import com.ialekseev.bob.exec.Compiler._
 import com.ialekseev.bob._
+import com.ialekseev.bob.run._
+import com.ialekseev.bob.run.TaskConversions._
 import org.json4s.JsonAST.JValue
 import scala.util.matching.Regex
 import scalaz.Scalaz._
 import akka.actor.ActorRef
 import scalaz._
 import scalaz.concurrent.Task
-import akka.pattern.ask
 import akka.util.Timeout
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
-import delorean._
 
 abstract class Executor(implicit executionContext: ExecutionContext) {
   val analyzer: Analyzer
-  val compilerActor: ActorRef //todo: where to recover?
+  val compilerActor: ActorRef //todo: recover & log?
   val evaluatorActor: ActorRef
 
   private val variableRegexPattern = """\{\$([a-zA-Z]+[a-zA-Z0-9]*)\}""".r
@@ -79,7 +79,7 @@ abstract class Executor(implicit executionContext: ExecutionContext) {
           start + pos - compilerPositionAmendment - scalaVariables.length - scalaImport.length - scalaImplicits.length
         }
 
-        (compilerActor ? CompilationRequest(scalaCode, scalaImport, scalaVariables, scalaImplicits)).toTask.map {
+        compilerActor.tAsk[Any](CompilationRequest(scalaCode, scalaImport, scalaVariables, scalaImplicits)).map {
           case CompilationSucceededResponse(className, bytes) => Build(result, className, bytes).right
           case CompilationFailedResponse(errors) => CompilationFailed(errors.map(e => e.copy(startOffset = amend(e.startOffset), pointOffset = amend(e.pointOffset), endOffset = amend(e.endOffset)))).left
         }
@@ -140,7 +140,7 @@ abstract class Executor(implicit executionContext: ExecutionContext) {
     }).flatten
 
     matchedBuilds.map(b => {
-      (evaluatorActor ? EvaluationRequest(b._1.className, b._1.bytes, b._2)).mapTo[EvaluationResponse].toTask.map(r => SuccessfulRun(b._1, r.result)).handle {
+      evaluatorActor.tAsk[EvaluationResponse](EvaluationRequest(b._1.className, b._1.bytes, b._2)).map(r => SuccessfulRun(b._1, r.result)).handle {
         case _ => FailedRun(b._1)
       }
     }).sequenceU.map(RunResult(_))

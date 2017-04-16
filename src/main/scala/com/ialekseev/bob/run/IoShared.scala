@@ -134,9 +134,9 @@ trait IoShared {
     saveFile(getVarsFilePath(dir), content)
   }
 
-  def saveSources(dirs: List[InputDir]): Task[Unit] = {
+  def saveSources(inputDirs: List[InputDir]): Task[Unit] = {
 
-    dirs.map(inputDir => {
+    inputDirs.map(inputDir => {
       val dir = Paths.get(inputDir.path)
       assume(Files.isDirectory(dir), "The Input Directory you've specified doesn't look like a directory")
 

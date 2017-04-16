@@ -8,30 +8,30 @@ import java.nio.file.Path
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.ialekseev.bob._
+import com.ialekseev.bob.run.TaskConversions._
 import com.ialekseev.bob.exec.Executor
 import com.ialekseev.bob.exec.Executor.{Build, RunResult, SuccessfulRun}
-import com.ialekseev.bob.run._
 import WebhookHttpService._
 import akka.actor.ActorRef
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import scalaz.concurrent.Task
 import scalaz.syntax.either._
+import scalaz.std.option._
 import scalaz.std.list._
 import scalaz.syntax.traverse._
-import scalaz.std.option._
 import scalaz.{-\/, EitherT, \/, \/-}
 import com.bfil.automapper.{automap, _}
-import delorean._
-import akka.pattern.ask
 import akka.util.Timeout
 import scala.concurrent.duration._
-import com.ialekseev.bob.run.BuildStateActor.{GetBuildStateRequestMessage, GetBuildStateResponseMessage, SetBuildStateRequestMessage}
+import com.ialekseev.bob.run.BuildStateActor.{GetBuildStateRequestMessage, GetBuildStateResponseMessage, SetBuildStateRequestMessage, SetBuildStateResponseMessage}
+import com.ialekseev.bob.run.SourceStateActor.{ReadSourcesRequestMessage, ReadSourcesResponseMessage, SaveSourcesRequestMessage, SaveSourcesResponseMessage}
 
-trait WebhookHttpService extends BaseHttpService with Json4sSupport with IoShared {
+trait WebhookHttpService extends BaseHttpService with Json4sSupport {
   val sandboxPathPrefix: String
   val hookPathPrefix: String
   val exec: Executor
-  val buildStateActor: ActorRef
+  def sourceStateActor: ActorRef //todo: recover & log?
+  def buildStateActor: ActorRef
 
   implicit val timeout = Timeout(5 seconds) //todo: move somewhere along with Executor's one
 
@@ -57,13 +57,12 @@ trait WebhookHttpService extends BaseHttpService with Json4sSupport with IoShare
   private def getSourcesRoute(dirs: List[Path]) = path("sources") {
     get {
       completeTask {
-        readSources(dirs).map(d => GetSourcesResponse(d.map(automap(_).to[InputDirModel])))
+        (sourceStateActor.tAsk[ReadSourcesResponseMessage](ReadSourcesRequestMessage(dirs.map(_.toString)))).map(_.inputDirs).map(inputDirs => {
+          GetSourcesResponse(inputDirs.map(automap(_).to[InputDirModel]))
+        })
       }
     }
   }
-
-  //todo: !!! move IO operations being used here (readSources & saveSources) to the SourceStateActor + get rid of IoShared here
-
 
   private def putSourcesRoute = path ("sources") {
     put {
@@ -74,29 +73,27 @@ trait WebhookHttpService extends BaseHttpService with Json4sSupport with IoShare
           validate(sources.forall(_.name.nonEmpty), "Source name can't be empty") {
             validate(sources.forall(_.content.nonEmpty), "Source content can't be empty") {
               validate(dirs.flatMap(_.vars).forall(_.name.nonEmpty), "Variable name can't be empty") {
-                completeTask {
-                  saveSources(r.dirs.map(automap(_).to[InputDir])).map(_ => PutSourcesResponse(List.empty))
-
-                  /*case class BuildWithContext(build: Build, dir: InputDirModel, source: InputSourceModel)
+                  completeTask {
+                    case class BuildWithContext(build: Build, dir: InputDirModel, source: InputSourceModel)
                     def build(): Task[List[BuildWithContext]] = {
-                        for {
-                          results <- dirs.flatMap(dir => dir.sources.map(source => {
-                            exec.build(source.content, dir.vars).flatMap(b => Task.now(b.map(s => BuildWithContext(s, dir, source))))
-                          })).sequenceU
-                          builds <- Task.now(results.map(_.toOption).flatten)
-                        } yield builds
+                      for {
+                        results <- dirs.flatMap(dir => dir.sources.map(source => {
+                          exec.build(source.content, dir.vars).flatMap(b => Task.now(b.map(s => BuildWithContext(s, dir, source))))
+                        })).sequenceU
+                        builds <- Task.now(results.map(_.toOption).flatten)
+                      } yield builds
                     }
 
                     for {
-                      _ <- saveSources(r.dirs.map(automap(_).to[InputDir]))
+                      _ <- sourceStateActor.tAsk[SaveSourcesResponseMessage.type](SaveSourcesRequestMessage(r.dirs.map(automap(_).to[InputDir])))
                       updatedBuilds <- if (r.updateBuilds) {
                         build().flatMap(builds => {
-                          (buildStateActor ? SetBuildStateRequestMessage(builds.map(_.build))).toTask.map(_ => {
+                          (buildStateActor.tAsk[SetBuildStateResponseMessage.type](SetBuildStateRequestMessage(builds.map(_.build)))).map(_ => {
                             builds.map(b => BuildModel(b.dir.path, b.source.name, b.build.analysisResult.namespace.toString))
                           })
                         })
                       } else Task.now(List.empty)
-                    } yield PutSourcesResponse(updatedBuilds)*/
+                    } yield PutSourcesResponse(updatedBuilds)
                   }
                 }
               }
@@ -152,7 +149,7 @@ trait WebhookHttpService extends BaseHttpService with Json4sSupport with IoShare
     val request = HttpRequest(some(uri), method, headers, queryString, none)
 
     val res = for {
-      builds <- (buildStateActor ? GetBuildStateRequestMessage).mapTo[GetBuildStateResponseMessage].map(_.builds).toTask
+      builds <- buildStateActor.tAsk[GetBuildStateResponseMessage](GetBuildStateRequestMessage).map(_.builds)
       res <- exec.run(request, builds).map(r => {
         HttpResponse(request, r.runs.map {
           case SuccessfulRun(build, result) => {

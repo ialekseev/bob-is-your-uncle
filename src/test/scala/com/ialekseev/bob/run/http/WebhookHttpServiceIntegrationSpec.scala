@@ -6,16 +6,16 @@ import akka.http.scaladsl.model.StatusCodes
 import com.ialekseev.bob._
 import com.ialekseev.bob.exec.{CompilerActor, EvaluatorActor, Executor}
 import com.ialekseev.bob.exec.analyzer.DefaultAnalyzer
-import com.ialekseev.bob.run.boot.HttpServiceUnsafe
 import WebhookHttpService._
 import com.ialekseev.bob.exec.Executor.Build
-import com.ialekseev.bob.run.BuildStateActor
+import com.ialekseev.bob.run.{BuildStateActor, SourceStateActor}
 import org.json4s.native.JsonMethods._
 
-class WebhookHttpServiceIntegrationSpec extends WebhookHttpService with HttpServiceUnsafe with HttpServiceBaseSpec {
+class WebhookHttpServiceIntegrationSpec extends WebhookHttpService with HttpServiceBaseSpec {
   val executionContext = system.dispatcher
   val sandboxPathPrefix = "sandbox"
   val hookPathPrefix = "hook"
+  val sourceStateActor = system.actorOf(Props(new SourceStateActor()(executionContext)))
   val buildStateActor = system.actorOf(Props[BuildStateActor])
 
   val exec: Executor = new Executor {
@@ -31,21 +31,22 @@ class WebhookHttpServiceIntegrationSpec extends WebhookHttpService with HttpServ
 
   "PUT sources request" when {
 
-    "IO saves sources" should {
+    "IO saves sources & build update has NOT been requested" should {
       "return 'OK'" in {
         //arrange
-        val put = parse(s""" {"dirs": [{ "path": "${escape(tempDir)}", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
+        val put = parse(s""" {"dirs": [{ "path": "${escape(tempDir)}", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }], "updateBuilds": false  }""")
 
         //act
         Put(s"/sandbox/sources", put) ~> createRoutes(List(tempDir), builds) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
+          responseAs[PutSourcesResponse] should be(PutSourcesResponse(List.empty))
         }
       }
     }
 
-    "IO saves sources (removes sources & vars actually)" should {
+    "IO saves sources (removes sources & vars actually) & build update has NOT been requested" should {
       "remove sources and vars & return 'OK'" in {
         //arrange
         val put0 = parse(s""" {"dirs": [{ "path": "${escape(tempDir)}", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
@@ -59,6 +60,22 @@ class WebhookHttpServiceIntegrationSpec extends WebhookHttpService with HttpServ
         Get(s"/sandbox/sources") ~> createRoutes(List(tempDir), builds) ~> check {
           response.status should be(StatusCodes.OK)
           responseAs[GetSourcesResponse] should be(GetSourcesResponse(List(InputDirModel(tempDir.toString, List.empty, List.empty))))
+        }
+      }
+    }
+
+    //todo: implement
+    "IO saves sources & build update HAS been requested" should {
+      "return 'OK'" ignore {
+        //arrange
+        val put = parse(s""" {"dirs": [{ "path": "${escape(tempDir)}", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }], "updateBuilds": false  }""")
+
+        //act
+        Put(s"/sandbox/sources", put) ~> createRoutes(List(tempDir), builds) ~> check {
+
+          //assert
+          response.status should be(StatusCodes.OK)
+          responseAs[PutSourcesResponse] should be(PutSourcesResponse(List.empty))
         }
       }
     }

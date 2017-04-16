@@ -8,34 +8,28 @@ import akka.http.scaladsl.server.Route
 import com.ialekseev.bob.exec.analyzer.Analyzer.{AnalysisResult, Namespace, ScalaCode, Webhook}
 import com.ialekseev.bob.exec.Executor
 import com.ialekseev.bob.exec.Executor.{Build, FailedRun, RunResult, SuccessfulRun}
-import com.ialekseev.bob.run.boot.HttpServiceUnsafe
 import com.ialekseev.bob.run.http.WebhookHttpService.{HttpResponse, HttpResponseRun}
 import com.ialekseev.bob._
-import com.ialekseev.bob.run.{BuildStateActor, ErrorCoordinates, InputDir, InputSource}
+import com.ialekseev.bob.run.{BuildStateActor, ErrorCoordinates, InputDir, InputSource, SourceStateActor}
 import WebhookHttpService._
-import akka.actor.Props
+import akka.actor.{ActorRef, Props}
+import akka.testkit.TestActorRef
 import org.json4s.JsonAST.{JField, JObject, JString}
 import org.json4s.native.JsonMethods.parse
 import org.mockito.Mockito._
-
 import scalaz.concurrent.Task
 import scalaz.std.option._
 import scalaz.syntax.either._
 
-class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe with HttpServiceBaseSpec {
+class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceBaseSpec {
   val executionContext = system.dispatcher
   val sandboxPathPrefix = "sandbox"
   val hookPathPrefix = "hook"
-  val buildStateActor = system.actorOf(Props[BuildStateActor])
+  var sourceStateActor: ActorRef = null
+  var buildStateActor: ActorRef = system.actorOf(Props[BuildStateActor])
   val exec = mock[Executor]
 
   override def beforeEach(): Unit = { reset(exec); super.beforeEach()}
-
-  private var readSourcesFunc: List[Path] => Task[List[InputDir]] = null
-  private var saveSourcesFunc: List[InputDir] => Task[Unit] = null
-
-  override def readSources(dirs: List[Path]): Task[List[InputDir]] = readSourcesFunc(dirs)
-  override def saveSources(dirs: List[InputDir]): Task[Unit] = saveSourcesFunc(dirs)
 
   val dirs = List(Paths.get("\\test"))
   val builds: List[Build] = List.empty
@@ -45,17 +39,19 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
     "IO returns sources" should {
       "return 'OK' with the sources" in {
         //arrange
-        val sourcesToReturn = List(InputDir("\\test\\", List(InputSource("file1", "content1"), InputSource("file2", "content2")), List(Variable("a", "1"), Variable("b", "2"))))
-        readSourcesFunc = {
-          case paths if paths.head.toString == "\\test" => Task.now(sourcesToReturn)
-        }
+        val sourcesToReturn = List(InputDir("\\test", List(InputSource("file1", "content1"), InputSource("file2", "content2")), List(Variable("a", "1"), Variable("b", "2"))))
+        sourceStateActor = TestActorRef(new SourceStateActor {
+          override def readSources(dirs: List[Path]): Task[List[InputDir]] = dirs match {
+            case d if d.head.toString == "\\test" => Task.now(sourcesToReturn)
+          }
+        })
 
         //act
         Get("/sandbox/sources") ~> createRoutes(dirs, builds) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[GetSourcesResponse] should be(GetSourcesResponse(List(InputDirModel("\\test\\", List(InputSourceModel("file1", "content1"), InputSourceModel("file2", "content2")), List(Variable("a", "1"), Variable("b", "2"))))))
+          responseAs[GetSourcesResponse] should be(GetSourcesResponse(List(InputDirModel("\\test", List(InputSourceModel("file1", "content1"), InputSourceModel("file2", "content2")), List(Variable("a", "1"), Variable("b", "2"))))))
         }
       }
     }
@@ -63,9 +59,11 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
     "IO fails" should {
       "return 'InternalServerError'" in {
         //arrange
-        readSourcesFunc = {
-          case paths if paths.head.toString == "\\test" => Task.fail(new FileNotFoundException("bad!"))
-        }
+        sourceStateActor = TestActorRef(new SourceStateActor {
+          override def readSources(dirs: List[Path]): Task[List[InputDir]] = dirs match {
+            case d if d.head.toString == "\\test" => Task.fail(new FileNotFoundException("bad!"))
+          }
+        })
 
         //act
         Get("/sandbox/sources") ~> createRoutes(dirs, builds) ~> check {
@@ -80,14 +78,15 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
 
   "PUT sources request" when {
 
-    "IO updates sources" should {
+    "IO updates sources & build update has NOT been requested" should {
       "return 'OK'" in {
         //arrange
-        val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
-
-        saveSourcesFunc = {
-          case InputDir("\\test\\", List(InputSource("file1", "content1"), InputSource("file2", "content2")), List(Variable("a", "1"), Variable("b", "2"))) :: Nil => Task.now((): Unit)
-        }
+        val put = parse(""" {"dirs": [{ "path": "\\test", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }], "updateBuilds": false  }""")
+        sourceStateActor = TestActorRef(new SourceStateActor {
+          override def saveSources(inputDirs: List[InputDir]): Task[Unit] = inputDirs match {
+            case InputDir("\\test", List(InputSource("file1", "content1"), InputSource("file2", "content2")), List(Variable("a", "1"), Variable("b", "2"))) :: Nil => Task.now((): Unit)
+          }
+        })
 
         //act
         Put("/sandbox/sources", put) ~> createRoutes(dirs, builds) ~> check {
@@ -95,6 +94,55 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
           //assert
           response.status should be(StatusCodes.OK)
           responseAs[PutSourcesResponse] should be(PutSourcesResponse(List.empty))
+        }
+      }
+    }
+
+    "IO updates sources & build update HAS been requested" should {
+      "save only successful builds & return 'OK'" in {
+        //arrange
+        val put = parse(""" {"dirs": [{ "path": "\\test", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }], "updateBuilds": true  }""")
+        sourceStateActor = TestActorRef(new SourceStateActor {
+          override def saveSources(inputDirs: List[InputDir]): Task[Unit] = inputDirs match {
+            case InputDir("\\test", List(InputSource("file1", "content1"), InputSource("file2", "content2")), List(Variable("a", "1"), Variable("b", "2"))) :: Nil => Task.now((): Unit)
+          }
+        })
+
+        val successfulBuild = Build(AnalysisResult(Namespace("com", "super"), "great", List(Variable("a", "1"), Variable("b", "2")), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")), "super", List(1,2,3))
+        val failedBuild = CompilationFailed(List(CompilationError(1, 1, 1, "bad!")))
+        when(exec.build("content1", List(Variable("a", "1"), Variable("b", "2")))).thenReturn(Task.now(failedBuild.left))
+        when(exec.build("content2", List(Variable("a", "1"), Variable("b", "2")))).thenReturn(Task.now(successfulBuild.right))
+
+        //act
+        Put("/sandbox/sources", put) ~> createRoutes(dirs, builds) ~> check {
+
+          //assert
+          response.status should be(StatusCodes.OK)
+          responseAs[PutSourcesResponse] should be(PutSourcesResponse(List(BuildModel("\\test", "file2", "com#super"))))
+        }
+      }
+    }
+
+    "IO updates sources & build update HAS been requested (but one of the build exec tasks failed)" should {
+      "return 'InternalServerError'" in {
+        //arrange
+        val put = parse(""" {"dirs": [{ "path": "\\test", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }], "updateBuilds": true  }""")
+        sourceStateActor = TestActorRef(new SourceStateActor {
+          override def saveSources(inputDirs: List[InputDir]): Task[Unit] = inputDirs match {
+            case InputDir("\\test", List(InputSource("file1", "content1"), InputSource("file2", "content2")), List(Variable("a", "1"), Variable("b", "2"))) :: Nil => Task.now((): Unit)
+          }
+        })
+
+        val successfulBuild = Build(AnalysisResult(Namespace("com", "super"), "great", List(Variable("a", "1"), Variable("b", "2")), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()")), "super", List(1,2,3))
+        when(exec.build("content1", List(Variable("a", "1"), Variable("b", "2")))).thenReturn(Task.now(successfulBuild.right))
+        when(exec.build("content2", List(Variable("a", "1"), Variable("b", "2")))).thenReturn(Task.fail(new FileNotFoundException("bad!")))
+
+        //act
+        Put("/sandbox/sources", put) ~> createRoutes(dirs, builds) ~> check {
+
+          //assert
+          response.status should be(StatusCodes.InternalServerError)
+          responseAsString should be ("bad!")
         }
       }
     }
@@ -162,11 +210,13 @@ class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceUnsafe w
     "IO fails" should {
       "return 'InternalServerError'" in {
         //arrange
-        val put = parse(""" {"dirs": [{ "path": "\\test\\", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
+        val put = parse(""" {"dirs": [{ "path": "\\test", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }]  }""")
 
-        saveSourcesFunc = {
-          case InputDir("\\test\\", List(InputSource("file1", "content1"), InputSource("file2", "content2")), List(Variable("a", "1"), Variable("b", "2"))) :: Nil => Task.fail(new FileNotFoundException("bad!"))
-        }
+        sourceStateActor = TestActorRef(new SourceStateActor {
+          override def saveSources(inputDirs: List[InputDir]): Task[Unit] = inputDirs match {
+            case InputDir("\\test", List(InputSource("file1", "content1"), InputSource("file2", "content2")), List(Variable("a", "1"), Variable("b", "2"))) :: Nil => Task.fail(new FileNotFoundException("bad!"))
+          }
+        })
 
         //act
         Put("/sandbox/sources", put) ~> createRoutes(dirs, builds) ~> check {

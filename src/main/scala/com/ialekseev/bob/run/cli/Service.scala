@@ -8,6 +8,7 @@ import com.ialekseev.bob.run.http.WebhookHttpService
 import com.ialekseev.bob.BuildFailed
 import com.ialekseev.bob.exec.Executor.Build
 import com.ialekseev.bob.run._
+import com.ialekseev.bob.run.TaskConversions._
 import com.ialekseev.bob.run.http._
 import scalaz._
 import Scalaz._
