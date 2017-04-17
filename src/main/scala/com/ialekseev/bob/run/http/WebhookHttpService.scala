@@ -21,8 +21,6 @@ import scalaz.std.list._
 import scalaz.syntax.traverse._
 import scalaz.{-\/, EitherT, \/, \/-}
 import com.bfil.automapper.{automap, _}
-import akka.util.Timeout
-import scala.concurrent.duration._
 import com.ialekseev.bob.run.BuildStateActor.{GetBuildStateRequestMessage, GetBuildStateResponseMessage, SetBuildStateRequestMessage, SetBuildStateResponseMessage}
 import com.ialekseev.bob.run.SourceStateActor.{ReadSourcesRequestMessage, ReadSourcesResponseMessage, SaveSourcesRequestMessage, SaveSourcesResponseMessage}
 
@@ -33,12 +31,10 @@ trait WebhookHttpService extends BaseHttpService with Json4sSupport {
   def sourceStateActor: ActorRef //todo: recover & log?
   def buildStateActor: ActorRef
 
-  implicit val timeout = Timeout(5 seconds) //todo: move somewhere along with Executor's one
-
   def createRoutes(dirs: List[Path], builds: List[Build]) = {
     require(dirs.nonEmpty)
 
-    buildStateActor ! SetBuildStateRequestMessage(builds) //todo: ask?
+    buildStateActor ! SetBuildStateRequestMessage(builds)
 
     getAssets ~ pathPrefix(sandboxPathPrefix) {
       getSourcesRoute(dirs) ~ putSourcesRoute ~ postBuildRequestRoute ~ postRunRequestRoute

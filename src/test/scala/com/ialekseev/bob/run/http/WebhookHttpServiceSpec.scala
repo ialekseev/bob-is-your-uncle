@@ -22,7 +22,6 @@ import scalaz.std.option._
 import scalaz.syntax.either._
 
 class WebhookHttpServiceSpec extends WebhookHttpService with HttpServiceBaseSpec {
-  val executionContext = system.dispatcher
   val sandboxPathPrefix = "sandbox"
   val hookPathPrefix = "hook"
   var sourceStateActor: ActorRef = null

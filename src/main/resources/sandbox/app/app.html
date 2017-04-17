@@ -2,7 +2,8 @@
     <div class="row top-buffer-10">
 
         <div class="col-2">
-            <ul class="nav flex-column">
+            <button type="button" (click)="onSaveClick()" class="btn btn-outline-primary btn fa fa-floppy-o"></button>
+            <ul class="nav flex-column top-buffer-10">
                 <li *ngFor="let dir of dirs" [contextMenu]="dirContextMenu" [contextMenuSubject]="dir" class="nav-item">
                     <a href="javascript:void(0);" (click)="onDirClick(dir)" class="nav-link" [ngClass]="{'alert-info': isActiveDir(dir) }">{{dir.path}}</a>
                     <ul class="nav flex-column left-buffer-10">
@@ -13,12 +14,12 @@
                 </li>
                 <context-menu #dirContextMenu>
                     <template contextMenuItem (execute)="onAddSourceClick($event.item)">
-                        <span class="badge badge-success">+</span> Add a new Source
+                        <span class="fa fa-plus-square"></span> Add a new Source
                     </template>
                 </context-menu>
                 <context-menu #sourceContextMenu>
                     <template contextMenuItem let-item (execute)="onRemoveSourceClick($event.item[0], $event.item[1])">
-                        <span class="badge badge-danger">x</span> Remove {{item[1].name}}
+                        <span class="fa fa-trash-o fa-fw"></span> Remove {{item[1].name}}
                     </template>
                 </context-menu>
             </ul>
@@ -36,11 +37,6 @@
                         </div>
                         <div class="form-group">
                             <button type="button" (click)="onCheckSourceClick(selectedSource[0], selectedSource[1])" class="btn btn-success">Check</button>
-                        </div>
-                        <div *ngIf="lastCheckError != null" class="form-group">
-                            <div class="alert alert-danger" role="alert">
-                                Error:({{lastCheckError.startCoordinates.x}}, {{lastCheckError.startCoordinates.y}}) {{lastCheckError.message}}
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -76,15 +72,26 @@
                         </div>
                         <div class="col-1">
                             <div class="input-group">
-                                <button type="button" (click)="onRemoveVariableClick(selectedDir, variable)" class="btn btn-danger btn-sm">x</button>
+                                <a href="javascript:void(0)" (click)="onRemoveVariableClick(selectedDir, variable)" class="fa fa-trash-o fa-fw"></a>
                             </div>
                         </div>
                     </div>
                     <div class="top-buffer-5">
-                        <button type="button" (click)="onAddVariableClick(selectedDir)" class="btn btn-success btn-sm">+</button>
+                        <a href="javascript:void(0)" (click)="onAddVariableClick(selectedDir)" class="fa fa-plus-square"></a>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+<div *ngIf="showSpinner" class="spinner-container">
+    <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+    <span class="sr-only">Loading...</span>
+</div>
+<div class="log-container">
+    <div *ngFor="let message of logMessages">
+        <div [ngClass]="{'alert-danger': isLogMessageErrorLevel(message.level), 'alert-warning': isLogMessageWarningLevel(message.level), 'alert-info': isLogMessageInfoLevel(message.level), 'alert-success': isLogMessageSuccessLevel(message.level) }" >
+            [{{message.timestamp | date:'jms'}}]: {{message.text}}
         </div>
     </div>
 </div>

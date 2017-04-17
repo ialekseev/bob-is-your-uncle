@@ -17,13 +17,12 @@ import akka.util.Timeout
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
 
-abstract class Executor(implicit executionContext: ExecutionContext) {
+abstract class Executor(implicit executionContext: ExecutionContext, timeout: Timeout) {
   val analyzer: Analyzer
   val compilerActor: ActorRef //todo: recover & log?
   val evaluatorActor: ActorRef
 
   private val variableRegexPattern = """\{\$([a-zA-Z]+[a-zA-Z0-9]*)\}""".r
-  implicit val timeout = Timeout(5 seconds) //todo: move
 
   def build(source: String, externalVariables: List[Variable[String]] = List.empty): Task[BuildFailed \/ Build] = {
     require(source.nonEmpty)

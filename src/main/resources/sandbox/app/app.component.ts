@@ -16,14 +16,19 @@ export class AppComponent {
     selectedDir: Dir;
     selectedSource: [Dir, Source];
 
-    lastCheckError: BuildError;
+    logMessages: Array<LogMessage> = [];
+
+    showSpinner: boolean = false;
 
     private headers = new Headers({'Content-Type': 'application/json'});
 
     constructor(private http: Http) {
         console.log(`angular v${VERSION.full}`);
+        this.showSpinner = true;
         http.get('sandbox/sources').map(r => r.json()).subscribe(r => {
             this.dirs = r.dirs;
+            this.log("Sources have been loaded", LogMessageLevel.Info);
+            this.showSpinner = false;
         });
     }
 
@@ -40,6 +45,14 @@ export class AppComponent {
     private unselect() {
         this.selectedDir = null;
         this.selectedSource = null;
+    }
+
+    onSaveClick(): void {
+        this.showSpinner = true;
+        this.http.put('sandbox/sources', JSON.stringify({"dirs": this.dirs, "updateBuilds": false}), {headers: this.headers}).map(r => r.json()).subscribe(res => {
+            this.log("Sources have been saved on the server", LogMessageLevel.Info);
+            this.showSpinner = false;
+        });
     }
 
     onDirClick(dir: Dir): void {
@@ -70,12 +83,15 @@ export class AppComponent {
     }
 
     onCheckSourceClick(dir: Dir, source: Source): void {
-        this.lastCheckError = null;
+        this.showSpinner = true;
         this.http.post('sandbox/sources/build', JSON.stringify({"content": source.content, "vars": dir.vars}), {headers: this.headers}).map(r => r.json()).subscribe(res => {
-            console.log(res);
             if (res.errors) {
-                this.lastCheckError = (res.errors as Array<BuildError>)[0];
+                let error = (res.errors as Array<BuildError>)[0];
+                this.log(`(${error.startCoordinates.x},${error.startCoordinates.y}): ${error.message}`, LogMessageLevel.Error)
+            } else {
+                this.log("Successfully checked: "  + dir.path + "/" + source.name, LogMessageLevel.Success)
             }
+            this.showSpinner = false;
         });
     }
 
@@ -85,6 +101,26 @@ export class AppComponent {
 
     isActiveSource(source: Source): boolean {
         return this.selectedSource != null && this.selectedSource[1].name == source.name;
+    }
+
+    log(text: string, level: LogMessageLevel): void {
+        this.logMessages.unshift(new LogMessage(new Date(), text, level));
+    }
+
+    isLogMessageErrorLevel(level: LogMessageLevel): boolean {
+        return level == LogMessageLevel.Error;
+    }
+
+    isLogMessageWarningLevel(level: LogMessageLevel): boolean {
+        return level == LogMessageLevel.Warning;
+    }
+
+    isLogMessageInfoLevel(level: LogMessageLevel): boolean {
+        return level == LogMessageLevel.Info;
+    }
+
+    isLogMessageSuccessLevel(level: LogMessageLevel): boolean {
+        return level == LogMessageLevel.Success;
     }
 }
 
@@ -106,4 +142,10 @@ export class ErrorCoordinates {
 
 export class BuildError {
     constructor(public startOffset: number, public endOffset: number, public startCoordinates: ErrorCoordinates, public endCoordinates: ErrorCoordinates, public message: string) {}
+}
+
+export enum LogMessageLevel {Error, Warning, Info, Success}
+
+export class LogMessage {
+    constructor(public timestamp: Date, public text: string, public level: LogMessageLevel ) {}
 }

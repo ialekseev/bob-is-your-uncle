@@ -64,8 +64,6 @@ class CompilerActor extends Actor {
   }
 
   def compile(code: String, imports: String, fields: String, implicits: String): List[CompilationError] \/ (String, List[Byte]) = {
-    require(code.nonEmpty)
-
     reporter.reset()
     target.clear()
 

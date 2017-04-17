@@ -2,6 +2,8 @@ package com.ialekseev.bob.run.boot
 
 import java.nio.file.Paths
 import akka.actor.{ActorSystem, Props}
+import akka.util.Timeout
+import scala.concurrent.duration._
 import com.ialekseev.bob.exec.analyzer.DefaultAnalyzer
 import com.ialekseev.bob.exec.{CompilerActor, EvaluatorActor, Executor}
 import com.ialekseev.bob.run._
@@ -12,6 +14,7 @@ import com.ialekseev.bob.run.http.BaseHttpService
 object Boot extends App with BaseCommand with BaseHttpService with Check with Shell with Service {
   val system = ActorSystem("bob-system")
   implicit val executionContext = system.dispatcher
+  implicit val askTimeout = Timeout(5 seconds)
 
   val sandboxPathPrefix = "sandbox"
   val hookPathPrefix = "hook"

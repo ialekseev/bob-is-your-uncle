@@ -12,7 +12,6 @@ import com.ialekseev.bob.run.{BuildStateActor, SourceStateActor}
 import org.json4s.native.JsonMethods._
 
 class WebhookHttpServiceIntegrationSpec extends WebhookHttpService with HttpServiceBaseSpec {
-  val executionContext = system.dispatcher
   val sandboxPathPrefix = "sandbox"
   val hookPathPrefix = "hook"
   val sourceStateActor = system.actorOf(Props(new SourceStateActor()(executionContext)))
@@ -64,18 +63,35 @@ class WebhookHttpServiceIntegrationSpec extends WebhookHttpService with HttpServ
       }
     }
 
-    //todo: implement
     "IO saves sources & build update HAS been requested" should {
-      "return 'OK'" ignore {
+      "return 'OK' with updated builds" in {
         //arrange
-        val put = parse(s""" {"dirs": [{ "path": "${escape(tempDir)}", "sources": [{"name": "file1", "content": "content1"}, {"name": "file2", "content": "content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }], "updateBuilds": false  }""")
+        val content1 = """namespace com.ialekseev#example1
+                         | description: \"example1\"
+                         |
+                         | @webhook
+                         |  uri: \"example1\"
+                         |
+                         | @process
+                         |  \"Hello \" + a""".stripMargin
+
+        val content2 = """namespace com.ialekseev#example2
+                         | description: \"example2\"
+                         |
+                         | @webhook
+                         |  uri: \"example2\"
+                         |
+                         | @process
+                         |  \"Hello \" + b""".stripMargin
+
+        val put = parse(s""" {"dirs": [{ "path": "${escape(tempDir)}", "sources": [{"name": "file1", "content": "$content1"}, {"name": "file2", "content": "$content2"}], "vars": [{"name": "a", "value": "1"}, {"name": "b", "value": "2"}] }], "updateBuilds": true  }""")
 
         //act
         Put(s"/sandbox/sources", put) ~> createRoutes(List(tempDir), builds) ~> check {
 
           //assert
           response.status should be(StatusCodes.OK)
-          responseAs[PutSourcesResponse] should be(PutSourcesResponse(List.empty))
+          responseAs[PutSourcesResponse] should be(PutSourcesResponse(List(BuildModel(tempDir.toString, "file1", "com.ialekseev#example1"), BuildModel(tempDir.toString, "file2", "com.ialekseev#example2"))))
         }
       }
     }

@@ -4,15 +4,10 @@ import akka.actor.ActorSystem
 import akka.testkit.{TestActorRef, TestKit}
 import com.ialekseev.bob.{BaseSpec, Variable}
 import com.ialekseev.bob.exec.Compiler._
-
 import scalaz.Scalaz._
 import akka.pattern.ask
-import akka.util.Timeout
-
-import scala.concurrent.duration._
 
 class CompilerSpec extends TestKit(ActorSystem("compiler-specs")) with BaseSpec {
-  implicit val timeout = Timeout(5 second)
 
   "Compiling" when {
 

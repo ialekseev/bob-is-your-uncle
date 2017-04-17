@@ -5,6 +5,7 @@ import akka.http.scaladsl.marshalling._
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives.{complete, onComplete}
 import akka.http.scaladsl.server.{RequestContext, Route, RouteResult}
+import akka.util.Timeout
 import org.json4s.ext.EnumNameSerializer
 import org.json4s.{CustomSerializer, DefaultFormats, native}
 import org.json4s.native.JsonMethods._
@@ -17,6 +18,7 @@ import com.ialekseev.bob.run.TaskConversions._
 package object http {
   trait BaseHttpService {
     implicit val executionContext: ExecutionContext
+    implicit val askTimeout: Timeout
 
     def completeTask[T : ToResponseMarshaller](task: Task[T]): Route =  completeFuture(task.toFuture())
 
