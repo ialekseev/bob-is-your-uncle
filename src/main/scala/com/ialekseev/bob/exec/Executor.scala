@@ -5,7 +5,6 @@ import com.ialekseev.bob.exec.analyzer.Analyzer.{AnalysisResult, ScalaCode, Webh
 import com.ialekseev.bob.exec.Executor._
 import com.ialekseev.bob.exec.Compiler._
 import com.ialekseev.bob._
-import com.ialekseev.bob.run._
 import com.ialekseev.bob.run.TaskConversions._
 import org.json4s.JsonAST.JValue
 import scala.util.matching.Regex
@@ -14,7 +13,6 @@ import akka.actor.ActorRef
 import scalaz._
 import scalaz.concurrent.Task
 import akka.util.Timeout
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
 
 abstract class Executor(implicit executionContext: ExecutionContext, timeout: Timeout) {
