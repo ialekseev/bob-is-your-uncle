@@ -1,28 +1,23 @@
 package com.ialekseev.bob.dsl
 
-import com.ialekseev.bob._
 import com.ialekseev.bob.BaseSpec
-import org.json4s.JObject
-import org.json4s.JsonDSL._
 
 class DslSpec extends BaseSpec {
 
-  "Dsl" when {
-    val run = dsl.run
+  "Playing with dsl" when {
 
-    "dsl" should {
-      "dsl" in {
+    "dsl has several steps" should {
+      "produce result with logs" in {
+        //act
+        val result = action("action1") { r =>
+                      ("hello", 100)
+                    } ~
+                    next("action2") { n =>
+                      n._1.length + n._2
+                    }
 
-        action("action1") { r =>
-          ("name" -> "joe") ~ ("age" -> Some(35))
-        } ~
-        next[JObject]("next") { x =>
-          ("name" -> "joe") ~ ("age" -> x.toString)
-        } ~
-        next[JObject]("next") { x =>
-          ("name" -> "joe") ~ ("age" -> "111")
-        } ~
-        run
+        //assert
+        result should be (ActionResult(105, Vector(ActionLog("action1", "(hello,100)"), ActionLog("action2", "105"))))
       }
     }
   }

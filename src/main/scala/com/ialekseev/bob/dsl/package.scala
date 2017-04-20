@@ -1,10 +1,11 @@
 package com.ialekseev.bob
 
-import com.ialekseev.bob._
 import org.json4s.JObject
 import org.json4s.JsonAST.JValue
 import scalaz._
 import scalaz.Scalaz._
+import org.json4s._
+import org.json4s.native.JsonMethods._
 
 package object dsl {
   case class Namespace(path: String, name: String)
@@ -36,30 +37,35 @@ package object dsl {
     }
   }
 
-  //todo: Currently pipeline is of one type(eg, JObject) - try to use shapeless' HList to allow steps of different types. Like that: each step returns HList with newly added value. At the end we fold it to get a result
+/*********************************************************************************/
+  implicit val httpRequest: HttpRequest = null
 
-  implicit val httpRequest: HttpRequest = null //hack, will be provided in CompilerActor
+  implicit val jValueAct: Show[JValue] = Show.shows(v => pretty(render(v)))
+  implicit val jObjectAct: Show[JObject] = Show.shows(v => pretty(render(v)))
 
-  case class PipelineResult[T](value: T, logs: Vector[String])
-  case class FirstAction[T](description: String, act: HttpRequest => T)
-  case class Action[T](description: String, act: T => T)
-  object run
+  case class NextAction[A, B](desc: String, act: A => B)
+  case class ActionLog(desc: String, result: String)
 
-  case class Pipeline[T](first: FirstAction[T], next: Vector[Action[T]]) {
-    def ~(nextAction: Action[T]): Pipeline[T] = this.copy(next = next :+ nextAction)
-
-    def ~(runAction: run.type): PipelineResult[T] = {
-      val httpRequest = implicitly[HttpRequest]
-      val afterFirstAction = first.act(httpRequest)
-
-      val result = next.foldLeft((afterFirstAction, Vector(first.description)))((acc, action) => {
-        (action.act(acc._1), acc._2 :+ action.description)
-      })
-
-      PipelineResult(result._1, result._2)
+  case class ActionResult[A](result: A, logs: Vector[ActionLog]) {
+    def ~[B](next: NextAction[A, B])(implicit show: Show[B] = Show.showFromToString[B]): ActionResult[B] = {
+      val nextResult = next.act(result)
+      ActionResult(nextResult, logs :+ ActionLog(next.desc, show.shows(nextResult)))
     }
   }
 
-  def action[T](description: String)(act: HttpRequest => T): Pipeline[T] = Pipeline(FirstAction(description, act), Vector.empty)
-  def next[T](description: String)(act: T => T): Action[T] = Action(description, act)
+  def action[T](desc: String)(act: HttpRequest => T)(implicit show: Show[T] = Show.showFromToString[T]): ActionResult[T] = {
+    val httpRequest = implicitly[HttpRequest]
+    val result = act(httpRequest)
+    ActionResult(result, Vector(ActionLog(desc, show.shows(result))))
+  }
+
+  def next[A, B](desc: String)(act: A => B): NextAction[A, B] = NextAction(desc, act)
+  /*********************************************************************************/
+
+  implicit class ScalajHttpRequestWrapper(httpRequest: scalaj.http.HttpRequest){
+    def json: JValue = parse(httpRequest.asString.body)
+    def text: String = httpRequest.asString.body
+  }
 }
+
+

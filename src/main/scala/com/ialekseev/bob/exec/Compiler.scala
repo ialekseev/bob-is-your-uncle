@@ -43,7 +43,8 @@ class CompilerActor extends Actor {
     }
     def displayPrompt(): Unit = ???
     def display(pos: Position, msg: String, severity: Severity): Unit = {
-      reportedErrors += CompilationError(pos.start, pos.point, pos.end, msg)
+      if (severity.id == ERROR.id)
+        reportedErrors += CompilationError(pos.start, pos.point, pos.end, msg)
     }
   }
 

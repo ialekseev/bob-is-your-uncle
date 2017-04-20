@@ -43,9 +43,12 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
       "return error with amended offsets" in {
         //arrange
         val anal = mock[Analyzer]
+        val source = "a @process b"
+        val variables = """var request: HttpRequest = null; var a = "1"; var b = "2""""
+        val implicits = """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")"""
         val compiler = TestActorRef(new Actor {
           def receive = {
-            case CompilationRequest("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var a = "1"; var b = "2"""", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""") => sender ! CompilationFailedResponse(List(CompilationError(400,400,400, "bad!")))
+            case CompilationRequest("do()", Executor.scalaImport, variables, implicits) => sender ! CompilationFailedResponse(List(CompilationError(400,400,400, "bad!")))
           }
         })
 
@@ -55,13 +58,14 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
           val evaluatorActor = null
         }
         val resultToBeReturned = AnalysisResult(Namespace("com", "create"), "cool", List(Variable("a", "1"), Variable("b", "2")), Webhook(HttpRequest(some("example/"), HttpMethod.GET, Map.empty, Map.empty, none[Body])), ScalaCode("do()"))
-        Mockito.when(anal.analyze("a @process b")).thenReturn(resultToBeReturned.right)
+        Mockito.when(anal.analyze(source)).thenReturn(resultToBeReturned.right)
 
         //act
-        val result = executor.build("a @process b").unsafePerformSync
+        val result = executor.build(source).unsafePerformSync
 
         //assert
-        result.toEither.left.get should be  (CompilationFailed(List(CompilationError(131,131,131, "bad!"))))
+        val amendedPos = amendScalaErrorPosition(source, 400, variables, implicits)
+        result.toEither.left.get should be  (CompilationFailed(List(CompilationError(amendedPos,amendedPos,amendedPos, "bad!"))))
       }
     }
 
@@ -71,7 +75,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val anal = mock[Analyzer]
         val compiler = TestActorRef(new Actor {
           def receive = {
-            case CompilationRequest("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var a = "1"; var b = "2"""", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""") => sender ! CompilationSucceededResponse("super", List(1,2,3))
+            case CompilationRequest("do()", Executor.scalaImport, """var request: HttpRequest = null; var a = "1"; var b = "2"""", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""") => sender ! CompilationSucceededResponse("super", List(1,2,3))
           }
         })
         val executor = new Executor {
@@ -96,7 +100,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val anal = mock[Analyzer]
         val compiler = TestActorRef(new Actor {
           def receive = {
-            case CompilationRequest("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var ext1 = "1"; var ext2 = "str2"; var a = "1"; var b = "2"""", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""") => sender ! CompilationSucceededResponse("super", List(1,2,3))
+            case CompilationRequest("do()", Executor.scalaImport, """var request: HttpRequest = null; var ext1 = "1"; var ext2 = "str2"; var a = "1"; var b = "2"""", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""") => sender ! CompilationSucceededResponse("super", List(1,2,3))
           }
         })
         val executor = new Executor {
@@ -121,7 +125,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val anal = mock[Analyzer]
         val compiler = TestActorRef(new Actor {
           def receive = {
-            case CompilationRequest("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var d = "ext4"; var a = "1"; var b = "2"; var c = "3"""", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""") => sender ! CompilationSucceededResponse("super", List(1,2,3))
+            case CompilationRequest("do()", Executor.scalaImport, """var request: HttpRequest = null; var d = "ext4"; var a = "1"; var b = "2"; var c = "3"""", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""") => sender ! CompilationSucceededResponse("super", List(1,2,3))
           }
         })
         val executor = new Executor {
@@ -146,7 +150,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val anal = mock[Analyzer]
         val compiler = TestActorRef(new Actor {
           def receive = {
-            case CompilationRequest("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var a = "1"; var b = "hi"; var c = ""; var d = """"", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""") => sender ! CompilationSucceededResponse("super", List(1,2,3))
+            case CompilationRequest("do()", Executor.scalaImport, """var request: HttpRequest = null; var a = "1"; var b = "hi"; var c = ""; var d = """"", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""") => sender ! CompilationSucceededResponse("super", List(1,2,3))
           }
         })
         val executor = new Executor {
@@ -171,7 +175,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val anal = mock[Analyzer]
         val compiler = TestActorRef(new Actor {
           def receive = {
-            case CompilationRequest("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var a = "1"; var b = "hi"; var c = ""; var d = ""; var h = ""; var header2 = ""; var q = ""; var query2 = """"", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""") => sender ! CompilationSucceededResponse("super", List(1,2,3))
+            case CompilationRequest("do()", Executor.scalaImport, """var request: HttpRequest = null; var a = "1"; var b = "hi"; var c = ""; var d = ""; var h = ""; var header2 = ""; var q = ""; var query2 = """"", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""") => sender ! CompilationSucceededResponse("super", List(1,2,3))
           }
         })
         val executor = new Executor {
@@ -196,7 +200,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val anal = mock[Analyzer]
         val compiler = TestActorRef(new Actor {
           def receive = {
-            case CompilationRequest("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var a = "1"; var b = "hi"; var name = ""; var s = """"", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""") => sender ! CompilationSucceededResponse("super", List(1,2,3))
+            case CompilationRequest("do()", Executor.scalaImport, """var request: HttpRequest = null; var a = "1"; var b = "hi"; var name = ""; var s = """"", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""") => sender ! CompilationSucceededResponse("super", List(1,2,3))
           }
         })
         val executor = new Executor {
@@ -221,7 +225,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val anal = mock[Analyzer]
         val compiler = TestActorRef(new Actor {
           def receive = {
-            case CompilationRequest("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var a = "1"; var b = "hi"; var name = ""; var s = """"", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""") => sender ! CompilationSucceededResponse("super", List(1,2,3))
+            case CompilationRequest("do()", Executor.scalaImport, """var request: HttpRequest = null; var a = "1"; var b = "hi"; var name = ""; var s = """"", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""") => sender ! CompilationSucceededResponse("super", List(1,2,3))
           }
         })
         val executor = new Executor {
@@ -246,7 +250,7 @@ class ExecutorSpec extends TestKit(ActorSystem("executor-specs")) with BaseSpec 
         val anal = mock[Analyzer]
         val compiler = TestActorRef(new Actor {
           def receive = {
-            case CompilationRequest("do()", "import com.ialekseev.bob.dsl._", """var request: HttpRequest = null; var a = "1"; var b = "hi"; var name = ""; var s = """"", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""") => sender ! CompilationSucceededResponse("super", List(1,2,3))
+            case CompilationRequest("do()", Executor.scalaImport, """var request: HttpRequest = null; var a = "1"; var b = "hi"; var name = ""; var s = """"", """implicit val namespace = Namespace("com", "create"); implicit val description = Description("cool")""") => sender ! CompilationSucceededResponse("super", List(1,2,3))
           }
         })
         val executor = new Executor {

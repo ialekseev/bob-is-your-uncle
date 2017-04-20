@@ -27,20 +27,20 @@
 
         <div class="col-10">
             <div *ngIf="selectedSource != null" class="row">
-                <div class="col-4">
+                <div class="col">
                     <div class="form-horizontal">
                         <div class="form-group">
                             <input type="text" [(ngModel)]="selectedSource[1].name" class="form-control">
                         </div>
                         <div class="form-group">
-                            <ace-editor #editor [(text)]="selectedSource[1].content" [mode]="'scala'" [theme]="'terminal'" style="height:300px;"></ace-editor>
+                            <ace-editor #editor [(text)]="selectedSource[1].content" [mode]="'scala'" [theme]="'terminal'" style="height:600px;"></ace-editor>
                         </div>
                         <div class="form-group">
                             <button type="button" (click)="onCheckSourceClick(selectedSource[0], selectedSource[1])" class="btn btn-success">Check</button>
                         </div>
                     </div>
                 </div>
-                <div class="col">
+                <div class="col-4">
                     <strong>Global variables</strong>
                     <div *ngFor="let variable of selectedSource[0].vars" class="row">
                         <div class="col-1">

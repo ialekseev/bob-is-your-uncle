@@ -45,12 +45,6 @@ abstract class Executor(implicit executionContext: ExecutionContext, timeout: Ti
 
     analyzer.analyze(source) match {
       case \/-(result@ AnalysisResult(namespace, description, constants,  Webhook(HttpRequest(uri, _, headers, queryString, body)), ScalaCode(scalaCode))) => {
-        val scalaImport = {
-          "import com.ialekseev.bob.dsl._" ensuring {
-             com.ialekseev.bob.dsl.Namespace != null
-          }
-        }
-
         val scalaVariables = {
           val localVariables = constants |+| uri.map(extractBoundVariablesFromStr(_)).getOrElse(List.empty) |+|
             extractBoundVariablesFromMap(headers) |+| extractBoundVariablesFromMap(queryString) |+| extractBoundVariablesFromBody(body)
@@ -71,10 +65,7 @@ abstract class Executor(implicit executionContext: ExecutionContext, timeout: Ti
           }
         }
 
-        def amend(pos: Int) = {
-          val start = source.indexOf(Token.Block.`@process`.beginWord) + Token.Block.`@process`.beginWord.length
-          start + pos - compilerPositionAmendment - scalaVariables.length - scalaImport.length - scalaImplicits.length
-        }
+        def amend(pos: Int) = amendScalaErrorPosition(source, pos, scalaVariables, scalaImplicits)
 
         compilerActor.tAsk[Any](CompilationRequest(scalaCode, scalaImport, scalaVariables, scalaImplicits)).map {
           case CompilationSucceededResponse(className, bytes) => Build(result, className, bytes).right
@@ -146,6 +137,17 @@ abstract class Executor(implicit executionContext: ExecutionContext, timeout: Ti
 
 object Executor {
   val compilerPositionAmendment = 93
+
+  val scalaImport = {
+    "import com.ialekseev.bob.dsl._, scalaj.http.{HttpRequest => ScalajHttpRequest, _}, org.json4s._, org.json4s.JsonDSL._, org.json4s.native.JsonMethods._" ensuring {
+      com.ialekseev.bob.dsl.Namespace != null && scalaj.http.HttpRequest != null && org.json4s.JObject != null && org.json4s.JsonDSL != null && org.json4s.native.JsonMethods != null
+    }
+  }
+
+  def amendScalaErrorPosition(source: String, pos: Int, scalaVariables: String, scalaImplicits: String) = {
+    val start = source.indexOf(Token.Block.`@process`.beginWord) + Token.Block.`@process`.beginWord.length
+    start + pos - compilerPositionAmendment - scalaVariables.length - scalaImport.length - scalaImplicits.length
+  }
 
   case class Build(analysisResult: AnalysisResult, className: String, bytes: List[Byte])
 
